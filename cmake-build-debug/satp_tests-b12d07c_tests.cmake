@@ -1,0 +1,5 @@
+add_test( [==[NaiveCounting conta 1000 distinti su 10000 campioni]==] /home/daniele/CLionProjects/satp/cmake-build-debug/satp_tests [==[NaiveCounting conta 1000 distinti su 10000 campioni]==]  )
+set_tests_properties( [==[NaiveCounting conta 1000 distinti su 10000 campioni]==] PROPERTIES WORKING_DIRECTORY /home/daniele/CLionProjects/satp/cmake-build-debug)
+add_test( [==[ProbabilisticCounting stima ~1000 distinti su 10000 campioni]==] /home/daniele/CLionProjects/satp/cmake-build-debug/satp_tests [==[ProbabilisticCounting stima ~1000 distinti su 10000 campioni]==]  )
+set_tests_properties( [==[ProbabilisticCounting stima ~1000 distinti su 10000 campioni]==] PROPERTIES WORKING_DIRECTORY /home/daniele/CLionProjects/satp/cmake-build-debug)
+set( satp_tests_TESTS [==[NaiveCounting conta 1000 distinti su 10000 campioni]==] [==[ProbabilisticCounting stima ~1000 distinti su 10000 campioni]==])
