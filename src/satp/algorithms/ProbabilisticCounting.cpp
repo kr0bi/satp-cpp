@@ -26,9 +26,6 @@ namespace satp::algorithms {
             bitmap |= 1u << rightMostOneBit;
     }
 
-    // ------------------------------------------------------------------
-    // count
-    // ------------------------------------------------------------------
     uint64_t ProbabilisticCounting::count() {
         uint32_t idxRightmostZero = countr_one(bitmap);
         if (idxRightmostZero > lengthBitMap) idxRightmostZero = lengthBitMap;

@@ -24,8 +24,7 @@ namespace satp::algorithms {
         uint32_t lengthBitMap;
         uint32_t mask;
         uint32_t bitmap;
-        // TODO sostituire con un uint32 e poi utilizzare bitwise operation
-        // TODO array di booleani con dimensione fissata
+
         static constexpr double INV_PHI = 0.77351;
     };
 } // namespace satp::algorithms

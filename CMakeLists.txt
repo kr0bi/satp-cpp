@@ -9,7 +9,9 @@ add_compile_options(-Wall -Wextra -Wpedantic -Wconversion)
 # ---- Libreria core -------------------------------------------------
 file(GLOB_RECURSE SRC_FILES CONFIGURE_DEPENDS src/satp/*.cpp)
 add_library(satp STATIC ${SRC_FILES}
-        src/satp/hashing.h)
+        src/satp/hashing.h
+        src/satp/algorithms/LogLog.cpp
+        src/satp/algorithms/LogLog.h)
 target_include_directories(satp PUBLIC src)
 
 # ---- Catch2 via FetchContent --------------------------------------

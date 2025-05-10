@@ -1,32 +1,35 @@
 #pragma once
 #include <vector>
 #include <random>
-#include <cstdint>
+#include <algorithm>
+#include <unordered_set>
+
+using namespace std;
 
 namespace satp::utils {
-
     /**
-     * Restituisce un vettore di `numberOfElements` interi pseudo‑casuali,
-     * ciascuno nell’intervallo [0, numberOfUniqueElements - 1].
+     * 
+     * @param numberOfElements
+     * @param to fino a che numero devono essere generati i numeri
+     * @return un array di interi generati randomicamente tra 0 e m
      */
-    inline std::vector<std::uint32_t>
-    getRandomNumbers(std::size_t numberOfElements,
-                     std::size_t numberOfUniqueElements)
-    {
-        std::vector<std::uint32_t> v;
-        v.reserve(numberOfElements);
+    inline vector<uint32_t>
+    getRandomNumbers(size_t numberOfElements, int to) {
+        assert(to >= 0 && "l'intervallo deve essere non‑negativo");
 
-        std::random_device rd;                       // seed
-        std::mt19937 gen(rd());                      // Mersenne Twister 32‑bit
-        std::uniform_int_distribution<std::uint32_t>
-            dist(0u, static_cast<std::uint32_t>(numberOfUniqueElements - 1));
+        // engine: Mersenne Twister 32bit, seedato una sola volta per thread
+        static thread_local mt19937 rng{random_device{}()};
 
-        // TODO cambiare con rand cstdlib e calcolare runtime i numeri distinti
+        // distribuzione uniforme chiusa [0 , to]
+        uniform_int_distribution<uint32_t> dist(
+            0u, static_cast<uint32_t>(to));
 
-        for (std::size_t i = 0; i < numberOfElements; ++i)
-            v.push_back(dist(gen));
-
-        return v;
+        vector<uint32_t> out(numberOfElements);
+        generate(out.begin(), out.end(), [&] { return dist(rng); });
+        return out;
     }
 
+    inline size_t count_distinct(const vector<uint32_t> &v) {
+        return unordered_set<int>(v.begin(), v.end()).size();
+    }
 } // namespace satp::utils
