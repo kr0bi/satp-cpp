@@ -19,13 +19,15 @@ include(FetchContent)
 FetchContent_Declare(
         Catch2
         GIT_REPOSITORY https://github.com/catchorg/Catch2.git
-        GIT_TAG        v3.5.2           # oppure la versione più recente
+        GIT_TAG v3.5.2           # oppure la versione più recente
 )
 FetchContent_MakeAvailable(Catch2)
 
 # ---- Eseguibile di test -------------------------------------------
 file(GLOB_RECURSE TEST_FILES CONFIGURE_DEPENDS tests/*.cpp)
-add_executable(satp_tests ${TEST_FILES})
+add_executable(satp_tests ${TEST_FILES}
+        tests/algorithms/LogLogTest.cpp
+)
 target_link_libraries(satp_tests
         PRIVATE satp
         Catch2::Catch2WithMain)

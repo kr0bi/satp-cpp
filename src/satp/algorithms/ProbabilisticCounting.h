@@ -22,7 +22,6 @@ namespace satp::algorithms {
 
     private:
         uint32_t lengthBitMap;
-        uint32_t mask;
         uint32_t bitmap;
 
         static constexpr double INV_PHI = 0.77351;

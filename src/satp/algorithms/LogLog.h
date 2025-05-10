@@ -1,16 +1,32 @@
-//
-// Created by Daniele Ferroli on 10/05/25.
-//
+#pragma once
 
-#ifndef LOGLOG_H
-#define LOGLOG_H
+#include <vector>
+#include <bit>
+#include <cstdint>
+#include <limits>
 
+#include "Algorithm.h"
 
+using namespace std;
 
-class LogLog {
+namespace satp::algorithms {
+    class LogLog final : public Algorithm {
+    public:
+        explicit LogLog(uint32_t K, uint32_t L);
 
-};
+        void process(uint32_t id) override;
 
+        uint64_t count() override;
 
+        void reset() override;
 
-#endif //LOGLOG_H
+    private:
+        uint32_t k;
+        uint32_t numberOfBuckets;
+        uint32_t lengthOfBitMap;
+        uint32_t bitmap[];
+
+        static constexpr double FIRST_PHI = 0.79402;
+        static constexpr double SECOND_PHI = 0.84249;
+    };
+} // namespace satp::algorithms

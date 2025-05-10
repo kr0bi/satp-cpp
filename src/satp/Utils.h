@@ -25,7 +25,7 @@ namespace satp::utils {
             0u, static_cast<uint32_t>(to));
 
         vector<uint32_t> out(numberOfElements);
-        generate(out.begin(), out.end(), [&] { return dist(rng); });
+        ranges::generate(out, [&] { return dist(rng); });
         return out;
     }
 

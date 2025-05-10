@@ -8,10 +8,7 @@ using namespace std;
 
 namespace satp::algorithms {
     ProbabilisticCounting::ProbabilisticCounting(uint32_t L)
-        : lengthBitMap(L)
-          , mask(L == 32
-                     ? numeric_limits<uint32_t>::max()
-                     : (1u << L) - 1u),
+        : lengthBitMap(L),
           bitmap(0) {
         if (lengthBitMap == 0 || lengthBitMap > 31)
             throw invalid_argument("L must be in [1,31]");
