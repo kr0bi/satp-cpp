@@ -1,0 +1,75 @@
+# =======================================================
+# .gitignore for a C++23 project built with CMake
+# Keeps the repository clean by ignoring build artefacts,
+# editor metadata, OS noise files, and other derived files.
+# =======================================================
+
+# ----------------- Build output directories ------------
+/build/
+/build-*/
+/bin/
+/out/
+/cmake-build-*/
+
+# ----------------- CMake generated files ---------------
+CMakeFiles/
+CMakeCache.txt
+cmake_install.cmake
+install_manifest.txt
+Makefile
+
+# Ninja
+build.ninja
+.ninja_*
+
+# ----------------- Compilation database ----------------
+compile_commands.json
+
+# ----------------- Object & binary artefacts -----------
+*.o
+*.obj
+*.so
+*.dll
+*.dylib
+*.a
+*.lib
+*.exe
+
+# ----------------- Pre‑compiled headers ----------------
+*.gch
+*.pch
+
+# ----------------- Code coverage & profiling -----------
+*.gcda
+*.gcno
+*.gcov
+*.profraw
+*.profdata
+
+# ----------------- Crash dumps & sanitizer logs --------
+core
+*.lsan
+*.asan
+*.tsan
+
+# ----------------- Logs --------------------------------
+*.log
+
+# ----------------- IDE / Editor directories ------------
+/.idea/
+/.vscode/
+/*.code-workspace
+*.sublime-*
+
+# ----------------- OS metadata -------------------------
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# ----------------- Qt Creator --------------------------
+CMakeLists.txt.user
+
+# ----------------- Backup / swap files -----------------
+*~
+*.swp
+*.swo
