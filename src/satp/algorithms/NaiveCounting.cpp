@@ -7,20 +7,19 @@ namespace satp::algorithms {
 
     void NaiveCounting::process(std::uint32_t id)
     {
-        // equivalente a ArrayList.contains() + add():
-        if (std::ranges::find(ids_, id) == ids_.end()) {
-            ids_.push_back(id);
+        if (!ids.contains(id)) {
+            ids.insert(id);
         }
     }
 
-    std::uint64_t NaiveCounting::count() const
+    std::uint64_t NaiveCounting::count()
     {
-        return ids_.size();
+        return ids.size();
     }
 
     void NaiveCounting::reset()
     {
-        ids_.clear();
+        ids.clear();
     }
 
 } // namespace satp::algorithms

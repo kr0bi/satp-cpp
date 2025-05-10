@@ -21,6 +21,8 @@ namespace satp::utils {
         std::uniform_int_distribution<std::uint32_t>
             dist(0u, static_cast<std::uint32_t>(numberOfUniqueElements - 1));
 
+        // TODO cambiare con rand cstdlib e calcolare runtime i numeri distinti
+
         for (std::size_t i = 0; i < numberOfElements; ++i)
             v.push_back(dist(gen));
 

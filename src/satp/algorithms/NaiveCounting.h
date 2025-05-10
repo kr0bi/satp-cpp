@@ -1,7 +1,11 @@
 #pragma once
 #include <vector>
 #include <cstdint>
+#include <set>
+
 #include "Algorithm.h"
+
+using namespace std;
 
 namespace satp::algorithms {
 
@@ -17,13 +21,13 @@ namespace satp::algorithms {
      */
     class NaiveCounting final : public Algorithm {
     public:
-        void process(std::uint32_t id) override;
-        [[nodiscard]]
-        std::uint64_t  count() const override;
+        void process(uint32_t id) override;
+
+        uint64_t count()  override;
         void reset() override;
 
     private:
-        std::vector<std::uint32_t> ids_;
+        set<uint32_t> ids;
     };
 
 } // namespace satp::algorithms

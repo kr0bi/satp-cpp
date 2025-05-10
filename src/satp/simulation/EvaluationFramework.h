@@ -4,6 +4,11 @@
 
 #include "../algorithms/Algorithm.h"
 #include <concepts>
+#include <iostream>
+#include <vector>
+
+#include "Loop.h"
+#include "satp/Utils.h"
 
 namespace satp {
 

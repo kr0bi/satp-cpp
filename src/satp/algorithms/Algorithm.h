@@ -1,5 +1,6 @@
 #pragma once
 #include <cstdint>
+using namespace std;
 
 namespace satp::algorithms {
 
@@ -16,10 +17,9 @@ namespace satp::algorithms {
     public:
         virtual ~Algorithm() = default;
 
-        virtual void process(std::uint32_t id) = 0;
+        virtual void process(uint32_t id) = 0;
 
-        [[nodiscard]]
-        virtual std::uint64_t count() const = 0;
+        virtual uint64_t count() = 0;
 
         virtual void reset() {}
     };

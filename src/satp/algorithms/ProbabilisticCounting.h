@@ -1,49 +1,31 @@
 #pragma once
 
 #include <vector>
-#include <bit>          // std::countr_zero (C++20)
+#include <bit>
 #include <cstdint>
 #include <limits>
 
 #include "Algorithm.h"
 
-namespace satp::algorithms {
+using namespace std;
 
-    /**
-     * Sketch probabilistico di Flajolet & Martin (1985) con un solo bitmap M.
-     *
-     *  - L  : numero di bit del bitmap (1≤L≤31 consigliato)
-     *  - φ⁻¹: costante di correzione 1/φ ≈ 0.77351
-     *
-     * Complessità:
-     *   process()  →  O(1)
-     *   count()    →  O(L) (scansione del bitmap)
-     *   memoria    →  O(L) bit
-     */
+namespace satp::algorithms {
     class ProbabilisticCounting final : public Algorithm {
     public:
-        explicit ProbabilisticCounting(std::uint32_t L);
+        explicit ProbabilisticCounting(uint32_t L);
 
-        void process(std::uint32_t id) override;
-        [[nodiscard]]
-        std::uint64_t count() const override;
+        void process(uint32_t id) override;
+
+        uint64_t count() override;
+
         void reset() override;
 
     private:
-        // ------------ hashing ---------------------------------------------------
-        static std::uint32_t mix32(std::uint32_t x);   // MurmurHash3 finaliser
-        [[nodiscard]]
-        inline std::uint32_t uniformHash(std::uint32_t id) const;
-
-        // ------------ bitmap helpers -------------------------------------------
-        [[nodiscard]]
-        std::uint32_t nextClearBit(std::uint32_t from) const;
-
-        // ------------ members ---------------------------------------------------
-        std::uint32_t          L_;          // lunghezza bitmap
-        std::uint32_t          mask_;       // mantiene i L bit più bassi
-        std::vector<bool>      bitmap_;     // M
+        uint32_t lengthBitMap;
+        uint32_t mask;
+        uint32_t bitmap;
+        // TODO sostituire con un uint32 e poi utilizzare bitwise operation
+        // TODO array di booleani con dimensione fissata
         static constexpr double INV_PHI = 0.77351;
     };
-
 } // namespace satp::algorithms
