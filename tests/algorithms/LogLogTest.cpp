@@ -10,7 +10,6 @@ TEST_CASE("LogLog stima ~1000 distinti su 10000 campioni", "[log-count]") {
     constexpr std::uint32_t L = 32;
     constexpr std::uint32_t K = 10;
 
-
     auto randomInts = satp::utils::getRandomNumbers(NUMBER_OF_ELEMENTS,
                                                     HIGHEST_NUMBER);
     auto NUMBER_OF_UNIQUE_ELEMENTS = satp::utils::count_distinct(randomInts);
