@@ -1,69 +1,72 @@
-// include/satp/AlgorithmConcept.hpp
+// evaluation_framework.hpp --------------------------------------------------
+// Header‑only EvaluationFramework: misura bias, media e varianza di uno
+// sketch di cardinalità che implementa l'interfaccia satp::algorithms::Algorithm
+// (process(uint32_t) + count()). Compatibile con toolchain senza C++20
+// <concepts>: il controllo sul tipo è effettuato con static_assert.
+// --------------------------------------------------------------------------
 #pragma once
-#include <concepts>
 
-#include "../algorithms/Algorithm.h"
-#include <concepts>
-#include <iostream>
 #include <vector>
+#include <cstdint>
+#include <numeric>      // accumulate
+#include <utility>      // forward
 
-#include "Loop.h"
-#include "satp/Utils.h"
+#include "../Utils.h"
+#include "../algorithms/Algorithm.h"
 
-namespace satp {
+namespace satp::evaluation {
+    struct Stats {
+        double mean = 0.0; // media delle stime
+        double variance = 0.0; // varianza
+        double bias = 0.0; // mean  − ground‑truth
+    };
 
-    /** Qualunque tipo derivato da satp::algorithms::Algorithm. */
-    template<typename T>
-    concept AlgorithmLike = std::derived_from<T, algorithms::Algorithm>;
+    // -----------------------------------------------------------------------
+    // EvaluationFramework: genera una sola volta il dataset randomico e il
+    // conteggio esatto (groundTruth), poi esegue ripetutamente l'algoritmo per
+    // stimare media, varianza e bias.
+    // -----------------------------------------------------------------------
+    class EvaluationFramework {
+    public:
+        explicit EvaluationFramework(std::vector<std::uint32_t> data)
+            : data_(std::move(data)),
+              groundTruth_(satp::utils::count_distinct(data_)) {
+        }
 
-}  // namespace satp
+        /**
+         * Valuta un algoritmo su "runs" passate.
+         * Args... sono inoltrati al costruttore dell'algoritmo.
+         */
+        template<typename Algo, typename... Args>
+        [[nodiscard]] Stats evaluate(std::size_t runs, Args &&... ctorArgs) const {
+            if (runs == 0) return {};
 
-namespace satp::simulation {
-/**
- * Esegue più prove dell’algoritmo A e calcola media, bias e varianza
- * della stima della cardinalità.
- *
- * @tparam A  qualunque classe che implementi satp::algorithms::Algorithm
- */
+            std::vector<double> estimates;
+            estimates.reserve(runs);
 
+            for (std::size_t r = 0; r < runs; ++r) {
+                Algo algo(std::forward<Args>(ctorArgs)...);
+                for (auto v: data_) algo.process(v);
+                estimates.push_back(static_cast<double>(algo.count()));
+            }
 
+            // ---- statistiche ---------------------------------------------
+            const double mean = std::accumulate(estimates.begin(), estimates.end(), 0.0) / runs;
 
-template<AlgorithmLike A>
-void evaluateAlgorithm(std::size_t trials,
-                       std::size_t numberOfElements,
-                       std::size_t numberOfDistinctElements)
-{
-    std::vector<double> estimates;
-    estimates.reserve(trials);
+            double varAcc = 0.0;
+            for (double e: estimates) varAcc += (e - mean) * (e - mean);
+            const double variance = varAcc / runs; // popolazione
 
-    for (std::size_t i = 0; i < trials; ++i) {
-        // Stream casuale di IDs con solo «numberOfDistinctElements» diversi
-        auto dataStream = utils::getRandomNumbers(numberOfElements,
-                                                  numberOfDistinctElements);
+            const double bias = mean - static_cast<double>(groundTruth_);
 
-        // Nuova istanza dell’algoritmo per ogni trial (come in Java)
-        A algo;
-        Loop<A> loop(std::move(algo), std::move(dataStream));
+            return {mean, variance, bias};
+        }
 
-        estimates.push_back(static_cast<double>(loop.process()));
-    }
+        [[nodiscard]] std::size_t ground_truth() const noexcept { return groundTruth_; }
+        [[nodiscard]] const std::vector<std::uint32_t> &data() const noexcept { return data_; }
 
-    // --- Statistiche -------------------------------------------------------
-    double mean = std::accumulate(estimates.begin(), estimates.end(), 0.0) /
-                  static_cast<double>(trials);
-
-    double variance = 0.0;
-    for (double e : estimates) variance += (e - mean) * (e - mean);
-    variance /= static_cast<double>(trials);
-
-    double bias = mean - static_cast<double>(numberOfDistinctElements);
-
-    // --- Output ------------------------------------------------------------
-    std::cout << "Trials:             " << trials                   << '\n'
-              << "True unique count:  " << numberOfDistinctElements << '\n'
-              << "Mean estimate:      " << mean                     << '\n'
-              << "Bias:               " << bias                     << '\n'
-              << "Variance:           " << variance                 << "\n\n";
-}
-
-} // namespace satp::simulation
+    private:
+        std::vector<std::uint32_t> data_;
+        std::size_t groundTruth_;
+    };
+} // namespace satp::evaluation

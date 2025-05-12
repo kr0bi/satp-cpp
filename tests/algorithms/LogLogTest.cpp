@@ -5,10 +5,10 @@
 
 
 TEST_CASE("LogLog stima ~1000 distinti su 10000 campioni", "[log-count]") {
-    constexpr std::size_t HIGHEST_NUMBER = 100000;
-    constexpr std::size_t NUMBER_OF_ELEMENTS = 10000000;
-    constexpr std::uint32_t L = 16; // bitmap 16 bit → buono fino a ~65k
-    constexpr std::uint32_t K = 16;
+    constexpr std::size_t HIGHEST_NUMBER = 100'000;
+    constexpr std::size_t NUMBER_OF_ELEMENTS = 1'000'000;
+    constexpr std::uint32_t L = 32;
+    constexpr std::uint32_t K = 10;
 
 
     auto randomInts = satp::utils::getRandomNumbers(NUMBER_OF_ELEMENTS,
@@ -22,7 +22,11 @@ TEST_CASE("LogLog stima ~1000 distinti su 10000 campioni", "[log-count]") {
 
     WARN("Stima = " << estimate);
     WARN("Elementi = " << NUMBER_OF_UNIQUE_ELEMENTS);
-    // entro ±16% con confidenza ragionevole
-    REQUIRE(estimate >= NUMBER_OF_UNIQUE_ELEMENTS * 0.84);
-    REQUIRE(estimate <= NUMBER_OF_UNIQUE_ELEMENTS * 1.1);
+
+    auto denom = 1.0 / std::sqrt(double(1u << K));
+    const double RSE = 1.0 / denom;
+    WARN("RSE = " << 1.0 / denom);
+
+    REQUIRE(estimate >= NUMBER_OF_UNIQUE_ELEMENTS * (1.0 - 3 * RSE));
+    REQUIRE(estimate <= NUMBER_OF_UNIQUE_ELEMENTS * (1.0 + 3 * RSE));
 }
