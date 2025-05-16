@@ -56,7 +56,6 @@ core
 *.log
 
 # ----------------- IDE / Editor directories ------------
-/.idea/
 /.vscode/
 /*.code-workspace
 *.sublime-*
