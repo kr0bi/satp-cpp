@@ -17,6 +17,16 @@ add_library(satp STATIC ${SRC_FILES}
 )
 target_include_directories(satp PUBLIC src)
 
+# --------------------------------------------------------------------
+#  ESEGUIBILE **BENCHMARK**  ← NUOVO
+# --------------------------------------------------------------------
+add_executable(main
+        main.cpp
+)
+target_link_libraries(main
+        PRIVATE satp                  #  basta la libreria core
+)
+
 # ---- Catch2 via FetchContent --------------------------------------
 include(FetchContent)
 FetchContent_Declare(
