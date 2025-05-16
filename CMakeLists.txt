@@ -13,7 +13,8 @@ add_library(satp STATIC ${SRC_FILES}
         src/satp/algorithms/LogLog.cpp
         src/satp/algorithms/LogLog.h
         src/satp/algorithms/HyperLogLog.cpp
-        src/satp/algorithms/HyperLogLog.h)
+        src/satp/algorithms/HyperLogLog.h
+)
 target_include_directories(satp PUBLIC src)
 
 # ---- Catch2 via FetchContent --------------------------------------
@@ -29,8 +30,9 @@ FetchContent_MakeAvailable(Catch2)
 file(GLOB_RECURSE TEST_FILES CONFIGURE_DEPENDS tests/*.cpp)
 add_executable(satp_tests ${TEST_FILES}
         tests/algorithms/LogLogTest.cpp
-        tests/algorithms/EvaluationFrameworkTest.cpp
+        tests/simulation/EvaluationFrameworkTest.cpp
         tests/algorithms/HyperLogLog.cpp
+        tests/UtilsTest.cpp
 )
 target_link_libraries(satp_tests
         PRIVATE satp

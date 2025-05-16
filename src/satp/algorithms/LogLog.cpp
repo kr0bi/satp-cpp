@@ -39,4 +39,8 @@ namespace satp::algorithms {
             bitmap[i] = 0;
         }
     }
+
+    string LogLog::getName() {
+        return "LogLog";
+    }
 } // namespace satp::algorithms

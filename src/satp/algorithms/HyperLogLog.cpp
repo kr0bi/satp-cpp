@@ -70,4 +70,8 @@ namespace satp::algorithms {
             bitmap[i] = 0;
         }
     }
+
+    string HyperLogLog::getName() {
+        return "HyperLogLog";
+    }
 } // namespace satp::algorithms

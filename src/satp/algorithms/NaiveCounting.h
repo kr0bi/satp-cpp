@@ -8,7 +8,6 @@
 using namespace std;
 
 namespace satp::algorithms {
-
     /**
      * Implementazione “ingenua”:
      * mantiene un vettore di tutti gli ID distinti visti finora
@@ -23,11 +22,13 @@ namespace satp::algorithms {
     public:
         void process(uint32_t id) override;
 
-        uint64_t count()  override;
+        uint64_t count() override;
+
         void reset() override;
+
+        string getName() override;
 
     private:
         set<uint32_t> ids;
     };
-
 } // namespace satp::algorithms

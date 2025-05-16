@@ -3,7 +3,6 @@
 using namespace std;
 
 namespace satp::algorithms {
-
     /**
      * @brief Interfaccia astratta per tutti gli algoritmi di stima della cardinalità.
      *
@@ -21,7 +20,9 @@ namespace satp::algorithms {
 
         virtual uint64_t count() = 0;
 
-        virtual void reset() {}
-    };
+        virtual void reset() {
+        }
 
+        virtual string getName() = 0;
+    };
 } // namespace satp::algorithms

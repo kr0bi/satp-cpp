@@ -1,6 +1,8 @@
 #pragma once
 #include <concepts>
 #include <vector>
+
+#include "satp/ProgressBar.h"
 #include "satp/algorithms/Algorithm.h"
 
 namespace satp::simulation {
@@ -14,22 +16,26 @@ namespace satp::simulation {
     template<AlgorithmLike A>
     class Loop {
     public:
-
         Loop(A algorithm, std::vector<std::uint32_t> ids)
             : algorithm_(std::move(algorithm))
-            , ids_(std::move(ids))
-        {}
+              , ids_(std::move(ids)) {
+        }
 
-        std::uint64_t process()
-        {
-            for (std::uint32_t id : ids_) {
+        std::uint64_t process() {
+            std::cerr << "\nAlgorithm: " << algorithm_.getName() << '\n';
+
+            util::ProgressBar bar{ids_.size()};
+
+            for (std::uint32_t id: ids_) {
                 algorithm_.process(id);
+                bar.tick();
             }
+
+            bar.finish();
             return algorithm_.count();
         }
 
-        void reset()
-        {
+        void reset() {
             algorithm_.reset();
             ids_.clear();
         }
@@ -38,5 +44,4 @@ namespace satp::simulation {
         A algorithm_;
         std::vector<std::uint32_t> ids_;
     };
-
 } // namespace satp::simulation

@@ -34,4 +34,8 @@ namespace satp::algorithms {
     void ProbabilisticCounting::reset() {
         bitmap = 0;
     }
+
+    string ProbabilisticCounting::getName() {
+        return "Probabilistic Counting";
+    }
 } // namespace satp::algorithms

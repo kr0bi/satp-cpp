@@ -1,9 +1,3 @@
-// evaluation_framework.hpp --------------------------------------------------
-// Header‑only EvaluationFramework: misura bias, media e varianza di uno
-// sketch di cardinalità che implementa l'interfaccia satp::algorithms::Algorithm
-// (process(uint32_t) + count()). Compatibile con toolchain senza C++20
-// <concepts>: il controllo sul tipo è effettuato con static_assert.
-// --------------------------------------------------------------------------
 #pragma once
 
 #include <vector>

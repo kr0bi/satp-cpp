@@ -16,8 +16,8 @@ namespace util = satp::utils;
 
 TEST_CASE("Evaluation Framework", "[eval-framework]") {
     // --------------- parametri del benchmark ---------------------------
-    constexpr std::size_t HIGHEST_NUMBER = 100'000;
-    constexpr std::size_t NUMBER_OF_ELEMS = 10'000'00;
+    constexpr std::size_t HIGHEST_NUMBER = 100'000'000;
+    constexpr std::size_t NUMBER_OF_ELEMS = 1'000'000'000;
     constexpr std::size_t RUNS = 50;
 
     constexpr std::uint32_t K = 16; // registri LogLog

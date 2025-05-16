@@ -20,6 +20,8 @@ namespace satp::algorithms {
 
         void reset() override;
 
+        string getName() override;
+
     private:
         uint32_t k;
         uint32_t numberOfBuckets;
