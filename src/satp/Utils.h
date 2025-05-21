@@ -31,6 +31,7 @@ namespace satp::utils {
     }
 
     inline size_t count_distinct(const vector<uint32_t> &v) {
+        cout << "Contando elementi distinti" << "\n";
         return unordered_set<int>(v.begin(), v.end()).size();
     }
 } // namespace satp::utils

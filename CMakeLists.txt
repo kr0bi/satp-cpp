@@ -14,6 +14,7 @@ add_library(satp STATIC ${SRC_FILES}
         src/satp/algorithms/LogLog.h
         src/satp/algorithms/HyperLogLog.cpp
         src/satp/algorithms/HyperLogLog.h
+        src/satp/io/FileNaming.h
 )
 target_include_directories(satp PUBLIC src)
 
@@ -22,6 +23,7 @@ target_include_directories(satp PUBLIC src)
 # --------------------------------------------------------------------
 add_executable(main
         main.cpp
+        src/satp/io/BinaryIO.h
 )
 target_link_libraries(main
         PRIVATE satp                  #  basta la libreria core
