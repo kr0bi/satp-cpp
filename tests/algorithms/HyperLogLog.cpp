@@ -14,7 +14,7 @@ TEST_CASE("HyperLogLog stima ~1000 distinti su 10000 campioni", "[hyperloglog-co
                                                     HIGHEST_NUMBER);
     auto NUMBER_OF_UNIQUE_ELEMENTS = satp::utils::count_distinct(randomInts);
 
-    satp::algorithms::HyperLogLog loglog(K, L);
+    satp::algorithms::HyperLogLogPlusPlus loglog(K, L);
     satp::simulation::Loop loop(std::move(loglog), std::move(randomInts));
 
     auto estimate = loop.process();

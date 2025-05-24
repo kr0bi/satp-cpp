@@ -3,6 +3,7 @@
 #include "satp/io/FileNaming.h"
 #include "src/satp/Utils.h"
 #include "src/satp/algorithms/HyperLogLog.h"
+#include "src/satp/algorithms/HyperLogLogPlusPlus.h"
 #include "src/satp/algorithms/LogLog.h"
 #include "src/satp/algorithms/ProbabilisticCounting.h"
 #include "src/satp/simulation/EvaluationFramework.h"
@@ -16,7 +17,7 @@ int main() {
         constexpr std::size_t HIGHEST_NUMBER = 1'000'000'000;
         constexpr std::size_t NUMBER_OF_ELEMS = 100'000'000;
         constexpr std::size_t SAMPLE_SIZE = 1'000'000;
-        constexpr std::size_t RUNS = 30;
+        constexpr std::size_t RUNS = 1;
 
         constexpr std::uint32_t K = 16; // registri per HLL/LL
         constexpr std::uint32_t L = 16; // bitmap PC
@@ -35,6 +36,13 @@ int main() {
                 SAMPLE_SIZE,
                 NUMBER_OF_ELEMS,
                 HIGHEST_NUMBER);
+
+        // ----- HyperLogLog++ -------------------------------------
+        auto hllpp = bench.evaluate<alg::HyperLogLogPlusPlus>(RUNS, SAMPLE_SIZE, K);
+        std::cout << "[HLL++] mean=" << hllpp.mean
+                        << "  diff=" << hllpp.difference
+                        << "  var=" << hllpp.variance
+                        << "  bias=" << hllpp.bias << '\n';
 
         // ----- HyperLogLog -------------------------------------
         auto hll = bench.evaluate<alg::HyperLogLog>(RUNS, SAMPLE_SIZE, K, L_LOG);

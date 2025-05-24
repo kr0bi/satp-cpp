@@ -33,7 +33,7 @@ TEST_CASE("Evaluation Framework", "[eval-framework]") {
         std::cout << "Ground‑truth distinct = " << bench.getNumElementiDistintiEffettivi() << '\n';
 
         // -------- valutazione HyperLogLog ----------------------------------
-        auto hllStats = bench.evaluate<alg::HyperLogLog>(RUNS, SAMPLE_SIZE, K, L_LOG);
+        auto hllStats = bench.evaluate<alg::HyperLogLogPlusPlus>(RUNS, SAMPLE_SIZE, K, L_LOG);
         std::cout << "[HyperLogLog]  mean=" << hllStats.mean
                         << "  var=" << hllStats.variance
                         << "  bias=" << hllStats.bias << '\n';
