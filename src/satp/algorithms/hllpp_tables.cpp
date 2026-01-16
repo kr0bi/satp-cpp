@@ -859,7 +859,7 @@ namespace {
 
 // ----------- 2.  API visibile dall’esterno ---------------------------
 const std::vector<std::pair<double, double> > &
-htbl::table_for_k(std::size_t k) {
+satp::algorithms::hllpp_tables::table_for_k(std::size_t k) {
     std::call_once(init_flag, build_tables);
 
     if (k < MIN_K || k > MAX_K)

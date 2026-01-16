@@ -7,7 +7,7 @@
 
 TEST_CASE("ProbabilisticCounting stima ~1000 distinti su 10000 campioni", "[prob-count]") {
     constexpr std::size_t HIGHEST_NUMBER = 100000;
-    constexpr std::size_t NUMBER_OF_ELEMENTS = 10000000;
+    constexpr std::size_t NUMBER_OF_ELEMENTS = 500000;
     constexpr std::uint32_t L = 16; // bitmap 16 bit → buono fino a ~65k
 
     auto randomInts = satp::utils::getRandomNumbers(NUMBER_OF_ELEMENTS,

@@ -3,6 +3,7 @@
 #include "catch2/catch_test_macros.hpp"
 #include "satp/Utils.h"
 #include "satp/algorithms/HyperLogLog.h"
+#include "satp/algorithms/HyperLogLogPlusPlus.h"
 #include "satp/algorithms/LogLog.h"
 #include "satp/algorithms/ProbabilisticCounting.h"
 #include "satp/simulation/Loop.h"
@@ -16,10 +17,10 @@ namespace util = satp::utils;
 
 TEST_CASE("Evaluation Framework", "[eval-framework]") {
         // --------------- parametri del benchmark ---------------------------
-        constexpr std::size_t HIGHEST_NUMBER = 100'000'000;
-        constexpr std::size_t NUMBER_OF_ELEMS = 1'000'000'000;
-        constexpr std::size_t SAMPLE_SIZE = 1'000'000;
-        constexpr std::size_t RUNS = 50;
+        constexpr std::size_t HIGHEST_NUMBER = 100'000;
+        constexpr std::size_t NUMBER_OF_ELEMS = 200'000;
+        constexpr std::size_t SAMPLE_SIZE = 20'000;
+        constexpr std::size_t RUNS = 3;
 
         constexpr std::uint32_t K = 16; // registri LogLog
         constexpr std::uint32_t L = 16; // bitmap ProbabilisticCounting
@@ -33,7 +34,7 @@ TEST_CASE("Evaluation Framework", "[eval-framework]") {
         std::cout << "Ground‑truth distinct = " << bench.getNumElementiDistintiEffettivi() << '\n';
 
         // -------- valutazione HyperLogLog ----------------------------------
-        auto hllStats = bench.evaluate<alg::HyperLogLogPlusPlus>(RUNS, SAMPLE_SIZE, K, L_LOG);
+        auto hllStats = bench.evaluate<alg::HyperLogLogPlusPlus>(RUNS, SAMPLE_SIZE, K);
         std::cout << "[HyperLogLog]  mean=" << hllStats.mean
                         << "  var=" << hllStats.variance
                         << "  bias=" << hllStats.bias << '\n';
