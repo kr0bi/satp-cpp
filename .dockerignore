@@ -1,0 +1,10 @@
+.git
+.idea
+build
+build-*
+build-cmake
+cmake-build-*
+external
+dataset_*.bin
+main
+satp_tests

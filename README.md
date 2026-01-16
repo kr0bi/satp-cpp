@@ -29,6 +29,22 @@ cmake --build build
 ctest --test-dir build
 ```
 
+## Docker (Ubuntu)
+Build the image:
+```sh
+docker build -t satp-cpp .
+```
+
+Run the main executable:
+```sh
+docker run --rm satp-cpp main
+```
+
+Run the test suite:
+```sh
+docker run --rm satp-cpp test
+```
+
 ## Notes
 - The benchmark in `main.cpp` caches generated datasets in the repository root (e.g. `dataset_*.bin`).
 - If your machine runs out of memory when building dependencies, try a single-threaded build: `cmake --build build -j1`.

@@ -1,8 +1,9 @@
 #pragma once
-#include <vector>
+#include <cstdint>
+#include <cstring>
 #include <filesystem>
 #include <fstream>
-#include <cstdint>
+#include <vector>
 
 namespace satp::io {
     inline void saveDataset(const std::filesystem::path &path,
