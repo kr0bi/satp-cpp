@@ -27,8 +27,5 @@ namespace satp::algorithms {
         uint32_t numberOfBuckets;
         uint32_t lengthOfBitMap;
         vector<uint32_t> bitmap;
-
-        static constexpr double FIRST_PHI = 0.79402;
-        static constexpr double SECOND_PHI = 0.84249;
     };
 } // namespace satp::algorithms
