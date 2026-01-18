@@ -7,14 +7,6 @@
 using namespace std;
 
 namespace satp::algorithms {
-    namespace {
-        constexpr double ALPHA_INF = 0.39701;
-
-        double alpha_for(uint32_t /*m*/) {
-            return ALPHA_INF;
-        }
-    } // namespace
-
     LogLog::LogLog(uint32_t K, uint32_t L)
         : k(K),
           numberOfBuckets(1u << k),
@@ -39,8 +31,7 @@ namespace satp::algorithms {
         double Z = 0.0;
         for (auto r: bitmap) Z += r;
         Z /= numberOfBuckets;
-        const double alpha = alpha_for(numberOfBuckets);
-        return static_cast<uint64_t>(alpha * numberOfBuckets * exp2(Z));
+        return static_cast<uint64_t>(ALPHA_INF * numberOfBuckets * exp2(Z));
     }
 
     void LogLog::reset() {

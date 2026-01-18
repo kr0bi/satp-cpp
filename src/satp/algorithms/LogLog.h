@@ -27,5 +27,7 @@ namespace satp::algorithms {
         uint32_t numberOfBuckets;
         uint32_t lengthOfBitMap;
         vector<uint32_t> bitmap;
+
+        static constexpr double ALPHA_INF = 0.39701;
     };
 } // namespace satp::algorithms
