@@ -31,7 +31,7 @@ namespace satp::algorithms {
 
     uint64_t HyperLogLogPlusPlus::count() {
         double Z = 0.0;
-        for (auto r: bitmap) Z += std::ldexp(1.0, -static_cast<int>(r));
+        for (auto r: bitmap) Z += ldexp(1.0, -static_cast<int>(r));
         Z /= numberOfBuckets;
         Z = 1.0 / Z;
 
@@ -55,17 +55,17 @@ namespace satp::algorithms {
             const double biasThreshold = 3.723 * m; //  ≈ 61 000 / 16 384
             /* ---- 1)  Linear-Counting range ---------------------------- */
             if (E < lcThreshold) {
-                std::uint32_t V = std::count(bitmap.begin(), bitmap.end(), 0);
-                return static_cast<std::uint64_t>(m * std::log(m / static_cast<double>(V)));
+                uint32_t V = std::count(bitmap.begin(), bitmap.end(), 0);
+                return static_cast<uint64_t>(m * log(m / static_cast<double>(V)));
             }
             /* ---- 2)  Bias-corrected range ----------------------------- */
             if (E < biasThreshold) {
                 const double bias = interpolateBias(E, k);
-                return static_cast<std::uint64_t>(E - bias);
+                return static_cast<uint64_t>(E - bias);
             }
 
-            /* ---- 3)  High range → use raw E --------------------------- */
-            return static_cast<std::uint64_t>(E);
+            /* ---- 3) High range → use raw E --------------------------- */
+            return static_cast<uint64_t>(E);
         }
 
         if (E <= ((5.0 / 2.0) * numberOfBuckets)) {

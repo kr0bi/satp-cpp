@@ -23,14 +23,14 @@ namespace satp::algorithms {
         uint32_t rem = hash & ((1u << (lengthOfBitMap - k)) - 1); // restanti length - k bit
         uint32_t b = (rem == 0)
                          ? (lengthOfBitMap - k) + 1 // caso: tutti zeri =>  L+1 stando al paper
-                         : std::countl_zero(rem) - k + 1; // zeri - k + 1
+                         : countl_zero(rem) - k + 1; // zeri - k + 1
 
         bitmap[firstKBits] = max(bitmap[firstKBits], b);
     }
 
     uint64_t HyperLogLog::count() {
         double Z = 0.0;
-        for (auto r: bitmap) Z += std::ldexp(1.0, -static_cast<int>(r)); // 1u << r
+        for (auto r: bitmap) Z += ldexp(1.0, -static_cast<int>(r)); // 1u << r
         Z /= numberOfBuckets;
         Z = pow(Z, -1.0);
         double E = 0.0;
@@ -58,10 +58,10 @@ namespace satp::algorithms {
                 return static_cast<uint64_t>(numberOfBuckets * log(static_cast<double>(numberOfBuckets) / V));
             }
             return static_cast<uint64_t>(E);
-        } else if (E <= ((1.0 / 30.0) * std::ldexp(1.0, 32))) { // 2^32
+        } else if (E <= ((1.0 / 30.0) * ldexp(1.0, 32))) { // 2^32
             return static_cast<uint64_t>(E);
         } else {
-            const double two_pow_32 = std::ldexp(1.0, 32); // 2^32
+            const double two_pow_32 = ldexp(1.0, 32); // 2^32
             return static_cast<uint64_t>(-two_pow_32 * log(1 - (E / two_pow_32)));
         }
     }

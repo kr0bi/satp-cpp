@@ -30,7 +30,7 @@ namespace satp::algorithms {
         uint32_t rem = hash & ((1u << (lengthOfBitMap - k)) - 1); // restanti length - k bit
         uint32_t b = (rem == 0)
                          ? (lengthOfBitMap - k) + 1 // caso: tutti zeri =>  L+1 stando al paper
-                         : std::countl_zero(rem) - k + 1; // zeri - k + 1
+                         : countl_zero(rem) - k + 1; // zeri - k + 1
 
         bitmap[firstKBits] = max(bitmap[firstKBits], b);
     }
@@ -40,7 +40,7 @@ namespace satp::algorithms {
         for (auto r: bitmap) Z += r;
         Z /= numberOfBuckets;
         const double alpha = alpha_for(numberOfBuckets);
-        return static_cast<uint64_t>(alpha * numberOfBuckets * std::exp2(Z));
+        return static_cast<uint64_t>(alpha * numberOfBuckets * exp2(Z));
     }
 
     void LogLog::reset() {
