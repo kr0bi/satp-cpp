@@ -28,24 +28,24 @@ namespace satp::evaluation {
               numElementiDistintiEffettivi(satp::utils::count_distinct(valori)) {
         }
 
-        EvaluationFramework(const std::filesystem::path &filePath,
-                            std::size_t runs,
-                            std::size_t sampleSize,
-                            std::size_t numberOfElements,
-                            std::size_t highestNumber) {
+        EvaluationFramework(const filesystem::path &filePath,
+                            size_t runs,
+                            size_t sampleSize,
+                            size_t numberOfElements,
+                            size_t highestNumber) {
             try {
                 satp::io::loadDataset(filePath, valori, sottoInsiemi);
                 if (sottoInsiemi.size() != runs || (!sottoInsiemi.empty() && sottoInsiemi[0].size() != sampleSize))
-                    throw std::runtime_error("Cached file has wrong shape");
-                std::cout << "[cache] dataset e subset caricati da: " << filePath << '\n';
+                    throw runtime_error("Cached file has wrong shape");
+                cout << "[cache] dataset e subset caricati da: " << filePath << '\n';
             } catch (...) {
-                std::cout << "[cache] assente o incompatibile, genero ex-novo\n";
+                cout << "[cache] assente o incompatibile, genero ex-novo\n";
                 valori = satp::utils::getRandomNumbers(numberOfElements, highestNumber);
                 numElementiDistintiEffettivi = satp::utils::count_distinct(valori);
-                rng.seed(std::random_device{}());
+                rng.seed(random_device{}());
                 ensureSubsets(runs, sampleSize); // genera subset
                 satp::io::saveDataset(filePath, valori, sottoInsiemi);
-                std::cout << "[cache] salvato in: " << filePath << '\n';
+                cout << "[cache] salvato in: " << filePath << '\n';
             }
         }
 
@@ -112,8 +112,8 @@ namespace satp::evaluation {
             if (!sottoInsiemi.empty()) return;
 
             sottoInsiemi.reserve(runs);
-            for (std::size_t r = 0; r < runs; ++r) {
-                std::vector<std::uint32_t> subset;
+            for (size_t r = 0; r < runs; ++r) {
+                vector<std::uint32_t> subset;
                 subset.reserve(sampleSize);
                 std::sample(valori.begin(), valori.end(),
                             std::back_inserter(subset),
