@@ -31,7 +31,7 @@ namespace satp::algorithms {
 
     uint64_t HyperLogLogPlusPlus::count() {
         double Z = 0.0;
-        for (auto r: bitmap) Z += 1.0 / static_cast<double>(uint64_t{1} << r);
+        for (auto r: bitmap) Z += std::ldexp(1.0, -static_cast<int>(r));
         Z /= numberOfBuckets;
         Z = 1.0 / Z;
 
@@ -76,7 +76,7 @@ namespace satp::algorithms {
                 }
             }
             if (V != 0) {
-                return static_cast<uint64_t>(numberOfBuckets * log2(static_cast<double>(numberOfBuckets) / V));
+                return static_cast<uint64_t>(numberOfBuckets * log(static_cast<double>(numberOfBuckets) / V));
             }
         }
         return static_cast<uint64_t>(E);
@@ -89,7 +89,7 @@ namespace satp::algorithms {
     }
 
     string HyperLogLogPlusPlus::getName() {
-        return "HyperLogLog";
+        return "HyperLogLog++";
     }
 
     double HyperLogLogPlusPlus::interpolateBias(double raw, uint32_t k) {
