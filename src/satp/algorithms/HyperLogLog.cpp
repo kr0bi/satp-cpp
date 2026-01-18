@@ -30,7 +30,7 @@ namespace satp::algorithms {
 
     uint64_t HyperLogLog::count() {
         double Z = 0.0;
-        for (auto r: bitmap) Z += 1.0 / (1u << r);
+        for (auto r: bitmap) Z += std::ldexp(1.0, -static_cast<int>(r)); // 1u << r
         Z /= numberOfBuckets;
         Z = pow(Z, -1.0);
         double E = 0.0;
@@ -47,7 +47,7 @@ namespace satp::algorithms {
                 break;
         }
 
-        if (E <= ((5 / 2) * numberOfBuckets)) {
+        if (E <= (2.5 * numberOfBuckets)) { // 5.0/2.0
             int V = 0;
             for (auto r: bitmap) {
                 if (r == 0) {
@@ -55,13 +55,14 @@ namespace satp::algorithms {
                 }
             }
             if (V != 0) {
-                return static_cast<uint64_t>(numberOfBuckets * log2(numberOfBuckets / V));
+                return static_cast<uint64_t>(numberOfBuckets * log(static_cast<double>(numberOfBuckets) / V));
             }
             return static_cast<uint64_t>(E);
-        } else if (E <= ((1 / 30) * pow(2.0, 32.0))) {
+        } else if (E <= ((1.0 / 30.0) * std::ldexp(1.0, 32))) { // 2^32
             return static_cast<uint64_t>(E);
         } else {
-            return static_cast<uint64_t>(-pow(2.0, 32.0) * log2(1 - (E / pow(2.0, 32.0))));
+            const double two_pow_32 = std::ldexp(1.0, 32); // 2^32
+            return static_cast<uint64_t>(-two_pow_32 * log(1 - (E / two_pow_32)));
         }
     }
 
