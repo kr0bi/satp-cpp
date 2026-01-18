@@ -34,15 +34,6 @@ namespace satp::algorithms {
         static constexpr double ALPHA_32 = 0.697;
         static constexpr double ALPHA_64 = 0.709;
 
-        /* ---- bias table K = 16 (demo) ---- */
-        static constexpr std::array<std::pair<double, double>, 11> bias16_ = {
-            {
-                {46'000, 1100}, {60'000, 870}, {90'000, 540}, {120'000, 390},
-                {150'000, 300}, {180'000, 240}, {200'000, 200}, {220'000, 170},
-                {240'000, 150}, {260'000, 135}, {290'000, 120}
-            }
-        };
-
         static double interpolateBias(double raw, std::uint32_t k);
     };
 } // namespace satp::algorithms

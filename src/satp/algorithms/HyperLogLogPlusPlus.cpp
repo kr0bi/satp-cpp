@@ -4,6 +4,7 @@
 #include <cmath>
 #include <stdexcept>
 
+#include "hllpp_tables.h"
 #include "satp/hashing.h"
 
 using namespace std;
@@ -93,12 +94,7 @@ namespace satp::algorithms {
     }
 
     double HyperLogLogPlusPlus::interpolateBias(double raw, uint32_t k) {
-        const auto *tbl =
-                (k == 16) ? &bias16_ : nullptr;
-
-        if (!tbl) return 0.0;
-
-        const auto &arr = *tbl;
+        const auto &arr = hllpp_tables::table_for_k(k);
         if (raw <= arr.front().first) return arr.front().second;
         if (raw >= arr.back().first) return arr.back().second;
 
