@@ -27,7 +27,6 @@ target_include_directories(satp PUBLIC src)
 # --------------------------------------------------------------------
 add_executable(main
         main.cpp
-        src/satp/io/BinaryIO.h
 )
 target_link_libraries(main
         PRIVATE satp                  #  basta la libreria core
@@ -53,6 +52,7 @@ add_executable(satp_tests ${TEST_FILES}
 target_link_libraries(satp_tests
         PRIVATE satp
         Catch2::Catch2WithMain)
+target_include_directories(satp_tests PRIVATE tests)
 
 # Registra automaticamente i test con CTest
 include(CTest)

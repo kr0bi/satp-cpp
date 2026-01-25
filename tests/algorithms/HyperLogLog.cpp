@@ -1,21 +1,18 @@
 #include "catch2/catch_test_macros.hpp"
-#include "satp/Utils.h"
 #include "satp/algorithms/HyperLogLog.h"
 #include "satp/algorithms/HyperLogLogPlusPlus.h"
 #include "satp/simulation/Loop.h"
+#include "TestData.h"
 
 
 TEST_CASE("HyperLogLog stima ~1000 distinti su 10000 campioni", "[hyperloglog-count]") {
-    constexpr std::size_t HIGHEST_NUMBER = 100'000;
-    constexpr std::size_t NUMBER_OF_ELEMENTS = 1'000'000;
     constexpr std::uint32_t K = 10;
 
-    auto randomInts = satp::utils::getRandomNumbers(NUMBER_OF_ELEMENTS,
-                                                    HIGHEST_NUMBER);
-    auto NUMBER_OF_UNIQUE_ELEMENTS = satp::utils::count_distinct(randomInts);
+    auto dataset = satp::testdata::loadDataset();
+    auto NUMBER_OF_UNIQUE_ELEMENTS = dataset.distinct;
 
     satp::algorithms::HyperLogLogPlusPlus loglog(K);
-    satp::simulation::Loop loop(std::move(loglog), std::move(randomInts));
+    satp::simulation::Loop loop(std::move(loglog), std::move(dataset.values));
 
     auto estimate = loop.process();
 

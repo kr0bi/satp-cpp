@@ -3,8 +3,6 @@
 #include <string>
 #include <unordered_set>
 
-#include "satp/io/FileNaming.h"
-#include "src/satp/Utils.h"
 #include "src/satp/algorithms/HyperLogLog.h"
 #include "src/satp/algorithms/HyperLogLogPlusPlus.h"
 #include "src/satp/algorithms/LogLog.h"
@@ -13,11 +11,8 @@
 
 namespace eval = satp::evaluation;
 namespace alg = satp::algorithms;
-namespace util = satp::utils;
-
 struct RunConfig {
-    std::size_t highestNumber = 1'000'000'000;
-    std::size_t numberOfElems = 100'000'000;
+    std::string datasetPath = "dataset.txt";
     std::size_t sampleSize = 1'000'000;
     std::size_t runs = 10;
     std::uint32_t seed = eval::EvaluationFramework::DEFAULT_SEED;
@@ -48,8 +43,7 @@ static void printHelp() {
 static void printConfig(const RunConfig &cfg) {
     std::cout
         << "Parametri correnti:\n"
-        << "  highestNumber = " << cfg.highestNumber << '\n'
-        << "  numberOfElems = " << cfg.numberOfElems << '\n'
+        << "  datasetPath   = " << cfg.datasetPath << '\n'
         << "  sampleSize    = " << cfg.sampleSize << '\n'
         << "  runs          = " << cfg.runs << '\n'
         << "  seed          = " << cfg.seed << '\n'
@@ -92,8 +86,10 @@ static bool setParam(RunConfig &cfg, const std::string &param, const std::string
         return true;
     };
 
-    if (param == "highestNumber") return toSizeT(value, cfg.highestNumber);
-    if (param == "numberOfElems") return toSizeT(value, cfg.numberOfElems);
+    if (param == "datasetPath") {
+        cfg.datasetPath = value;
+        return true;
+    }
     if (param == "sampleSize") return toSizeT(value, cfg.sampleSize);
     if (param == "runs") return toSizeT(value, cfg.runs);
     if (param == "seed") return toU32(value, cfg.seed);
@@ -107,21 +103,9 @@ static bool setParam(RunConfig &cfg, const std::string &param, const std::string
     return false;
 }
 
-static std::string datasetFilename(const RunConfig &cfg) {
-    return satp::io::makeDatasetFilename(cfg.numberOfElems,
-                                         cfg.highestNumber,
-                                         cfg.sampleSize,
-                                         cfg.runs);
-}
-
 static void runAlgorithms(const RunConfig &cfg, const std::vector<std::string> &algs) {
-    const std::string cacheFile = datasetFilename(cfg);
     eval::EvaluationFramework bench(
-        cacheFile,
-        cfg.runs,
-        cfg.sampleSize,
-        cfg.numberOfElems,
-        cfg.highestNumber,
+        cfg.datasetPath,
         cfg.seed);
 
     std::unordered_set<std::string> todo;

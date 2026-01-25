@@ -13,9 +13,27 @@ C++ project that implements and evaluates probabilistic algorithms for estimatin
 ## Project layout
 - `src/satp/algorithms/`: implementations of the counting algorithms
 - `src/satp/simulation/`: evaluation and loop utilities
-- `src/satp/io/`: dataset naming and binary I/O
+- `src/satp/io/`: dataset naming and dataset I/O helpers
 - `main.cpp`: benchmark-style executable
 - `tests/`: Catch2 unit tests
+
+## Dataset format
+The dataset file is plain text:
+```
+<total_elements> <distinct_elements>
+<value_1>
+<value_2>
+...
+```
+
+## Generate datasets (Python)
+```sh
+python3 scripts/generate_dataset.py --output dataset.txt --total 10000 --unique 1000 --seed 123
+```
+Then point the benchmark CLI to the dataset:
+```
+set datasetPath dataset.txt
+```
 
 ## Build and run (CMake)
 ```sh
@@ -28,23 +46,3 @@ cmake --build build
 ```sh
 ctest --test-dir build
 ```
-
-## Docker (Ubuntu)
-Build the image:
-```sh
-docker build -t satp-cpp .
-```
-
-Run the main executable:
-```sh
-docker run --rm satp-cpp main
-```
-
-Run the test suite:
-```sh
-docker run --rm satp-cpp test
-```
-
-## Notes
-- The benchmark in `main.cpp` caches generated datasets in the repository root (e.g. `dataset_*.bin`).
-- If your machine runs out of memory when building dependencies, try a single-threaded build: `cmake --build build -j1`.

@@ -1,5 +1,6 @@
 #pragma once
 
+#include <algorithm>
 #include <vector>
 #include <cstdint>
 #include <filesystem>
@@ -12,10 +13,9 @@
 #include <utility>      // forward
 #include <cmath>
 
-#include "../Utils.h"
 #include "../algorithms/Algorithm.h"
 #include "satp/ProgressBar.h"
-#include "satp/io/BinaryIO.h"
+#include "satp/io/TextDatasetIO.h"
 
 using namespace std;
 
@@ -41,67 +41,29 @@ namespace satp::evaluation {
     public:
         static constexpr uint32_t DEFAULT_SEED = 5489u;
 
-        static Dataset makeRandomDataset(size_t numberOfElements,
-                                         size_t highestNumber,
-                                         uint32_t seed = DEFAULT_SEED) {
-            Dataset dataset;
-            dataset.values.resize(numberOfElements);
-
-            mt19937 rng(seed);
-            uniform_int_distribution<uint32_t> dist(0u, static_cast<uint32_t>(highestNumber));
-
-            unordered_set<uint32_t> distinct;
-            distinct.reserve(numberOfElements);
-
-            for (size_t i = 0; i < numberOfElements; ++i) {
-                const auto value = dist(rng);
-                dataset.values[i] = value;
-                distinct.insert(value);
-            }
-
-            dataset.distinct_count = distinct.size();
-            return dataset;
-        }
-
         explicit EvaluationFramework(Dataset dataset,
                                      uint32_t seed = DEFAULT_SEED)
-            : valori(move(dataset.values)),
+            : valori(std::move(dataset.values)),
               numElementiDistintiEffettivi(dataset.distinct_count),
               seed(seed),
               rng(seed) {
         }
 
         explicit EvaluationFramework(vector<uint32_t> data,
+                                     size_t distinctCount,
                                      uint32_t seed = DEFAULT_SEED)
-            : valori(move(data)),
-              numElementiDistintiEffettivi(satp::utils::count_distinct(valori)),
+            : valori(std::move(data)),
+              numElementiDistintiEffettivi(distinctCount),
               seed(seed),
               rng(seed) {
         }
 
-        EvaluationFramework(const filesystem::path &filePath,
-                            size_t runs,
-                            size_t sampleSize,
-                            size_t numberOfElements,
-                            size_t highestNumber,
-                            uint32_t seed = DEFAULT_SEED)
+        explicit EvaluationFramework(const filesystem::path &filePath,
+                                     uint32_t seed = DEFAULT_SEED)
             : seed(seed),
               rng(seed) {
-            try {
-                satp::io::loadDataset(filePath, valori, sottoInsiemi);
-                if (sottoInsiemi.size() != runs || (!sottoInsiemi.empty() && sottoInsiemi[0].size() != sampleSize))
-                    throw runtime_error("Cached file has wrong shape");
-                numElementiDistintiEffettivi = satp::utils::count_distinct(valori);
-                cout << "[cache] dataset e subset caricati da: " << filePath << '\n';
-            } catch (...) {
-                cout << "[cache] assente o incompatibile, genero ex-novo\n";
-                auto dataset = makeRandomDataset(numberOfElements, highestNumber, seed);
-                valori = std::move(dataset.values);
-                numElementiDistintiEffettivi = dataset.distinct_count;
-                ensureSubsets(runs, sampleSize); // genera subset
-                satp::io::saveDataset(filePath, valori, sottoInsiemi);
-                cout << "[cache] salvato in: " << filePath << '\n';
-            }
+            const auto info = satp::io::loadTextDataset(filePath, valori);
+            numElementiDistintiEffettivi = info.distinct_elements;
         }
 
         /**
@@ -132,14 +94,14 @@ namespace satp::evaluation {
 
             for (size_t r = 0; r < runs; ++r) {
                 const auto &sottoInsieme = sottoInsiemi[r];
-                Algo algo(forward<Args>(ctorArgs)...);
+                Algo algo(std::forward<Args>(ctorArgs)...);
 
                 for (auto v: sottoInsieme) {
                     algo.process(v);
                     bar.tick();
                 }
                 const double estimate = static_cast<double>(algo.count());
-                const double truth = static_cast<double>(utils::count_distinct(sottoInsieme));
+                const double truth = static_cast<double>(exactDistinctCount(sottoInsieme));
                 estimates.push_back(estimate);
                 truths.push_back(truth);
 
@@ -185,7 +147,7 @@ namespace satp::evaluation {
                                           const string &algorithmParams,
                                           Args &&... ctorArgs) const {
             Algo algo(ctorArgs...);
-            const auto stats = evaluate<Algo>(runs, sampleSize, forward<Args>(ctorArgs)...);
+            const auto stats = evaluate<Algo>(runs, sampleSize, std::forward<Args>(ctorArgs)...);
             appendCsv(csvPath, algo.getName(), algorithmParams, runs, sampleSize, stats);
             return stats;
         }
@@ -210,6 +172,11 @@ namespace satp::evaluation {
         }
 
     private:
+        static size_t exactDistinctCount(const vector<uint32_t> &values) {
+            unordered_set<uint32_t> distinct(values.begin(), values.end());
+            return distinct.size();
+        }
+
         static string escapeCsvField(const string &value) {
             const bool needsQuotes = value.find_first_of(",\"\n\r") != string::npos;
             if (!needsQuotes) return value;
@@ -269,7 +236,5 @@ namespace satp::evaluation {
         mutable mt19937 rng;
 
         mutable vector<vector<uint32_t> > sottoInsiemi;
-        mutable size_t cachedRuns = 0;
-        mutable size_t cachedSampleSize = 0;
     };
 } // namespace satp::evaluation
