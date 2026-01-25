@@ -89,3 +89,6 @@ CMakeLists.txt.user
 
 # ----------------- Generated datasets ------------------
 dataset_*.bin
+/dataset*.txt
+/scripts/*.txt
+/datasets/
