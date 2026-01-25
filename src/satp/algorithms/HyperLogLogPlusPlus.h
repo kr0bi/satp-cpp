@@ -14,6 +14,7 @@ using namespace std;
 namespace satp::algorithms {
     class HyperLogLogPlusPlus final : public Algorithm {
     public:
+        // k = number of register index bits (m = 2^k registers)
         explicit HyperLogLogPlusPlus(uint32_t K);
 
         void process(uint32_t id) override;
