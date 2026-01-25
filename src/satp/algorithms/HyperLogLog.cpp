@@ -20,7 +20,11 @@ namespace satp::algorithms {
     }
 
     void HyperLogLog::process(uint32_t id) {
-        uint32_t hash = util::hashing::uniform_hash(id, lengthOfBitMap);
+        const uint64_t hash64 = util::hashing::splitmix64(id);
+        const uint32_t h32 = util::hashing::hash32_from_64(hash64);
+        const uint32_t hash = (lengthOfBitMap >= 32)
+                                  ? h32
+                                  : (h32 & ((1u << lengthOfBitMap) - 1u));
 
         uint32_t firstKBits = hash >> (lengthOfBitMap - k); // primi k bit
 

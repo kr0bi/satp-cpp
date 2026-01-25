@@ -4,25 +4,18 @@
 using namespace std;
 
 namespace util::hashing {
-    [[nodiscard]]
-    inline constexpr uint32_t uniform_hash(uint32_t x,
-                                           uint32_t lengthBitMap) noexcept {
-        x += 0x9E3779B9u;
-        x = (x ^ (x >> 16)) * 0x85EBCA6Bu;
-        x = (x ^ (x >> 13)) * 0xC2B2AE35u;
-        x ^= (x >> 16);
-        if (lengthBitMap == 0) return 0u;
-        if (lengthBitMap >= 32) return x;
-        const uint32_t mask = (1u << lengthBitMap) - 1u;
-        return x & mask;
-    }
-
-
+    // 64-bit hash used as the single source of randomness.
     [[nodiscard]]
     inline constexpr uint64_t splitmix64(uint64_t x) {
         x += 0x9E3779B97F4A7C15ULL;
         x = (x ^ (x >> 30)) * 0xBF58476D1CE4E5B9ULL;
         x = (x ^ (x >> 27)) * 0x94D049BB133111EBULL;
         return x ^ (x >> 31);
+    }
+
+    // 32-bit hash obtained by truncating the 64-bit hash (use upper bits).
+    [[nodiscard]]
+    inline constexpr uint32_t hash32_from_64(uint64_t h) noexcept {
+        return static_cast<uint32_t>(h >> 32);
     }
 } // namespace util::hashing

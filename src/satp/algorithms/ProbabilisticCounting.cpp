@@ -15,7 +15,9 @@ namespace satp::algorithms {
     }
 
     void ProbabilisticCounting::process(uint32_t id) {
-        uint32_t hash = util::hashing::uniform_hash(id, lengthBitMap);
+        const uint64_t hash64 = util::hashing::splitmix64(id);
+        const uint32_t h32 = util::hashing::hash32_from_64(hash64);
+        const uint32_t hash = h32 & ((1u << lengthBitMap) - 1u);
         if (hash == 0) return;
 
         uint32_t rightMostOneBit = countr_zero(hash);

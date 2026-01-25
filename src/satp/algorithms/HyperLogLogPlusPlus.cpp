@@ -25,7 +25,7 @@ namespace satp::algorithms {
         uint64_t rem = (hash << k); // restanti length - k bit
         uint8_t b = (rem == 0)
                         ? (64 - k) + 1 // caso: tutti zeri =>  L+1 stando al paper
-                        : static_cast<uint8_t>(countl_zero(rem) + 1);; // zeri - k + 1
+                        : static_cast<uint8_t>(countl_zero(rem) + 1); // zeri - k + 1
 
         bitmap[firstKBits] = max(bitmap[firstKBits], b);
     }
