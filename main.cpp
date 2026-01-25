@@ -2,6 +2,7 @@
 #include <sstream>
 #include <string>
 #include <unordered_set>
+#include <stdexcept>
 
 #include "src/satp/algorithms/HyperLogLog.h"
 #include "src/satp/algorithms/HyperLogLogPlusPlus.h"
@@ -28,6 +29,26 @@ struct Command {
     std::string name;
     std::vector<std::string> args;
 };
+
+struct MemoryInfo {
+    std::size_t bytes = 0;
+    std::size_t registers = 0;
+    std::size_t registerBits = 0;
+};
+
+static std::size_t ceilDiv(std::size_t num, std::size_t den) {
+    return (num + den - 1) / den;
+}
+
+static std::size_t ceilLog2(std::size_t x) {
+    std::size_t bits = 0;
+    std::size_t v = 1;
+    while (v < x) {
+        v <<= 1;
+        ++bits;
+    }
+    return bits;
+}
 
 static void printHelp() {
     std::cout
@@ -113,8 +134,11 @@ static void runAlgorithms(const RunConfig &cfg, const std::vector<std::string> &
 
     auto runHllpp = [&]() {
         const std::string params = "k=" + std::to_string(cfg.k);
+        const std::size_t m = 1u << cfg.k;
+        const MemoryInfo mem{m, m, 8};
         const auto stats = bench.evaluateToCsv<alg::HyperLogLogPlusPlus>(
-            cfg.csvPath, cfg.runs, cfg.sampleSize, params, cfg.k);
+            cfg.csvPath, cfg.runs, cfg.sampleSize, params,
+            mem.bytes, mem.registers, mem.registerBits, cfg.k);
         std::cout << "[HLL++] mean=" << stats.mean
                   << "  var=" << stats.variance
                   << "  stddev=" << stats.stddev
@@ -126,8 +150,16 @@ static void runAlgorithms(const RunConfig &cfg, const std::vector<std::string> &
 
     auto runHll = [&]() {
         const std::string params = "k=" + std::to_string(cfg.k) + ",L=" + std::to_string(cfg.lLog);
+        if (cfg.lLog <= cfg.k) throw std::invalid_argument("L must be > k");
+        const std::size_t m = 1u << cfg.k;
+        const std::size_t wbits = cfg.lLog - cfg.k;
+        const std::size_t registerBits = ceilLog2(wbits + 1);
+        const std::size_t memBits = m * registerBits;
+        const std::size_t memBytes = ceilDiv(memBits, 8);
+        const MemoryInfo mem{memBytes, m, registerBits};
         const auto stats = bench.evaluateToCsv<alg::HyperLogLog>(
-            cfg.csvPath, cfg.runs, cfg.sampleSize, params, cfg.k, cfg.lLog);
+            cfg.csvPath, cfg.runs, cfg.sampleSize, params,
+            mem.bytes, mem.registers, mem.registerBits, cfg.k, cfg.lLog);
         std::cout << "[HLL ] mean=" << stats.mean
                   << "  var=" << stats.variance
                   << "  stddev=" << stats.stddev
@@ -139,8 +171,16 @@ static void runAlgorithms(const RunConfig &cfg, const std::vector<std::string> &
 
     auto runLl = [&]() {
         const std::string params = "k=" + std::to_string(cfg.k) + ",L=" + std::to_string(cfg.lLog);
+        if (cfg.lLog <= cfg.k) throw std::invalid_argument("L must be > k");
+        const std::size_t m = 1u << cfg.k;
+        const std::size_t wbits = cfg.lLog - cfg.k;
+        const std::size_t registerBits = ceilLog2(wbits + 1);
+        const std::size_t memBits = m * registerBits;
+        const std::size_t memBytes = ceilDiv(memBits, 8);
+        const MemoryInfo mem{memBytes, m, registerBits};
         const auto stats = bench.evaluateToCsv<alg::LogLog>(
-            cfg.csvPath, cfg.runs, cfg.sampleSize, params, cfg.k, cfg.lLog);
+            cfg.csvPath, cfg.runs, cfg.sampleSize, params,
+            mem.bytes, mem.registers, mem.registerBits, cfg.k, cfg.lLog);
         std::cout << "[LL  ] mean=" << stats.mean
                   << "  var=" << stats.variance
                   << "  stddev=" << stats.stddev
@@ -152,8 +192,11 @@ static void runAlgorithms(const RunConfig &cfg, const std::vector<std::string> &
 
     auto runPc = [&]() {
         const std::string params = "L=" + std::to_string(cfg.l);
+        const std::size_t memBytes = ceilDiv(cfg.l, 8);
+        const MemoryInfo mem{memBytes, cfg.l, 1};
         const auto stats = bench.evaluateToCsv<alg::ProbabilisticCounting>(
-            cfg.csvPath, cfg.runs, cfg.sampleSize, params, cfg.l);
+            cfg.csvPath, cfg.runs, cfg.sampleSize, params,
+            mem.bytes, mem.registers, mem.registerBits, cfg.l);
         std::cout << "[PC  ] mean=" << stats.mean
                   << "  var=" << stats.variance
                   << "  stddev=" << stats.stddev

@@ -145,10 +145,14 @@ namespace satp::evaluation {
                                           size_t runs,
                                           size_t sampleSize,
                                           const string &algorithmParams,
+                                          size_t memoryBytes,
+                                          size_t registerCount,
+                                          size_t registerBits,
                                           Args &&... ctorArgs) const {
             Algo algo(ctorArgs...);
             const auto stats = evaluate<Algo>(runs, sampleSize, std::forward<Args>(ctorArgs)...);
-            appendCsv(csvPath, algo.getName(), algorithmParams, runs, sampleSize, stats);
+            appendCsv(csvPath, algo.getName(), algorithmParams, runs, sampleSize,
+                      memoryBytes, registerCount, registerBits, stats);
             return stats;
         }
 
@@ -201,6 +205,9 @@ namespace satp::evaluation {
                        const string &algorithmParams,
                        size_t runs,
                        size_t sampleSize,
+                       size_t memoryBytes,
+                       size_t registerCount,
+                       size_t registerBits,
                        const Stats &stats) const {
             const bool writeHeader = !filesystem::exists(csvPath) || filesystem::file_size(csvPath) == 0;
             ofstream out(csvPath, ios::app);
@@ -209,6 +216,7 @@ namespace satp::evaluation {
             out << std::setprecision(10);
             if (writeHeader) {
                 out << "algorithm,params,runs,sample_size,dataset_size,distinct_count,seed,"
+                       "memory_bytes,register_count,register_bits,"
                        "mean,variance,stddev,bias,difference,bias_relative,mean_relative_error,rmse,mae\n";
             }
 
@@ -219,6 +227,9 @@ namespace satp::evaluation {
                 << valori.size() << ','
                 << numElementiDistintiEffettivi << ','
                 << seed << ','
+                << memoryBytes << ','
+                << registerCount << ','
+                << registerBits << ','
                 << stats.mean << ','
                 << stats.variance << ','
                 << stats.stddev << ','
