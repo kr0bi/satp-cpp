@@ -56,3 +56,9 @@ TEST_CASE("HyperLogLog valida parametri", "[hyperloglog-params]") {
     REQUIRE_THROWS_AS(satp::algorithms::HyperLogLog(5, 5), std::invalid_argument);
     REQUIRE_THROWS_AS(satp::algorithms::HyperLogLog(5, 33), std::invalid_argument);
 }
+
+TEST_CASE("HyperLogLog++ valida parametri", "[hyperloglogpp-params]") {
+    REQUIRE_THROWS_AS(satp::algorithms::HyperLogLogPlusPlus(0), std::invalid_argument);
+    REQUIRE_THROWS_AS(satp::algorithms::HyperLogLogPlusPlus(64), std::invalid_argument);
+    REQUIRE_THROWS_AS(satp::algorithms::HyperLogLogPlusPlus(63), std::invalid_argument);
+}

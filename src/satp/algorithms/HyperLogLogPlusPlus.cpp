@@ -12,15 +12,27 @@ using namespace std;
 namespace satp::algorithms {
     HyperLogLogPlusPlus::HyperLogLogPlusPlus(uint32_t K)
         : k(K),
-          numberOfBuckets(1u << k),
-          bitmap(numberOfBuckets, 0u),
-          alphaM(0.7213 / (1 + 1.079 / static_cast<double>(numberOfBuckets))) {
+          numberOfBuckets(0),
+          bitmap(),
+          alphaM(0.0) {
+        if (k == 0) throw invalid_argument("k must be > 0");
+        if (k >= 64) throw invalid_argument("k must be < 64");
+        constexpr uint32_t sizeTBits = std::numeric_limits<size_t>::digits;
+        if (k >= sizeTBits) throw invalid_argument("k too large for size_t");
+
+        const uint64_t m64 = 1ull << k;
+        const auto maxSize = std::vector<uint8_t>().max_size();
+        if (m64 > maxSize) throw invalid_argument("k too large for bitmap");
+
+        numberOfBuckets = static_cast<size_t>(m64);
+        bitmap.assign(numberOfBuckets, 0u);
+        alphaM = 0.7213 / (1 + 1.079 / static_cast<double>(numberOfBuckets));
     }
 
     void HyperLogLogPlusPlus::process(uint32_t id) {
         uint64_t hash = util::hashing::splitmix64(id);
 
-        const uint32_t firstKBits = hash >> (64 - k); // primi k bit
+        const size_t firstKBits = static_cast<size_t>(hash >> (64 - k)); // primi k bit
 
         uint64_t rem = (hash << k); // restanti length - k bit
         uint8_t b = (rem == 0)
@@ -51,12 +63,12 @@ namespace satp::algorithms {
         }
 
         if (k == 16) {
-            const double m = numberOfBuckets;
+            const double m = static_cast<double>(numberOfBuckets);
             const double lcThreshold = 0.7029 * m; //  ≈ 11 500 / 16 384
             const double biasThreshold = 3.723 * m; //  ≈ 61 000 / 16 384
             /* ---- 1)  Linear-Counting range ---------------------------- */
             if (E < lcThreshold) {
-                uint32_t V = std::count(bitmap.begin(), bitmap.end(), 0);
+                size_t V = std::count(bitmap.begin(), bitmap.end(), 0);
                 return static_cast<uint64_t>(m * log(m / static_cast<double>(V)));
             }
             /* ---- 2)  Bias-corrected range ----------------------------- */
@@ -70,7 +82,7 @@ namespace satp::algorithms {
         }
 
         if (E <= ((5.0 / 2.0) * numberOfBuckets)) {
-            int V = 0;
+            size_t V = 0;
             for (auto r: bitmap) {
                 if (r == 0) {
                     ++V;

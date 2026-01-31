@@ -27,7 +27,7 @@ namespace satp::algorithms {
 
     private:
         uint32_t k;
-        uint32_t numberOfBuckets; // nel paper coincide con m
+        size_t numberOfBuckets; // nel paper coincide con m
         vector<uint8_t> bitmap; // bitmap
         double alphaM;
 
