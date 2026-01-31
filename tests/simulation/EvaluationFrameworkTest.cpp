@@ -1,3 +1,4 @@
+#include <cmath>
 #include <iostream>
 
 #include "catch2/catch_test_macros.hpp"
@@ -13,6 +14,23 @@
 namespace eval = satp::evaluation;
 namespace alg = satp::algorithms;
 
+static void requireFiniteNonNegative(const eval::Stats &stats) {
+    REQUIRE(std::isfinite(stats.mean));
+    REQUIRE(std::isfinite(stats.variance));
+    REQUIRE(std::isfinite(stats.stddev));
+    REQUIRE(std::isfinite(stats.rmse));
+    REQUIRE(std::isfinite(stats.mae));
+    REQUIRE(std::isfinite(stats.mean_relative_error));
+    REQUIRE(std::isfinite(stats.bias));
+    REQUIRE(std::isfinite(stats.bias_relative));
+    REQUIRE(stats.variance >= 0.0);
+    REQUIRE(stats.stddev >= 0.0);
+    REQUIRE(stats.rmse >= 0.0);
+    REQUIRE(stats.mae >= 0.0);
+    REQUIRE(stats.mean_relative_error >= 0.0);
+    REQUIRE(stats.difference >= 0.0);
+    REQUIRE(std::abs(stats.difference - std::abs(stats.bias)) < 1e-12);
+}
 
 TEST_CASE("Evaluation Framework", "[eval-framework]") {
         // --------------- parametri del benchmark ---------------------------
@@ -33,6 +51,7 @@ TEST_CASE("Evaluation Framework", "[eval-framework]") {
         std::cout << "[HyperLogLog]  mean=" << hllStats.mean
                         << "  var=" << hllStats.variance
                         << "  bias=" << hllStats.bias << '\n';
+        requireFiniteNonNegative(hllStats);
 
         // -------- valutazione LogLog ---------------------------------------
         auto llStats = bench.evaluate<alg::LogLog>(RUNS, SAMPLE_SIZE, K, L_LOG);
@@ -40,6 +59,7 @@ TEST_CASE("Evaluation Framework", "[eval-framework]") {
         std::cout << "[LogLog]  mean=" << llStats.mean
                         << "  var=" << llStats.variance
                         << "  bias=" << llStats.bias << '\n';
+        requireFiniteNonNegative(llStats);
 
         // -------- valutazione ProbabilisticCounting ------------------------
         auto pcStats = bench.evaluate<alg::ProbabilisticCounting>(RUNS, SAMPLE_SIZE, L);
@@ -47,4 +67,5 @@ TEST_CASE("Evaluation Framework", "[eval-framework]") {
         std::cout << "[PC]      mean=" << pcStats.mean
                         << "  var=" << pcStats.variance
                         << "  bias=" << pcStats.bias << '\n';
+        requireFiniteNonNegative(pcStats);
 }
