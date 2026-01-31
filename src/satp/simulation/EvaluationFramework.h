@@ -35,6 +35,7 @@ namespace satp::evaluation {
         double rmse = 0.0;
         double mae = 0.0;
         double stddev = 0.0;
+        double rse_observed = 0.0;
     };
 
     class EvaluationFramework {
@@ -132,8 +133,9 @@ namespace satp::evaluation {
             const double meanRelativeError = absRelErrSum / runs;
             const double rmse = std::sqrt(sqErrSum / runs);
             const double mae = absErrSum / runs;
+            const double rseObserved = (gtMean != 0.0) ? (stddev / gtMean) : 0.0;
 
-            return {difference, mean, variance, bias, meanRelativeError, biasRelative, rmse, mae, stddev};
+            return {difference, mean, variance, bias, meanRelativeError, biasRelative, rmse, mae, stddev, rseObserved};
         }
 
         [[nodiscard]] size_t getNumElementiDistintiEffettivi() const noexcept { return numElementiDistintiEffettivi; }
@@ -145,10 +147,11 @@ namespace satp::evaluation {
                                           size_t runs,
                                           size_t sampleSize,
                                           const string &algorithmParams,
+                                          double rseTheoretical,
                                           Args &&... ctorArgs) const {
             Algo algo(ctorArgs...);
             const auto stats = evaluate<Algo>(runs, sampleSize, std::forward<Args>(ctorArgs)...);
-            appendCsv(csvPath, algo.getName(), algorithmParams, runs, sampleSize, stats);
+            appendCsv(csvPath, algo.getName(), algorithmParams, runs, sampleSize, rseTheoretical, stats);
             return stats;
         }
 
@@ -201,6 +204,7 @@ namespace satp::evaluation {
                        const string &algorithmParams,
                        size_t runs,
                        size_t sampleSize,
+                       double rseTheoretical,
                        const Stats &stats) const {
             const bool writeHeader = !filesystem::exists(csvPath) || filesystem::file_size(csvPath) == 0;
             ofstream out(csvPath, ios::app);
@@ -209,7 +213,8 @@ namespace satp::evaluation {
             out << std::setprecision(10);
             if (writeHeader) {
                 out << "algorithm,params,runs,sample_size,dataset_size,distinct_count,seed,"
-                       "mean,variance,stddev,bias,difference,bias_relative,mean_relative_error,rmse,mae\n";
+                       "mean,variance,stddev,rse_theoretical,rse_observed,bias,difference,bias_relative,"
+                       "mean_relative_error,rmse,mae\n";
             }
 
             out << escapeCsvField(algorithmName) << ','
@@ -222,6 +227,8 @@ namespace satp::evaluation {
                 << stats.mean << ','
                 << stats.variance << ','
                 << stats.stddev << ','
+                << rseTheoretical << ','
+                << stats.rse_observed << ','
                 << stats.bias << ','
                 << stats.difference << ','
                 << stats.bias_relative << ','
