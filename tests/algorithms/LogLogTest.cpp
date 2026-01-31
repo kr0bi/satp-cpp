@@ -1,4 +1,5 @@
 #include "catch2/catch_test_macros.hpp"
+#include <stdexcept>
 #include "satp/algorithms/LogLog.h"
 #include "satp/simulation/Loop.h"
 #include "TestData.h"
@@ -25,4 +26,11 @@ TEST_CASE("LogLog stima ~1000 distinti su 10000 campioni", "[log-count]") {
 
     REQUIRE(estimate >= NUMBER_OF_UNIQUE_ELEMENTS * (1.0 - 3 * RSE));
     REQUIRE(estimate <= NUMBER_OF_UNIQUE_ELEMENTS * (1.0 + 3 * RSE));
+}
+
+TEST_CASE("LogLog valida parametri", "[loglog-params]") {
+    REQUIRE_THROWS_AS(satp::algorithms::LogLog(0, 32), std::invalid_argument);
+    REQUIRE_THROWS_AS(satp::algorithms::LogLog(32, 32), std::invalid_argument);
+    REQUIRE_THROWS_AS(satp::algorithms::LogLog(5, 5), std::invalid_argument);
+    REQUIRE_THROWS_AS(satp::algorithms::LogLog(5, 33), std::invalid_argument);
 }

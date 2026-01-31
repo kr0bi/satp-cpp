@@ -1,4 +1,5 @@
 #include "catch2/catch_test_macros.hpp"
+#include <stdexcept>
 #include "satp/algorithms/HyperLogLog.h"
 #include "satp/algorithms/HyperLogLogPlusPlus.h"
 #include "satp/simulation/Loop.h"
@@ -47,4 +48,11 @@ TEST_CASE("HyperLogLog++ stima ~1000 distinti su 10000 campioni", "[hyperloglogp
 
     REQUIRE(estimate >= NUMBER_OF_UNIQUE_ELEMENTS * (1.0 - 3 * RSE));
     REQUIRE(estimate <= NUMBER_OF_UNIQUE_ELEMENTS * (1.0 + 3 * RSE));
+}
+
+TEST_CASE("HyperLogLog valida parametri", "[hyperloglog-params]") {
+    REQUIRE_THROWS_AS(satp::algorithms::HyperLogLog(0, 32), std::invalid_argument);
+    REQUIRE_THROWS_AS(satp::algorithms::HyperLogLog(32, 32), std::invalid_argument);
+    REQUIRE_THROWS_AS(satp::algorithms::HyperLogLog(5, 5), std::invalid_argument);
+    REQUIRE_THROWS_AS(satp::algorithms::HyperLogLog(5, 33), std::invalid_argument);
 }
