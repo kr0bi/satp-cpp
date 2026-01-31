@@ -20,12 +20,12 @@ TEST_CASE("LogLog stima ~1000 distinti su 10000 campioni", "[log-count]") {
     WARN("Stima = " << estimate);
     WARN("Elementi = " << NUMBER_OF_UNIQUE_ELEMENTS);
 
-    auto denom = 1.0 / std::sqrt(double(1u << K));
-    const double RSE = 1.0 / denom;
-    WARN("RSE = " << 1.0 / denom);
+    const double m = double(1u << K);
+    const double RSE = 1.30 / std::sqrt(m);
+    WARN("RSE = " << RSE);
 
-    REQUIRE(estimate >= NUMBER_OF_UNIQUE_ELEMENTS * (1.0 - 3 * RSE));
-    REQUIRE(estimate <= NUMBER_OF_UNIQUE_ELEMENTS * (1.0 + 3 * RSE));
+    REQUIRE(estimate >= NUMBER_OF_UNIQUE_ELEMENTS * (1.0 - 4 * RSE));
+    REQUIRE(estimate <= NUMBER_OF_UNIQUE_ELEMENTS * (1.0 + 4 * RSE));
 }
 
 TEST_CASE("LogLog valida parametri", "[loglog-params]") {
