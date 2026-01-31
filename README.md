@@ -60,3 +60,4 @@ mean_relative_error,rmse,mae
 ## Reproducibility
 - Tests use the fixed dataset at `tests/data/dataset_10k_1k.txt`.
 - HLL/LogLog constructors validate parameter ranges (k/L) and have tests for invalid values.
+- The evaluation framework caches generated subsets and regenerates them if `runs` or `sampleSize` changes between evaluations.
