@@ -2,6 +2,8 @@
 #include <sstream>
 #include <string>
 #include <unordered_set>
+#include <cmath>
+#include <limits>
 
 #include "src/satp/algorithms/HyperLogLog.h"
 #include "src/satp/algorithms/HyperLogLogPlusPlus.h"
@@ -28,6 +30,20 @@ struct Command {
     std::string name;
     std::vector<std::string> args;
 };
+
+static double rseHll(std::uint32_t k) {
+    const double m = static_cast<double>(1u << k);
+    return 1.04 / std::sqrt(m);
+}
+
+static double rseLogLog(std::uint32_t k) {
+    const double m = static_cast<double>(1u << k);
+    return 1.30 / std::sqrt(m);
+}
+
+static double rseUnknown() {
+    return std::numeric_limits<double>::quiet_NaN();
+}
 
 static void printHelp() {
     std::cout
@@ -114,7 +130,7 @@ static void runAlgorithms(const RunConfig &cfg, const std::vector<std::string> &
     auto runHllpp = [&]() {
         const std::string params = "k=" + std::to_string(cfg.k);
         const auto stats = bench.evaluateToCsv<alg::HyperLogLogPlusPlus>(
-            cfg.csvPath, cfg.runs, cfg.sampleSize, params, cfg.k);
+            cfg.csvPath, cfg.runs, cfg.sampleSize, params, rseHll(cfg.k), cfg.k);
         std::cout << "[HLL++] mean=" << stats.mean
                   << "  var=" << stats.variance
                   << "  stddev=" << stats.stddev
@@ -127,7 +143,7 @@ static void runAlgorithms(const RunConfig &cfg, const std::vector<std::string> &
     auto runHll = [&]() {
         const std::string params = "k=" + std::to_string(cfg.k) + ",L=" + std::to_string(cfg.lLog);
         const auto stats = bench.evaluateToCsv<alg::HyperLogLog>(
-            cfg.csvPath, cfg.runs, cfg.sampleSize, params, cfg.k, cfg.lLog);
+            cfg.csvPath, cfg.runs, cfg.sampleSize, params, rseHll(cfg.k), cfg.k, cfg.lLog);
         std::cout << "[HLL ] mean=" << stats.mean
                   << "  var=" << stats.variance
                   << "  stddev=" << stats.stddev
@@ -140,7 +156,7 @@ static void runAlgorithms(const RunConfig &cfg, const std::vector<std::string> &
     auto runLl = [&]() {
         const std::string params = "k=" + std::to_string(cfg.k) + ",L=" + std::to_string(cfg.lLog);
         const auto stats = bench.evaluateToCsv<alg::LogLog>(
-            cfg.csvPath, cfg.runs, cfg.sampleSize, params, cfg.k, cfg.lLog);
+            cfg.csvPath, cfg.runs, cfg.sampleSize, params, rseLogLog(cfg.k), cfg.k, cfg.lLog);
         std::cout << "[LL  ] mean=" << stats.mean
                   << "  var=" << stats.variance
                   << "  stddev=" << stats.stddev
@@ -153,7 +169,7 @@ static void runAlgorithms(const RunConfig &cfg, const std::vector<std::string> &
     auto runPc = [&]() {
         const std::string params = "L=" + std::to_string(cfg.l);
         const auto stats = bench.evaluateToCsv<alg::ProbabilisticCounting>(
-            cfg.csvPath, cfg.runs, cfg.sampleSize, params, cfg.l);
+            cfg.csvPath, cfg.runs, cfg.sampleSize, params, rseUnknown(), cfg.l);
         std::cout << "[PC  ] mean=" << stats.mean
                   << "  var=" << stats.variance
                   << "  stddev=" << stats.stddev
