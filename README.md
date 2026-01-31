@@ -8,12 +8,12 @@ C++ project that implements and evaluates probabilistic algorithms for estimatin
 - LogLog
 - HyperLogLog
 - HyperLogLog++
-- Evaluation framework for repeated sampling and statistics
+- Evaluation framework for repeated sampling and statistics (CSV output with error metrics)
 
 ## Project layout
 - `src/satp/algorithms/`: implementations of the counting algorithms
 - `src/satp/simulation/`: evaluation and loop utilities
-- `src/satp/io/`: dataset naming and dataset I/O helpers
+- `src/satp/io/`: dataset I/O helpers
 - `main.cpp`: benchmark-style executable
 - `tests/`: Catch2 unit tests
 
@@ -35,6 +35,8 @@ Then point the benchmark CLI to the dataset:
 set datasetPath dataset.txt
 ```
 
+The generator writes values deterministically when a seed is provided and prints a progress bar on stderr by default.
+
 ## Build and run (CMake)
 ```sh
 cmake -S . -B build
@@ -46,3 +48,15 @@ cmake --build build
 ```sh
 ctest --test-dir build
 ```
+
+## Results CSV columns
+The benchmark CSV includes standard error metrics plus observed/theoretical RSE:
+```
+algorithm,params,runs,sample_size,dataset_size,distinct_count,seed,
+mean,variance,stddev,rse_theoretical,rse_observed,bias,difference,bias_relative,
+mean_relative_error,rmse,mae
+```
+
+## Reproducibility
+- Tests use the fixed dataset at `tests/data/dataset_10k_1k.txt`.
+- HLL/LogLog constructors validate parameter ranges (k/L) and have tests for invalid values.
