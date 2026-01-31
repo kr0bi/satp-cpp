@@ -161,7 +161,16 @@ namespace satp::evaluation {
          * @param sampleSize
          */
         void ensureSubsets(size_t runs, size_t sampleSize) const {
-            if (!sottoInsiemi.empty()) return;
+            // Cache: reuse only when runs and sampleSize match the cached values.
+            if (!sottoInsiemi.empty()
+                && cachedRuns == runs
+                && cachedSampleSize == sampleSize) {
+                return;
+            }
+
+            sottoInsiemi.clear();
+            cachedRuns = runs;
+            cachedSampleSize = sampleSize;
 
             sottoInsiemi.reserve(runs);
             for (size_t r = 0; r < runs; ++r) {
@@ -243,5 +252,8 @@ namespace satp::evaluation {
         mutable mt19937 rng;
 
         mutable vector<vector<uint32_t> > sottoInsiemi;
+        // Cache key for generated subsets.
+        mutable size_t cachedRuns = 0;
+        mutable size_t cachedSampleSize = 0;
     };
 } // namespace satp::evaluation
