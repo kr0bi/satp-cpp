@@ -1,5 +1,6 @@
 #pragma once
 #include <concepts>
+#include <memory>
 #include <vector>
 
 #include "satp/ProgressBar.h"
@@ -16,22 +17,27 @@ namespace satp::simulation {
     template<AlgorithmLike A>
     class Loop {
     public:
-        Loop(A algorithm, std::vector<std::uint32_t> ids)
+        Loop(A algorithm, std::vector<std::uint32_t> ids, bool verbose = false)
             : algorithm_(std::move(algorithm))
-              , ids_(std::move(ids)) {
+              , ids_(std::move(ids))
+              , verbose_(verbose) {
         }
 
         std::uint64_t process() {
-            std::cerr << "\nAlgorithm: " << algorithm_.getName() << '\n';
-
-            util::ProgressBar bar{ids_.size()};
-
-            for (std::uint32_t id: ids_) {
-                algorithm_.process(id);
-                bar.tick();
+            if (verbose_) {
+                std::cerr << "\nAlgorithm: " << algorithm_.getName() << '\n';
             }
 
-            bar.finish();
+            std::unique_ptr<util::ProgressBar> bar;
+            if (verbose_) {
+                bar = std::make_unique<util::ProgressBar>(ids_.size());
+            }
+            for (std::uint32_t id: ids_) {
+                algorithm_.process(id);
+                if (bar) bar->tick();
+            }
+
+            if (bar) bar->finish();
             return algorithm_.count();
         }
 
@@ -43,5 +49,6 @@ namespace satp::simulation {
     private:
         A algorithm_;
         std::vector<std::uint32_t> ids_;
+        bool verbose_;
     };
 } // namespace satp::simulation
