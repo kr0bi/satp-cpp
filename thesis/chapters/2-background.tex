@@ -2,12 +2,98 @@
 
 \chapter{Background}
 \label{chp:background}
+In questa tesi, il modello che rappresenta i dati in input, a differenza di algoritmi più tradizionali,
+è chiamato \emph{modello di stream di dati} (data stream model). 
+\section{Modello di stream di dati}
+Nel modello di stream i dati \cite{Leskovec_Rajaraman_Ullman_2014} arrivano in modo continuo e potenzialmente
+infinita. Rispetto l'utilizzo di un database tradizionale, non è possibile
+accumulare tutto in memoria o su disco e interrogare i dati. 
+Gli elementi devono essere processati al volo oppure vengono persi.
 
-Example of \autoref{fig:1} reference.
+Inoltre, la velocità con cui i dati arrivano non è controllata dal sistema (più stream
+possono arrivare a velocità e con formati diversi), e lo spazio di memoria
+disponibile è limitato. Eventuali archivi storici possono esistere, ma non
+sono pensati per rispondere a query online in tempi ragionevoli.
 
-\begin{figure}
-    \centering
-    \includegraphics[width=0.5\textwidth]{figures/perceptron.png}
-    \caption{Rosenblatt's perceptron.}
-    \label{fig:1}
-\end{figure}
+Iniziamo a definire formalmente gli elementi di una stream e come vengono processati.
+Possiamo considerare una stream come una sequenza di elementi ordinata che arriva uno alla volta, con possibili ripetizioni:
+\[
+S = \langle x_1, x_2, \dots, x_s \rangle,
+\]
+dove ogni $x_i$ appartiene a un universo $\mathcal{U}$ molto grande. Per ogni
+elemento $a \in \mathcal{U}$ definiamo la frequenza:
+\[
+f(a) = |\{ i \mid x_i = a \}|.
+\]
+
+Uno degli obiettivi principale di questa tesi è stimare la cardinalità dello stream,
+ossia il numero di elementi distinti:
+\[
+F_0 = |\{ a \in \mathcal{U} \mid f(a) > 0 \}|.
+\]
+
+Supponiamo inoltre, che ogni elemento $x_i$ pesi $b$ bits e che lo spazio di memoria per il
+numero distinto di elementi $F_0$ sia $n$.
+
+In questo contesto, un algoritmo di streaming deve:
+\begin{itemize}
+    \item processare ciascun elemento con costo $O(1)$ o quasi costante;
+    \item usare memoria molto più piccola di $n$ e di $|\mathcal{U}|$;
+    \item produrre una stima $\hat{F}_0$ con errore controllato, utilizzando $m$ bits, dove $m \ll n$.
+\end{itemize}
+
+Per rispettare questi vincoli si ricorre a funzioni hash che approssimano
+una distribuzione uniforme sugli elementi e a strutture compatte, chiamate \textbf{sketch},
+che riassumono lo stream senza conservarlo esplicitamente.
+
+Un esempio di istanza per la stima della cardinalità è lo stream:
+\[
+S = \langle a, b, a, c, d, b, d \rangle.
+\]
+In questo caso l'insieme dei distinti è $\{a,b,c,d\}$ e quindi $F_0 = 4$.
+
+\section{Algoritmi di streaming}
+In questa sezione si definisce cosa si intende per algoritmo di streaming e
+quali vincoli lo distinguono dagli algoritmi tradizionali. Da completare:
+\begin{itemize}
+    \item Definizione formale di algoritmo di streaming.
+    \item Modello di costo: un passaggio, update $O(1)$, query su stato compatto.
+    \item Limiti di memoria e trade-off accuratezza/spazio.
+    \item Differenza tra stime in tempo reale e analisi offline.
+\end{itemize}
+
+\section{Funzioni hash}
+Qui si introduce il ruolo delle funzioni hash nella riduzione dello spazio e
+nella randomizzazione delle stime. Da completare:
+\begin{itemize}
+    \item Definizione di hash e proprieta' desiderate.
+    \item Assunzioni tipiche: uniformita', indipendenza (o hash quasi-uniformi).
+    \item Impatto di scelte non ideali sull'errore degli stimatori.
+    \item Eventuale gestione del seed per riproducibilita'.
+\end{itemize}
+
+\section{Sketch}
+Si definisce lo sketch come struttura compatta che riassume lo stream. Da completare:
+\begin{itemize}
+    \item Definizione generale di sketch e operazioni supportate (update, query).
+    \item Dimensione dello sketch e relazione con i parametri ($k$, $m$, $L$).
+    \item Esempi intuitivi (registri, bitmap, contatori).
+\end{itemize}
+
+\section{Stimatori}
+Si descrive cosa si intende per stimatore e in che senso la stima e' corretta. Da completare:
+\begin{itemize}
+    \item Definizione di stimatore $\hat{F}_0$ e proprieta' desiderate.
+    \item Distinzione tra stimatore corretto (unbiased) e stimatore biased.
+    \item Consistenza e varianza dello stimatore.
+\end{itemize}
+
+\section{Metriche di errore}
+Questa sezione introduce le metriche di qualita' della stima. Da completare:
+\begin{itemize}
+    \item Errore assoluto e relativo.
+    \item Bias e unbiased estimator.
+    \item Varianza e standard error.
+    \item RMSE e MAE come metriche aggregate.
+    \item RSE teorica vs osservata (quando applicabile).
+\end{itemize}
