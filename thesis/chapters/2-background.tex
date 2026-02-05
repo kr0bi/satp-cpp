@@ -18,7 +18,7 @@ sono pensati per rispondere a query online in tempi ragionevoli.
 Iniziamo a definire formalmente gli elementi di una stream e come vengono processati.
 \begin{definition}[Stream di dati]
 Sia $\mathcal{U}$ un universo di chiavi. Senza perdita di generalità, assumiamo
-$\mathcal{U} \subseteq \mathbb{N}$. Uno \emph{stream di dati} è una sequenza ordinata
+$\mathcal{U} \subseteq \mathbb{N}$. Una \emph{stream di dati} è una sequenza ordinata
 di elementi
 \[
 S = \langle x_1, x_2, \dots, x_s \rangle,
@@ -27,15 +27,38 @@ dove ogni $x_i \in \mathcal{U}$ e $s$ può essere molto grande o non noto a prio
 \end{definition}
 
 \begin{definition}[Frequenze]
-Dato uno stream $S$, la \emph{frequenza} di un elemento $a \in \mathcal{U}$ è
+Data una stream $S$, la \emph{frequenza} di un elemento $a \in \mathcal{U}$ è
 \[
 f(a) = |\{ i \mid x_i = a \}|.
 \]
 La collezione delle frequenze può essere vista come un vettore $f \in \mathbb{N}^{|\mathcal{U}|}$.
 \end{definition}
 
+Nel modello della stream dei dati esistono diverse tipologie di modelli
+\cite{Muthukrishnan_2005}. In questa tesi adottiamo il seguente.
+\begin{definition}[Modello \emph{insertion-only}]
+La stream è una sequenza di aggiornamenti del tipo $(a_t, \Delta_t)$, con
+$a_t \in \mathcal{U}$ e $\Delta_t \ge 0$. Indichiamo con $A_t[j]$ la frequenza
+dell'elemento $j$ dopo i primi $t$ aggiornamenti; allora
+\[
+A_t[j] =
+\begin{cases}
+A_{t-1}[j] + \Delta_t & \text{se } a_t = j,\\
+A_{t-1}[j] & \text{altrimenti}.
+\end{cases}
+\]
+\end{definition}
+Se la stream è una lista di valori, ogni elemento $x_i$ può essere visto come
+un aggiornamento $(x_i,1)$.
+
+Esistono tuttavia modelli più generali. Nel \emph{turnstile} sono ammessi
+anche aggiornamenti negativi, così che le frequenze possano aumentare o diminuire.
+Nel modello a \emph{sliding window} si considerano solo gli ultimi $W$ aggiornamenti
+della stream, scartando i più vecchi. Questi casi esulano dallo scopo della tesi,
+ma sono citati per completezza.
+
 \begin{definition}[Numero di distinti]
-Il \emph{numero di distinti} nello stream $S$ è
+Il \emph{numero di distinti} nella stream $S$ è
 \[
 F_0 = |\{ a \in \mathcal{U} \mid f(a) > 0 \}|.
 \]
@@ -72,43 +95,9 @@ In questo contesto, un algoritmo di streaming deve:
     \item produrre una stima $\hat{F}_0$ con errore controllato, utilizzando $m$ bits, dove $m \ll n$.
 \end{itemize}
 
-Nel modello dello stream dei dati esistono diverse tipologie di modelli
-\cite{Muthukrishnan_2005}. In questa tesi adottiamo il seguente.
-\begin{definition}[Modello \emph{insertion-only}]
-Lo stream è una sequenza di aggiornamenti del tipo $(a_t, \Delta_t)$, con
-$a_t \in \mathcal{U}$ e $\Delta_t \ge 0$. Indichiamo con $A_t[j]$ la frequenza
-dell'elemento $j$ dopo i primi $t$ aggiornamenti; allora
-\[
-A_t[j] =
-\begin{cases}
-A_{t-1}[j] + \Delta_t & \text{se } a_t = j,\\
-A_{t-1}[j] & \text{altrimenti}.
-\end{cases}
-\]
-\end{definition}
-\paragraph{Esempio.}
-Se lo stream è una lista di valori, ogni elemento $x_i$ può essere visto come
-un aggiornamento $(x_i,1)$.
-
-\begin{definition}[Modello \emph{turnstile}]
-Nel modello \emph{turnstile} sono ammessi aggiornamenti con $\Delta_t$ anche
-negativi, così che le frequenze possano aumentare o diminuire.
-\end{definition}
-\paragraph{Esempio.}
-Un aggiornamento $(a_t,-1)$ decrementa la frequenza dell'elemento $a_t$.
-
-\begin{definition}[Modello \emph{sliding window}]
-Nel modello a \emph{sliding window} si considerano solo gli ultimi $W$
-aggiornamenti della stream, e gli elementi più vecchi vengono dimenticati.
-\end{definition}
-\paragraph{Esempio.}
-Con $W=10^6$, le statistiche sono calcolate solo sugli ultimi un milione di elementi.
-
-I modelli \emph{turnstile} e \emph{sliding window} esulano dallo scopo di questa tesi.
-
 Per rispettare questi vincoli si ricorre a funzioni hash che approssimano
 una distribuzione uniforme sugli elementi e a strutture compatte, chiamate \textbf{sketch},
-che riassumono le informazioni essenziali dello stream senza conservarlo esplicitamente.
+che riassumono le informazioni essenziali della stream senza conservarla esplicitamente.
 
 \begin{definition}[Spazio sublineare]
 Un algoritmo usa \emph{spazio sublineare} se la memoria $m$ cresce
@@ -150,7 +139,7 @@ nella randomizzazione delle stime. Da completare:
 \end{itemize}
 
 \section{Sketch}
-Si definisce lo sketch come struttura compatta che riassume lo stream. Da completare:
+Si definisce lo sketch come struttura compatta che riassume la stream. Da completare:
 \begin{itemize}
     \item Definizione generale di sketch e operazioni supportate (update, query).
     \item Dimensione dello sketch e relazione con i parametri ($k$, $m$, $L$).
