@@ -216,7 +216,7 @@
 \def\university#1{\gdef\@university{#1}}
 
 % School color 
-\definecolor{SchoolColor}{rgb}{0.71, 0, 0.106} % UNIPD red
+\definecolor{SchoolColor}{rgb}{0.71, 0, 0.106} % School color
 \definecolor{chaptergrey}{rgb}{0.61, 0, 0.09} % dialed back a little
 \definecolor{midgrey}{rgb}{0.4, 0.4, 0.4}
 
@@ -269,11 +269,11 @@
 	\thispagestyle{empty}
 	\setcounter{page}{1}
 	\begin{center}
-	\vbox to0pt{\vbox to\textheight{\vfill \includegraphics[width=11.5cm]{resources/unipd-light} \vfill}\vss}
+	\vbox to0pt{\vbox to\textheight{\vfill \includegraphics[width=11.5cm]{resources/uniud-light} \vfill}\vss}
 	%\vspace*{\fill}
 	\begin{figure}
 	\centering
-  		\includegraphics[height=2.5cm]{resources/unipd-bn}
+  		\includegraphics[height=2.5cm]{resources/uniud-bn}
 	\end{figure}
 
 	\setstretch{1.5}

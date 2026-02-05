@@ -52,24 +52,42 @@ S = \langle a, b, a, c, d, b, d \rangle.
 \]
 In questo caso l'insieme dei distinti è $\{a,b,c,d\}$ e quindi $F_0 = 4$.
 
+\paragraph{Da completare: formalizzazione del modello.}
+\begin{itemize}
+    \item Definizione con parametri di accuratezza $(\varepsilon,\delta)$:
+    \[
+    \Pr(|\hat{F}_0 - F_0| \le \varepsilon F_0) \ge 1 - \delta.
+    \]
+    \item Modello \emph{insertion-only} (coerente con i dataset usati).
+    \item Cenno fuori scope: turnstile e sliding window.
+    \item Definizione di spazio \emph{sublineare} rispetto a $s$, $F_0$, $|\mathcal{U}|$.
+\end{itemize}
+
 \section{Algoritmi di streaming}
 In questa sezione si definisce cosa si intende per algoritmo di streaming e
 quali vincoli lo distinguono dagli algoritmi tradizionali. Da completare:
 \begin{itemize}
     \item Definizione formale di algoritmo di streaming.
+    \item Stato compatto $M$ e operazioni:
+    \[
+    M \leftarrow \mathrm{Update}(M, x), \qquad \hat{F}_0 \leftarrow \mathrm{Query}(M).
+    \]
     \item Modello di costo: un passaggio, update $O(1)$, query su stato compatto.
     \item Limiti di memoria e trade-off accuratezza/spazio.
     \item Differenza tra stime in tempo reale e analisi offline.
+    \item Randomizzazione e garanzie probabilistiche.
+    \item (Definizione) mergeabilità/composability degli sketch.
 \end{itemize}
 
 \section{Funzioni hash}
 Qui si introduce il ruolo delle funzioni hash nella riduzione dello spazio e
 nella randomizzazione delle stime. Da completare:
 \begin{itemize}
-    \item Definizione di hash e proprieta' desiderate.
-    \item Assunzioni tipiche: uniformita', indipendenza (o hash quasi-uniformi).
+    \item Definizione di hash e proprietà desiderate.
+    \item Modello ideale: $h: \mathcal{U} \to [0,1)$ o $h:\mathcal{U}\to\{0,1\}^w$.
+    \item Assunzioni tipiche: uniformità, indipendenza (o hash quasi-uniformi).
     \item Impatto di scelte non ideali sull'errore degli stimatori.
-    \item Eventuale gestione del seed per riproducibilita'.
+    \item Eventuale gestione del seed per riproducibilità.
 \end{itemize}
 
 \section{Sketch}
@@ -78,22 +96,45 @@ Si definisce lo sketch come struttura compatta che riassume lo stream. Da comple
     \item Definizione generale di sketch e operazioni supportate (update, query).
     \item Dimensione dello sketch e relazione con i parametri ($k$, $m$, $L$).
     \item Esempi intuitivi (registri, bitmap, contatori).
+    \item Due forme usate in tesi:
+    \begin{itemize}
+        \item bitmap / pattern di bit (Probabilistic Counting).
+        \item registri e leading zeros (LogLog, HLL, HLL++).
+    \end{itemize}
+    \item (Cenno) serializzabilità e footprint in byte.
 \end{itemize}
 
 \section{Stimatori}
-Si descrive cosa si intende per stimatore e in che senso la stima e' corretta. Da completare:
+Si descrive cosa si intende per stimatore e in che senso la stima è corretta. Da completare:
 \begin{itemize}
-    \item Definizione di stimatore $\hat{F}_0$ e proprieta' desiderate.
+    \item Definizione di stimatore $\hat{F}_0$ e proprietà desiderate.
     \item Distinzione tra stimatore corretto (unbiased) e stimatore biased.
     \item Consistenza e varianza dello stimatore.
+    \item Cenno a tecniche di bias correction.
 \end{itemize}
 
 \section{Metriche di errore}
-Questa sezione introduce le metriche di qualita' della stima. Da completare:
+Questa sezione introduce le metriche di qualità della stima. Da completare:
 \begin{itemize}
     \item Errore assoluto e relativo.
     \item Bias e unbiased estimator.
     \item Varianza e standard error.
     \item RMSE e MAE come metriche aggregate.
     \item RSE teorica vs osservata (quando applicabile).
+    \item Definizioni allineate alle colonne CSV del framework.
+\end{itemize}
+
+\section{Famiglia di algoritmi per count-distinct}
+Sezione ponte (senza dettagli implementativi) per motivare il Capitolo 3. Da completare:
+\begin{itemize}
+    \item Baseline esatta vs sketch probabilistici.
+    \item Linea FM/Probabilistic Counting $\rightarrow$ LogLog $\rightarrow$ HLL $\rightarrow$ HLL++.
+    \item Differenze qualitative: riduzione varianza, correzioni di range, uso di registri.
+\end{itemize}
+
+\section{Spazio--accuratezza: ordini di grandezza}
+Sezione opzionale ma utile per giustificare l'uso degli sketch. Da completare:
+\begin{itemize}
+    \item Dipendenza dello spazio da $(\varepsilon,\delta)$.
+    \item Interpretazione di ``ottimalità'' a livello di ordine di grandezza.
 \end{itemize}
