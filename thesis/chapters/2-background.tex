@@ -26,6 +26,7 @@ S = \langle x_1, x_2, \dots, x_s \rangle,
 dove ogni $x_i \in \mathcal{U}$ e $s$ può essere molto grande o non noto a priori.
 \end{definition}
 
+Per analizzare una stream è utile descriverla tramite le frequenze degli elementi.
 \begin{definition}[Frequenze]
 Data una stream $S$, la \emph{frequenza} di un elemento $a \in \mathcal{U}$ è
 \[
@@ -34,6 +35,8 @@ f(a) = |\{ i \mid x_i = a \}|.
 La collezione delle frequenze può essere vista come un vettore $f \in \mathbb{N}^{|\mathcal{U}|}$.
 \end{definition}
 
+Una volta definita la nozione di frequenza, si specifica il modello di aggiornamento
+con cui la stream viene osservata.
 Nel modello della stream dei dati esistono diverse tipologie di modelli
 \cite{Muthukrishnan_2005}. In questa tesi adottiamo il seguente.
 \begin{definition}[Modello \emph{insertion-only}]
@@ -57,6 +60,8 @@ Nel modello a \emph{sliding window} si considerano solo gli ultimi $W$ aggiornam
 della stream, scartando i più vecchi. Questi casi esulano dallo scopo della tesi,
 ma sono citati per completezza.
 
+Fissato il modello, l'obiettivo principale della tesi è stimare la cardinalità
+dell'insieme dei distinti.
 \begin{definition}[Numero di distinti]
 Il \emph{numero di distinti} nella stream $S$ è
 \[
@@ -64,6 +69,8 @@ F_0 = |\{ a \in \mathcal{U} \mid f(a) > 0 \}|.
 \]
 \end{definition}
 
+Più in generale, il numero di distinti è un caso particolare di una famiglia
+di misure note come \emph{frequency moments}.
 \begin{definition}[Frequency moments]
 Per ogni $k \ge 0$, il \emph{frequency moment} $F_k$ è definito come
 \[
@@ -72,6 +79,8 @@ F_k = \sum_{a \in \mathcal{U}} f(a)^k.
 In particolare, $F_0$ corrisponde al numero di distinti.
 \end{definition}
 
+Per valutare la qualità di una stima si introduce la nozione di approssimazione
+con parametri di accuratezza e confidenza.
 \begin{definition}[$(\varepsilon,\delta)$-approssimazione]
 Un algoritmo $A$ è detto \emph{$(\varepsilon,\delta)$-approssimante} per $F_0$ se, per ogni stream,
 produce una stima $\tilde{F}_0$ tale che
@@ -88,6 +97,7 @@ entro il $5\%$ da $F_0$ con probabilità almeno $99\%$.
 Supponiamo inoltre che l'universo abbia dimensione $n = |\mathcal{U}|$ e che ogni elemento $x_i$
 richieda $b$ bit per essere rappresentato.
 
+Le garanzie di accuratezza devono convivere con vincoli stringenti di tempo e memoria.
 In questo contesto, un algoritmo di streaming deve:
 \begin{itemize}
     \item processare ciascun elemento con costo $O(1)$ o quasi costante;
@@ -99,10 +109,12 @@ Per rispettare questi vincoli si ricorre a funzioni hash che approssimano
 una distribuzione uniforme sugli elementi e a strutture compatte, chiamate \textbf{sketch},
 che riassumono le informazioni essenziali della stream senza conservarla esplicitamente.
 
+Il vincolo più forte è quello di memoria: si richiede che lo spazio cresca
+molto più lentamente della dimensione dell'universo.
 \begin{definition}[Spazio sublineare]
 Un algoritmo usa \emph{spazio sublineare} se la memoria $m$ cresce
 asintoticamente meno di $n$, cioè $m = o(n)$, dove $n = |\mathcal{U}|$.
-In pratica si richiede che $m$ dipenda in modo polilogaritmico da $n$ e
+Si richiede che $m$ dipenda in modo polilogaritmico da $n$ e
 polinomiale da $1/\varepsilon$ e $\log(1/\delta)$.
 \end{definition}
 \paragraph{Esempio.}
