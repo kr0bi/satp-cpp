@@ -11,7 +11,7 @@ accumulare tutto in memoria o su disco e interrogare i dati.
 Gli elementi devono essere processati al volo oppure vengono persi.
 
 Inoltre, la velocità con cui i dati arrivano non è controllata dal sistema (più stream
-possono arrivare a velocità e con formati diversi), e lo spazio di memoria
+possono arrivare a velocità e con formati diversi) e lo spazio di memoria
 disponibile è limitato. Eventuali archivi storici possono esistere, ma non
 sono pensati per rispondere a query online in tempi ragionevoli.
 
@@ -32,8 +32,25 @@ ossia il numero di elementi distinti:
 F_0 = |\{ a \in \mathcal{U} \mid f(a) > 0 \}|.
 \]
 
-Supponiamo inoltre, che ogni elemento $x_i$ pesi $b$ bits e che lo spazio di memoria per il
-numero distinto di elementi $F_0$ sia $n$.
+Più in generale, dato lo stream $S$ si definiscono i \emph{frequency moments}
+\[
+F_k = \sum_{a \in \mathcal{U}} f(a)^k,
+\]
+di cui $F_0$ è il numero di distinti. Queste quantità sono studiate nel modello
+di stream proprio per il loro valore statistico e per i vincoli di memoria
+sublineare \cite{Alon_Matias_Szegedy_2002}.
+
+Per formalizzare l'accuratezza di uno stimatore si usano due parametri
+$(\varepsilon,\delta)$. Un algoritmo $A$ è detto \emph{$(\varepsilon,\delta)$-approssimante}
+per $F_0$ se, per ogni stream, produce una stima $\tilde{F}_0$ tale che
+\[
+\Pr\bigl(|\tilde{F}_0 - F_0| \le \varepsilon F_0\bigr) \ge 1 - \delta,
+\]
+dove la probabilità è rispetto alla randomizzazione interna dell'algoritmo
+\cite{BarYossef_Jayram_Kumar_Sivakumar_Trevisan_2002}.
+
+Supponiamo inoltre che l'universo abbia dimensione $n = |\mathcal{U}|$ e che ogni elemento $x_i$
+richieda $b$ bit per essere rappresentato.
 
 In questo contesto, un algoritmo di streaming deve:
 \begin{itemize}
@@ -42,9 +59,27 @@ In questo contesto, un algoritmo di streaming deve:
     \item produrre una stima $\hat{F}_0$ con errore controllato, utilizzando $m$ bits, dove $m \ll n$.
 \end{itemize}
 
+Nel modello dello stream dei dati esistono diverse tipologie di modelli
+\cite{Muthukrishnan_2005}. In questa tesi adottiamo il modello
+\emph{insertion-only} (o \emph{cash register}), in cui lo stream è una sequenza
+di aggiornamenti del tipo $(a_t, \Delta_t)$, con $a_t \in \mathcal{U}$ e
+$\Delta_t \ge 0$. Indichiamo con $A_t[j]$ la frequenza dell'elemento $j$ dopo
+i primi $t$ aggiornamenti; allora
+\[
+A_t[j] =
+\begin{cases}
+A_{t-1}[j] + \Delta_t & \text{se } a_t = j,\\
+A_{t-1}[j] & \text{altrimenti}.
+\end{cases}
+\]
+Esistono tuttavia modelli più generali, come il \emph{turnstile}, che ammette anche aggiornamenti negativi
+($\Delta_t$ può essere negativo), o il modello a \emph{sliding window}, in cui si
+considera solo una finestra temporale degli ultimi $W$ elementi. Questi casi
+esulano dallo scopo della tesi.
+
 Per rispettare questi vincoli si ricorre a funzioni hash che approssimano
 una distribuzione uniforme sugli elementi e a strutture compatte, chiamate \textbf{sketch},
-che riassumono lo stream senza conservarlo esplicitamente.
+che riassumono le informazioni essenziali dello stream senza conservarlo esplicitamente.
 
 Un esempio di istanza per la stima della cardinalità è lo stream:
 \[
@@ -52,16 +87,19 @@ S = \langle a, b, a, c, d, b, d \rangle.
 \]
 In questo caso l'insieme dei distinti è $\{a,b,c,d\}$ e quindi $F_0 = 4$.
 
-\paragraph{Da completare: formalizzazione del modello.}
-\begin{itemize}
-    \item Definizione con parametri di accuratezza $(\varepsilon,\delta)$:
-    \[
-    \Pr(|\hat{F}_0 - F_0| \le \varepsilon F_0) \ge 1 - \delta.
-    \]
-    \item Modello \emph{insertion-only} (coerente con i dataset usati).
-    \item Cenno fuori scope: turnstile e sliding window.
-    \item Definizione di spazio \emph{sublineare} rispetto a $s$, $F_0$, $|\mathcal{U}|$.
-\end{itemize}
+\paragraph{Spazio sublineare.}
+Nel modello streaming è fondamentale che la memoria utilizzata sia
+\emph{sublineare} rispetto alla dimensione dell'universo o alla lunghezza dello stream.
+Diremo che un algoritmo usa spazio sublineare se la memoria $m$ cresce
+asintoticamente meno di $n$, cioè $m = o(n)$, e in pratica si richiede che
+$m$ dipenda in modo polilogaritmico da $n$ e polinomiale da
+$1/\varepsilon$ e $\log(1/\delta)$. Questa proprietà è cruciale perché
+memorizzare tutti i distinti richiede $\Omega(n)$ bit, mentre nel problema dei
+distinti esistono algoritmi che ottengono una $(1 \pm \varepsilon)$-approssimazione
+con $O(\varepsilon^{-2} + \log n)$ bit, e questo ordine è ottimale
+\cite{Kane_Nelson_Woodruff_2010}. In altre parole, lo sketching rende possibile
+stimare quantità globali con memoria molto più piccola di quella necessaria
+per conservare i dati grezzi.
 
 \section{Algoritmi di streaming}
 In questa sezione si definisce cosa si intende per algoritmo di streaming e
