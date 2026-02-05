@@ -283,6 +283,8 @@
 	\scshape{\large{Dipartimento di \@department}} \\
 	\vspace{3pt}
 	\scshape{\large{\textit{Tesi Magistrale in \@mastername}}} \\
+	\scshape{{\textit{Algoritmi e Ragionamento Automatico}}} \\
+
 
 	\vspace{2pt}
 
