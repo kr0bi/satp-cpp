@@ -285,18 +285,47 @@ introdurre collisioni sistematiche o correlazioni tra registri, con un aumento
 del bias e della varianza degli stimatori \cite{Vadhan_Mitzenmacher_2007,UniformHashing_Pagh_2007}.
 
 \section{Sketch}
-Si definisce lo sketch come struttura compatta che riassume la stream. Da completare:
-\begin{itemize}
-    \item Definizione generale di sketch e operazioni supportate (update, query).
-    \item Dimensione dello sketch e relazione con i parametri ($k$, $m$, $L$).
-    \item Esempi intuitivi (registri, bitmap, contatori).
-    \item Due forme usate in tesi:
-    \begin{itemize}
-        \item bitmap / pattern di bit (Probabilistic Counting).
-        \item registri e leading zeros (LogLog, HLL, HLL++).
-    \end{itemize}
-    \item (Cenno) serializzabilità e footprint in byte.
-\end{itemize}
+\label{sec:sketch}
+Uno \emph{sketch} è una struttura dati probabilistica che
+riassume una stream attraverso uno stato $M$ aggiornabile con operazioni
+\emph{update} e interrogabile con operazioni \emph{query}. Lo sketch non conserva
+gli elementi originali, ma solo le informazioni necessarie per stimare una
+quantità d'interesse con memoria limitata che deve essere molto inferiore rispetto a conservare i dati originali.
+
+\textit{Merge-ability.} Nei contesti distribuiti è utile poter combinare due
+sketch costruiti su porzioni diverse della stream. Come possibile esempio, si pensi a due server che creano in maniera
+indipendente la loro sketch dei dati e che si voglia unire queste informazioni. Intuitivamente, ciò è
+possibile solo se gli sketch condividono gli stessi parametri strutturali e la stessa funzione di hash
+(o lo stesso seed), altrimenti la fusione può degradare le garanzie.
+\begin{definition}[Sketch mergeable]
+Sia $S(\cdot)$ la procedura che costruisce uno sketch e sia $\oplus$ un
+operatore sullo stato. Lo sketch è \emph{mergeable} se, per due dataset
+$D_1, D_2$ costruiti con la stessa parametrizzazione e la stessa hash,
+vale
+\[
+S(D_1) \oplus S(D_2) \approx S(D_1 \cup D_2),
+\]
+preservando le garanzie di errore (o con degradazione nota) \cite{Agarwal_Cormode_Huang_Phillips_Wei_Yi_2012}.
+\end{definition}
+
+\begin{definition}[Operatore chiuso]
+Sia $\mathcal{S}$ lo spazio degli stati di uno sketch. Un operatore
+$\oplus$ è \emph{chiuso} se
+\[
+\oplus:\mathcal{S}\times\mathcal{S}\to\mathcal{S},
+\]
+cioè se la combinazione di due stati produce ancora uno stato valido dello
+stesso tipo.
+\end{definition}
+
+In pratica, l'operatore $\oplus$ deve essere \emph{chiuso} sullo stato
+(ad esempio utilizzando la funzione di  massimo per registro o la funzione di somma per componente) e, per aggregazioni
+robuste, è preferibile che sia \emph{commutativo} e \emph{associativo};
+in molti casi è utile anche l'\emph{idempotenza} per tollerare duplicazioni.
+
+\textit{Osservazione: } Per gli algoritmi che vedremo in seguito, se due sketch hanno gli
+stessi parametri e la stessa funzione di hash/seed, lo sketch che si ottiene ``unendo'' registro per registro è equivalente allo sketch costruito sulla
+concatenazione (o unione) delle due stream.
 
 \section{Stimatori}
 Si descrive cosa si intende per stimatore e in che senso la stima è corretta. Da completare:
