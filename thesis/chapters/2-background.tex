@@ -428,15 +428,55 @@ analitici delle formule di stima. Queste tecniche non eliminano necessariamente
 la varianza, ma migliorano l'accuratezza media della stima.
 
 \section{Metriche di errore}
-Questa sezione introduce le metriche di qualità della stima. Da completare:
-\begin{itemize}
-    \item Errore assoluto e relativo.
-    \item Bias e unbiased estimator.
-    \item Varianza e standard error.
-    \item RMSE e MAE come metriche aggregate.
-    \item RSE teorica vs osservata (quando applicabile).
-    \item Definizioni allineate alle colonne CSV del framework.
-\end{itemize}
+Questa sezione definisce le metriche usate per valutare empiricamente gli
+stimatori del Capitolo~2.5. Consideriamo $R$ esecuzioni indipendenti
+(run), con stime $\hat{F}_0^{(r)}$ e valori veri $F_0^{(r)}$.
+
+\begin{definition}[Metriche empiriche]
+Definiamo le seguenti quantità:
+\[
+\bar{F}_0 = \frac{1}{R}\sum_{r=1}^{R} F_0^{(r)}, \qquad
+\bar{\hat{F}}_0 = \frac{1}{R}\sum_{r=1}^{R} \hat{F}_0^{(r)}.
+\]
+La \emph{varianza campionaria} delle stime è
+\[
+\mathrm{Var} = \frac{1}{R-1}\sum_{r=1}^{R}\bigl(\hat{F}_0^{(r)}-\bar{\hat{F}}_0\bigr)^2,
+\qquad
+\mathrm{Stddev}=\sqrt{\mathrm{Var}}.
+\]
+Il \emph{bias osservato} è
+\[
+\mathrm{bias} = \bar{\hat{F}}_0 - \bar{F}_0,
+\qquad
+\mathrm{difference}=|\mathrm{bias}|.
+\]
+Il \emph{bias relativo} è
+\[
+\mathrm{bias\_relative}=\frac{\mathrm{bias}}{\bar{F}_0},
+\]
+quando $\bar{F}_0 \neq 0$.
+L'\emph{errore relativo medio} e le metriche aggregate sono
+\[
+\mathrm{mean\_relative\_error}=\frac{1}{R}\sum_{r=1}^{R}\frac{|\hat{F}_0^{(r)}-F_0^{(r)}|}{F_0^{(r)}},
+\]
+\[
+\mathrm{MAE}=\frac{1}{R}\sum_{r=1}^{R}|\hat{F}_0^{(r)}-F_0^{(r)}|,
+\qquad
+\mathrm{RMSE}=\sqrt{\frac{1}{R}\sum_{r=1}^{R}\bigl(\hat{F}_0^{(r)}-F_0^{(r)}\bigr)^2}.
+\]
+Infine, definiamo l'\emph{RSE osservata} come
+\[
+\mathrm{RSE}_{\text{obs}}=\frac{\mathrm{Stddev}}{\bar{F}_0}.
+\]
+\end{definition}
+
+Le metriche sopra sono stime empiriche delle quantità teoriche definite nella
+sezione precedente. In particolare, il bias osservato approssima il bias
+teorico, mentre varianza e RMSE quantificano la dispersione e l'accuratezza
+media delle stime su più run. Quando disponibile, si confronta l'RSE osservata
+con un valore \emph{RSE teorico} derivato dalla letteratura (ad esempio una
+formula del tipo $c/\sqrt{m}$ per HLL), utile per verificare la coerenza tra
+risultati sperimentali e predizioni teoriche.
 
 \section{Famiglia di algoritmi per count-distinct}
 Sezione ponte (senza dettagli implementativi) per motivare il Capitolo 3. Da completare:
