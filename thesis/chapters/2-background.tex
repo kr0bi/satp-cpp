@@ -328,13 +328,108 @@ stessi parametri e la stessa funzione di hash/seed, lo sketch che si ottiene ``u
 concatenazione (o unione) delle due stream.
 
 \section{Stimatori}
-Si descrive cosa si intende per stimatore e in che senso la stima è corretta. Da completare:
-\begin{itemize}
-    \item Definizione di stimatore $\hat{F}_0$ e proprietà desiderate.
-    \item Distinzione tra stimatore corretto (unbiased) e stimatore biased.
-    \item Consistenza e varianza dello stimatore.
-    \item Cenno a tecniche di bias correction.
-\end{itemize}
+In statistica, uno \emph{stimatore} è una funzione dei
+dati osservati che restituisce una stima di un parametro d'interesse. Nel
+contesto dello streaming dei dati, la stima dipende sia dalla stream osservata sia dalla
+randomizzazione interna dell'algoritmo (ad esempio la funzione di hash)
+\cite{VanDeGeer_2015}.
+
+\begin{definition}[Stimatore]
+Sia $\theta$ un parametro d'interesse e siano $X$ i dati osservati. Uno
+\emph{stimatore} è una funzione misurabile $T$ tale che
+\[
+\hat{\theta} = T(X),
+\]
+dove $\hat{\theta}$ è una variabile aleatoria \cite{VanDeGeer_2015}.
+\end{definition}
+
+\begin{definition}[Bias e correttezza]
+Il \emph{bias} di uno stimatore è
+\[
+\mathrm{bias}(\hat{\theta}) = \mathbb{E}[\hat{\theta}] - \theta.
+\]
+Lo stimatore è \emph{corretto} (unbiased) se il bias è nullo; altrimenti è
+\emph{biased} \cite{VanDeGeer_2015}.
+\end{definition}
+
+Un bias positivo indica una tendenza sistematica a sovrastimare il valore vero,
+mentre un bias negativo indica una sottostima. Un bias nullo non garantisce
+stima precisa in ogni run, ma elimina lo spostamento medio.
+
+\begin{definition}[Varianza ed errore standard]
+La \emph{varianza} di uno stimatore è
+\[
+\mathrm{Var}(\hat{\theta}) = \mathbb{E}\bigl[(\hat{\theta}-\mathbb{E}[\hat{\theta}])^2\bigr],
+\]
+mentre l'\emph{errore standard} è la sua radice quadrata
+\(\mathrm{SE}(\hat{\theta})=\sqrt{\mathrm{Var}(\hat{\theta})}\)
+\cite{VanDeGeer_2015}.
+\end{definition}
+
+La varianza descrive quanto le stime oscillano tra esecuzioni: valori piccoli
+indicano stabilità, valori grandi indicano dispersione. L'errore standard è
+una misura nella stessa unità di $\theta$ e fornisce una scala naturale della
+variabilità.
+
+\begin{definition}[Errore di stima e rischio]
+L'\emph{errore di stima} è la variabile aleatoria
+\[
+E = \hat{\theta} - \theta.
+\]
+Dato una funzione di \emph{loss} $L(E)$, il \emph{rischio} (o rischio atteso) è
+\[
+R(\hat{\theta}) = \mathbb{E}[L(E)].
+\]
+Delle scelte comuni per la funzione di loss sono $L(E)=|E|$ (rischio assoluto) e $L(E)=E^2$ (MSE)
+\cite{VanDeGeer_2015}.
+\end{definition}
+
+L'errore di stima misura lo scostamento puntuale dalla verità, mentre il
+rischio riassume l'errore atteso secondo una loss scelta. Loss diverse
+privilegiano aspetti diversi: l'errore assoluto è più robusto, l'errore
+quadratico penalizza maggiormente gli scostamenti grandi.
+
+\begin{definition}[MAE e MSE]
+Il \emph{Mean Absolute Error} (MAE) è
+\[
+\mathrm{MAE} = \mathbb{E}\bigl[|\hat{\theta}-\theta|\bigr],
+\]
+mentre il \emph{Mean Squared Error} (MSE) è
+\[
+\mathrm{MSE} = \mathbb{E}\bigl[(\hat{\theta}-\theta)^2\bigr].
+\]
+Il MAE misura l'errore medio assoluto, mentre l'MSE penalizza maggiormente
+gli errori grandi \cite{VanDeGeer_2015}.
+\end{definition}
+
+Il MAE è facilmente interpretabile come distanza media dalla verità. L'MSE (e
+la sua radice, l'RMSE) enfatizza gli errori grandi e quindi è sensibile a
+outlier o code pesanti nelle stime.
+
+\begin{definition}[Errore relativo]
+L'\emph{errore relativo} è definito come
+\[
+\mathrm{RE} = \frac{|\hat{\theta}-\theta|}{|\theta|},
+\]
+quando $\theta \neq 0$.
+\end{definition}
+
+L'errore relativo normalizza lo scarto rispetto alla grandezza del vero valore
+e rende confrontabili stime su dataset di scala diversa.
+
+\begin{definition}[Consistenza]
+Una sequenza di stimatori $\hat{\theta}_n$ è \emph{consistente} se
+\[
+\hat{\theta}_n \xrightarrow[]{P} \theta \quad \text{quando } n \to \infty,
+\]
+ossia se la stima converge al valore vero al crescere della quantità di
+informazione disponibile \cite{VanDeGeer_2015}.
+\end{definition}
+
+Nei capitoli successivi, si parlerà della \textbf{bias correction}, in molti sketch si applicano correzioni per
+ridurre il bias, ad esempio tramite calibrazione empirica o aggiustamenti
+analitici delle formule di stima. Queste tecniche non eliminano necessariamente
+la varianza, ma migliorano l'accuratezza media della stima.
 
 \section{Metriche di errore}
 Questa sezione introduce le metriche di qualità della stima. Da completare:
