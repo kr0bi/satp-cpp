@@ -150,17 +150,15 @@ Dopo ogni aggiornamento, l'elemento appena osservato
 può essere scartato: lo stato $M$ rappresenta una sintesi compatta dei dati,
 spesso chiamata \emph{sketch} \cite{Cormode_2017}.
 
-\subsubsection{Metriche di valutazioni} 
-Nel modello classico, le prestazioni si
+Da questa definizione derivano i criteri con cui si
+valutano le prestazioni: nel modello classico si
 misurano in termini di \textbf{passaggi} sulla stream, \textbf{memoria} usata,
 \textbf{tempo per elemento} e \textbf{accuratezza} della risposta. Per algoritmi
 di approssimazione, l'accuratezza è espressa tramite un rapporto di
 approssimazione e una probabilità di successo, spesso nel modello
 $(\varepsilon,\delta)$ \cite{Prezza_2025}.
 
-\subsubsection{Confronto con gli algoritmi online}
-Gli algoritmi di streaming
-sono affini agli algoritmi \emph{online}\cite{OnlineAlgorithms_Notes}, perché
+Esiste una tipologia di algoritmi, chiamata algoritmi \textit{online} che sono molto simili \cite{OnlineAlgorithms_Notes}, perché
 operano senza disporre dell'intero input; tuttavia non sono identici, poiché nel
 modello streaming è possibile talvolta differire l'azione fino all'arrivo di
 piccoli blocchi di elementi, pur mantenendo una memoria molto limitata
@@ -171,8 +169,8 @@ stimare statistiche recenti con memoria limitata
 implementati e trattati sono anche \emph{online}, perché processano ogni elemento
 appena arriva, senza differire l'azione.
 
-\subsubsection{Limitazioni di accuratezza rispetto allo spazio}
-Per il problema dei calcolo degli elementi distinti, la
+Nel contesto degli algoritmi di streaming, un tema centrale è il
+trade-off tra precisione e memoria. Per il problema del calcolo degli elementi distinti, la
 letteratura evidenzia un legame diretto tra accuratezza e spazio: ridurre
 $\varepsilon$ implica un incremento della memoria necessaria. In particolare, si
 considerano efficienti gli algoritmi che usano solo spazio polinomiale in
@@ -181,9 +179,7 @@ dell'universo, con un costo per elemento molto basso
 \cite{BarYossef_Jayram_Kumar_Sivakumar_Trevisan_2002}. Questo mette in evidenza
 il \textbf{trade-off} centrale tra precisione e spazio necessario dello sketch.
 
-\subsubsection{Randomizzazione e garanzie probabilistiche}
-Questi algoritmi sono
-spesso randomizzati: la probabilità nella definizione di $(\varepsilon,\delta)$
+Questi algoritmi sono spesso randomizzati: la probabilità nella definizione di $(\varepsilon,\delta)$
 è rispetto alle scelte casuali interne dell'algoritmo e rappresenta una
 garanzia probabilistica sulla qualità della stima
 \cite{BarYossef_Jayram_Kumar_Sivakumar_Trevisan_2002}. Nelle implementazioni
@@ -193,9 +189,7 @@ seed). La randomizzazione consente di ridurre drasticamente lo spazio rispetto
 alle soluzioni deterministiche, a patto di accettare un errore controllato con
 alta probabilità.
 
-\subsubsection{Real-time vs offline}
-Un'altra differenza rilevante rispetto
-all'analisi tradizionale è la distinzione tra stime in tempo reale e analisi
+Un'altra differenza rilevante rispetto all'analisi tradizionale è la distinzione tra stime in tempo reale e analisi
 \emph{offline}. Nei sistemi classici, gli aggiornamenti si registrano in un
 archivio e le analisi complesse vengono svolte in \emph{warehouse}. Nel modello
 di streaming, invece, molte applicazioni richiedono elaborazioni sofisticate in
@@ -203,8 +197,7 @@ quasi tempo reale, come rilevamento di anomalie, monitoraggio di trend o
 cambiamenti improvvisi, e questo condiziona la progettazione degli algoritmi
 \cite{Muthukrishnan_2005}.
 
-\subsubsection{Mergeability}
-In contesti distribuiti è spesso necessario combinare
+\`E importante notare che in contesti distribuiti è spesso necessario combinare
 riassunti di porzioni diverse della stream. Il concetto di \emph{mergeabilità}
 formalizza la possibilità di unire due sintesi in una sintesi della loro unione
 preservando le garanzie di errore e la dimensione dello stato: questo permette
@@ -292,7 +285,8 @@ riassume una stream attraverso uno stato $M$ aggiornabile con operazioni
 gli elementi originali, ma solo le informazioni necessarie per stimare una
 quantità d'interesse con memoria limitata che deve essere molto inferiore rispetto a conservare i dati originali.
 
-\textit{Merge-ability.} Nei contesti distribuiti è utile poter combinare due
+Come accennato prima negli algoritmi di streaming, nei contesti distribuiti, per ottenere un dato
+globale è necessario poter combinare due
 sketch costruiti su porzioni diverse della stream. Come possibile esempio, si pensi a due server che creano in maniera
 indipendente la loro sketch dei dati e che si voglia unire queste informazioni. Intuitivamente, ciò è
 possibile solo se gli sketch condividono gli stessi parametri strutturali e la stessa funzione di hash
