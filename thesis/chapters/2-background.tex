@@ -211,16 +211,78 @@ preservando le garanzie di errore e la dimensione dello stato: questo permette
 di scalare gli algoritmi a scenari paralleli o gerarchici ed è una proprietà
 centrale per gli sketch moderni \cite{Agarwal_Cormode_Huang_Phillips_Wei_Yi_2012}.
 
-\section{Funzioni hash}
-Qui si introduce il ruolo delle funzioni hash nella riduzione dello spazio e
-nella randomizzazione delle stime. Da completare:
-\begin{itemize}
-    \item Definizione di hash e proprietà desiderate.
-    \item Modello ideale: $h: \mathcal{U} \to [0,1)$ o $h:\mathcal{U}\to\{0,1\}^w$.
-    \item Assunzioni tipiche: uniformità, indipendenza (o hash quasi-uniformi).
-    \item Impatto di scelte non ideali sull'errore degli stimatori.
-    \item Eventuale gestione del seed per riproducibilità.
-\end{itemize}
+\section{Funzioni di hash}
+Le funzioni hash sono il principale strumento per
+``randomizzare'' lo stream e associare un universo molto grande in un dominio più
+piccolo, rendendo possibile l'uso di strutture compatte. In molti sketch, la
+qualità della stima dipende direttamente dalle proprietà della funzione di hash utilizzata
+\cite{Vadhan_Mitzenmacher_2007,UniformHashing_Pagh_2007}.
+
+\begin{definition}[Funzione di hash]
+Una funzione di hash $h$ è una funzione deterministica
+\[
+h: \mathcal{U} \to V,
+\]
+che associa a ogni chiave dell'universo $\mathcal{U}$ un valore in un
+dominio $V$ di dimensione molto più piccola, tipicamente $V=\{0,1\}^w$ oppure
+$V=[0,1)$ tramite normalizzazione.
+\end{definition}
+
+Quindi, una funzione di hash mappa dati di lunghezza
+arbitraria in un valore di lunghezza fissa, chiamato \emph{hash value}, 
+spesso usato per indicizzare delle strutture dati come le tabelle di hash.
+
+Questa trasformazione permette accessi veloci e riduce lo spazio necessario
+rispetto alla memorizzazione diretta delle chiavi. 
+
+Poiché più chiavi possono
+produrre lo stesso valore, le \emph{collisioni} sono inevitabili: una buona
+funzione di hash deve essere veloce da calcolare e minimizzare la probabilità
+di collisione, idealmente distribuendo i valori in modo uniforme sul dominio
+\cite{Wikipedia_HashFunction}.
+
+\textit{Proprietà desiderate.} Le proprietà classiche richieste sono: l'\textbf{uniformità} 
+(le chiavi sono distribuite in modo uniforme su $V$), la
+\textbf{bassa probabilità di collisione}, l'\textbf{indipendenza} tra le immagini di
+chiavi diverse e l'\textbf{efficienza} di calcolo. 
+
+Una funzione di hash con queste proprietà rende la stima degli sketch stabili e con varianza controllata
+\cite{Vadhan_Mitzenmacher_2007,UniformHashing_Pagh_2007}.
+
+\begin{definition}[Modello di hashing uniforme]
+Nel modello ideale, $h$ è scelta uniformemente a caso dall'insieme di tutte le
+funzioni $\mathcal{U}\to V$. In questo caso, per ogni chiave $x\in\mathcal{U}$,
+il valore $h(x)$ è uniforme in $V$ e le immagini di chiavi distinte sono
+indipendenti \cite{Vadhan_Mitzenmacher_2007,UniformHashing_Pagh_2007}.
+\end{definition}
+
+\begin{definition}[Famiglia universale \cite{Carter_Wegman_1979}]
+Una famiglia $\mathcal{H}$ di funzioni $\mathcal{U}\to V$ è \emph{universale} se,
+per ogni coppia di chiavi distinte $x\neq y$, vale
+\[
+\Pr_{h\leftarrow \mathcal{H}}\bigl[h(x)=h(y)\bigr] \le \frac{1}{|V|}.
+\]
+\end{definition}
+
+\begin{definition}[$k$-wise indipendenza \cite{Vadhan_Mitzenmacher_2007}]
+Una famiglia $\mathcal{H}$ è \emph{$k$-wise indipendente} se, per ogni scelta di
+$k$ chiavi distinte $x_1,\dots,x_k$, il vettore
+\[
+\bigl(h(x_1),\dots,h(x_k)\bigr)
+\]
+è distribuito uniformemente in $V^k$ quando $h$ è scelta a caso da $\mathcal{H}$.
+\end{definition}
+
+\textit{Assunzioni tipiche.} Nelle analisi teoriche si assume spesso il modello
+ideale di hashing uniforme; in alternativa si usa una famiglia con un grado
+limitato di indipendenza (ad esempio $k$-wise), o una famiglia universale
+\cite{Carter_Wegman_1979,Vadhan_Mitzenmacher_2007}. In pratica, l'uso di
+funzioni semplici è comune, ma le garanzie possono degradare rispetto al modello
+ideale se le assunzioni non sono soddisfatte.
+
+\textit{Impatto delle scelte.} Una funzione di hash non sufficientemente uniforme può
+introdurre collisioni sistematiche o correlazioni tra registri, con un aumento
+del bias e della varianza degli stimatori \cite{Vadhan_Mitzenmacher_2007,UniformHashing_Pagh_2007}.
 
 \section{Sketch}
 Si definisce lo sketch come struttura compatta che riassume la stream. Da completare:
