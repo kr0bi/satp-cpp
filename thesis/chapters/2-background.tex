@@ -124,20 +124,85 @@ $(1 \pm \varepsilon)$-approssimazione usando $O(\varepsilon^{-2} + \log n)$ bit
 per memorizzare l'insieme dei distinti.
 
 \section{Algoritmi di streaming}
-In questa sezione si definisce cosa si intende per algoritmo di streaming e
-quali vincoli lo distinguono dagli algoritmi tradizionali. Da completare:
-\begin{itemize}
-    \item Definizione formale di algoritmo di streaming.
-    \item Stato compatto $M$ e operazioni:
-    \[
-    M \leftarrow \mathrm{Update}(M, x), \qquad \hat{F}_0 \leftarrow \mathrm{Query}(M).
-    \]
-    \item Modello di costo: un passaggio, update $O(1)$, query su stato compatto.
-    \item Limiti di memoria e trade-off accuratezza/spazio.
-    \item Differenza tra stime in tempo reale e analisi offline.
-    \item Randomizzazione e garanzie probabilistiche.
-    \item (Definizione) mergeabilità/composability degli sketch.
-\end{itemize}
+Il modello di data stream con le caratteristiche appena descritte, flussi potenzialmente infiniti, velocità
+non controllata e memoria limitata, rendono inapplicabili gli approcci
+classici basati su memorizzazione completa e analisi a posteriori. 
+
+Di conseguenza gli algoritmi
+di streaming nascono quindi per produrre stime e statistiche utili durante
+l'arrivo dei dati, lavorando in un solo passaggio e mantenendo una sintesi
+compatta della stream.
+\begin{definition}[Algoritmo di streaming]
+Un algoritmo di streaming elabora una stream in un solo passaggio e mantiene
+uno stato interno $M$ di dimensione limitata $m$. Per ogni elemento $x_i$ della
+stream, lo stato viene aggiornato tramite una funzione
+\[
+M \leftarrow \mathrm{Update}(M, x_i),
+\]
+e in qualunque momento è possibile ottenere una risposta (o stima) tramite
+\[
+\hat{F}_0 \leftarrow \mathrm{Query}(M).
+\]
+Nel modello classico si richiede che $m$ sia sublineare rispetto a $n$ e che
+il tempo per aggiornamento sia $O(1)$ o quasi costante \cite{Muthukrishnan_2005}.
+\end{definition}
+
+Dopo ogni aggiornamento, l'elemento appena osservato può essere scartato:
+lo stato $M$ rappresenta una sintesi compatta dei dati, spesso chiamata
+\emph{sketch} \cite{Cormode_2017}. 
+
+Nel modello classico, la qualità di un algoritmo di streaming
+si valuta tipicamente in termini di numero di passaggi sulla stream,
+della quantità di memoria usata, del tempo necessario per processare un elemento e 
+della precisione della risposta. 
+Per algoritmi di
+approssimazione, questa precisione è descritta da un rapporto di approssimazione
+e da una probabilità di successo, spesso espressi tramite il modello
+$(\varepsilon,\delta)$ \cite{Prezza_2025}. 
+
+Gli algoritmi
+di streaming sono affini agli algoritmi \emph{online}\cite{OnlineAlgorithms_Notes}, perché operano senza
+disporre dell'intero input; tuttavia non sono identici, poiché nel modello
+streaming è possibile talvolta differire l'azione fino all'arrivo di piccoli
+blocchi di elementi, pur mantenendo una memoria molto limitata
+\cite{Muthukrishnan_2005,Prezza_2025}. Un possibile esempio è fornito dagli algoritmi
+per la \emph{sliding window}, che mantengono riassunti a blocchi per stimare
+statistiche recenti con memoria limitata \cite{Datar_Gionis_Indyk_Motwani_2002}.
+Nel nostro contesto, tutti gli algoritmi che sono stati implementati
+e trattati sono algoritmi anche online, perché processano ogni elemento appena arriva, senza differire l'azione.
+
+Per il problema dei distinti, la letteratura evidenzia un legame diretto tra
+accuratezza e spazio: ridurre $\varepsilon$ implica un incremento della memoria
+necessaria. In particolare, si considerano efficienti gli algoritmi che usano
+solo spazio polinomiale in $1/\varepsilon$ e logaritmico nella lunghezza della
+stream e nella dimensione dell'universo, con un costo per elemento molto basso
+\cite{BarYossef_Jayram_Kumar_Sivakumar_Trevisan_2002}. Questo mette in evidenza
+il trade-off centrale tra precisione e spazio necessario dello sketch.
+
+Questi algoritmi sono spesso randomizzati: la probabilità nella definizione
+di $(\varepsilon,\delta)$ è rispetto alle scelte casuali interne dell'algoritmo,
+e rappresenta una garanzia probabilistica sulla qualità della stima
+\cite{BarYossef_Jayram_Kumar_Sivakumar_Trevisan_2002}. Nelle implementazioni
+pratiche, questa randomizzazione è tipicamente incarnata dalla funzione di hash,
+assunta sufficientemente vicina a una scelta casuale (o parametrizzata da un
+seed). La randomizzazione consente di ridurre drasticamente lo spazio rispetto
+alle soluzioni deterministiche, a patto di accettare un errore controllato con
+alta probabilità.
+
+Un'altra differenza rilevante rispetto all'analisi tradizionale è la distinzione
+tra stime in tempo reale e analisi offline. Nei sistemi classici, gli aggiornamenti
+si registrano in un archivio e le analisi complesse vengono svolte offline in
+warehouse. Nel modello di streaming, invece, molte applicazioni richiedono
+elaborazioni sofisticate in quasi tempo reale, come rilevamento di anomalie,
+monitoraggio di trend o cambiamenti improvvisi e questo condiziona la progettazione
+degli algoritmi \cite{Muthukrishnan_2005}.
+
+Infine, in contesti distribuiti è spesso necessario combinare riassunti di
+porzioni diverse delle streams. Il concetto di \emph{mergeabilità} formalizza la
+possibilità di unire due sintesi in una sintesi della loro unione preservando
+le garanzie di errore e la dimensione dello stato: questo permette di scalare
+gli algoritmi a scenari paralleli o gerarchici ed è una proprietà centrale per
+gli sketch moderni \cite{Agarwal_Cormode_Huang_Phillips_Wei_Yi_2012}.
 
 \section{Funzioni hash}
 Qui si introduce il ruolo delle funzioni hash nella riduzione dello spazio e
