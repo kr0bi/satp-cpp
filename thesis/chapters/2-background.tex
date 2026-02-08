@@ -150,6 +150,13 @@ Dopo ogni aggiornamento, l'elemento appena osservato
 può essere scartato: lo stato $M$ rappresenta una sintesi compatta dei dati,
 spesso chiamata \emph{sketch} \cite{Cormode_2017}.
 
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=\textwidth]{figures/modello_sketch2.png}
+    \caption{Pipeline del modello di algoritmi di streaming}
+    \label{fig:streaming-pipeline}
+\end{figure}
+
 Da questa definizione derivano i criteri con cui si
 valutano le prestazioni: nel modello classico si
 misurano in termini di \textbf{passaggi} sulla stream, \textbf{memoria} usata,
@@ -234,6 +241,13 @@ funzione di hash deve essere veloce da calcolare e minimizzare la probabilità
 di collisione, idealmente distribuendo i valori in modo uniforme sul dominio
 \cite{Wikipedia_HashFunction}.
 
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=0.7\textwidth]{figures/hash-table.png}
+    \caption{Schema di un esempio di tabella di hash}
+    \label{fig:hash-uniformity}
+\end{figure}
+
 \textit{Proprietà desiderate.} Le proprietà classiche richieste sono: l'\textbf{uniformità} 
 (le chiavi sono distribuite in modo uniforme su $V$), la
 \textbf{bassa probabilità di collisione}, l'\textbf{indipendenza} tra le immagini di
@@ -301,6 +315,13 @@ S(D_1) \oplus S(D_2) \approx S(D_1 \cup D_2),
 \]
 preservando le garanzie di errore (o con degradazione nota) \cite{Agarwal_Cormode_Huang_Phillips_Wei_Yi_2012}.
 \end{definition}
+
+\begin{figure}[htbp]
+    \flushright
+    \includegraphics[width=0.55\textwidth]{figures/sketch_merge.png}
+    \caption{Merge di sketch in un contesto distribuito}
+    \label{fig:merge-distributed}
+\end{figure}
 
 \begin{definition}[Operatore chiuso]
 Sia $\mathcal{S}$ lo spazio degli stati di uno sketch. Un operatore
