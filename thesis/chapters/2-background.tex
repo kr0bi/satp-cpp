@@ -316,12 +316,15 @@ S(D_1) \oplus S(D_2) \approx S(D_1 \cup D_2),
 preservando le garanzie di errore (o con degradazione nota) \cite{Agarwal_Cormode_Huang_Phillips_Wei_Yi_2012}.
 \end{definition}
 
-\begin{figure}[htbp]
-    \flushright
-    \includegraphics[width=0.55\textwidth]{figures/sketch_merge.png}
+\begin{wrapfigure}{r}{0.6\textwidth}
+    \vspace{-6pt}
+    \centering
+    \captionsetup{justification=raggedleft, singlelinecheck=false, font=scriptsize, textfont=normalfont, labelfont=bf}
+    \includegraphics[width=0.45\textwidth]{figures/sketch_merge.png}
     \caption{Merge di sketch in un contesto distribuito}
     \label{fig:merge-distributed}
-\end{figure}
+    \vspace{-6pt}
+\end{wrapfigure}
 
 \begin{definition}[Operatore chiuso]
 Sia $\mathcal{S}$ lo spazio degli stati di uno sketch. Un operatore
