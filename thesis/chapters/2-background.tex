@@ -513,9 +513,29 @@ disgiunte della stream è naturale (ad esempio tramite massimo componente-per-co
 rendendo tali metodi adatti a scenari distribuiti \cite{Flajolet_Fusy_Gandouet_Meunier_2007,Agarwal_Cormode_Huang_Phillips_Wei_Yi_2012}.
 
 
-\section{Spazio--accuratezza: ordini di grandezza}
-Sezione opzionale ma utile per giustificare l'uso degli sketch. Da completare:
-\begin{itemize}
-    \item Dipendenza dello spazio da $(\varepsilon,\delta)$.
-    \item Interpretazione di ``ottimalità'' a livello di ordine di grandezza.
-\end{itemize}
+\section{Spazio e accuratezza}
+Analizzando algoritmi di streaming per il count-distinct, \`e importante notare che tipo di rapporto c'\`e tra
+spazio e accuratezza. Non concentrandosi concretemente sull'algoritmo utilizzato, ci sono dei limiti
+teorici che possiamo notare.
+
+Utilizzando il modello probabilistico $(\varepsilon,\delta)$ per la qualità della stima, esistono degli algoritmi
+di streaming che producono una $(1\pm\varepsilon)$-approssimazione di $F_0$ con probabilità almeno
+$1-\delta$ usando spazio $\tilde{O}\bigl(\varepsilon^{-2}\log(1/\delta) + \log n\bigr)$
+bit, dove $n=|\mathcal{U}|$ e $\tilde{O}$ nasconde fattori polilogaritmici
+\cite{Alon_Matias_Szegedy_2002,Kane_Nelson_Woodruff_2010}. 
+
+Inoltre, esistono lower bound dello stesso ordine di grandezza, per cui tale dipendenza è
+ottimale a livello di ordine \cite{Kane_Nelson_Woodruff_2010}.
+
+Di conseguenza, ridurre $\varepsilon$ di un fattore 2 richiede
+circa 4 volte la memoria, poiché lo spazio cresce come $\varepsilon^{-2}$.
+
+Mentre, ridurre $\delta$ richiede invece solo un fattore logaritmico, ottenibile
+tramite ripetizioni indipendenti e combinazione (ad esempio \emph{median trick} \cite{Motwani_Raghavan_1996}).
+
+Questa differenza sul trattare $\varepsilon$ e $\delta$ spiega perché in ricerca si investe soprattutto nella
+riduzione di $\varepsilon$ e si regola $\delta$ con pochi esperimenti aggiuntivi.
+
+Nel caso di HyperLogLog, la deviazione standard relativa (RSE) scala come $\Theta(1/\sqrt{m})$, dove $m$ è il numero di
+registri; in altre parole, raddoppiare $m$ riduce l'errore di un fattore circa
+$\sqrt{2}$ \cite{Flajolet_Fusy_Gandouet_Meunier_2007}.
