@@ -488,12 +488,30 @@ confronta l'RSE osservata con una \emph{RSE teorica} fornita dalla letteratura
 predizioni teoriche e risultati sperimentali.
 
 \section{Famiglia di algoritmi per count-distinct}
-Sezione ponte (senza dettagli implementativi) per motivare il Capitolo 3. Da completare:
-\begin{itemize}
-    \item Baseline esatta vs sketch probabilistici.
-    \item Linea FM/Probabilistic Counting $\rightarrow$ LogLog $\rightarrow$ HLL $\rightarrow$ HLL++.
-    \item Differenze qualitative: riduzione varianza, correzioni di range, uso di registri.
-\end{itemize}
+Il calcolo esatto del numero di distinti $F_0$ in streaming richiede, nel caso generale,
+memoria proporzionale al numero di chiavi distinte osservate, poiché occorre
+mantenere informazione sufficiente a distinguere chiavi già viste da chiavi nuove.
+Gli algoritmi di sketching rinunciano all'esattezza e producono una stima $\hat{F}_0$
+con garanzie probabilistiche $(\varepsilon,\delta)$ usando spazio sublineare e update
+a costo costante \cite{BarYossef_Jayram_Kumar_Sivakumar_Trevisan_2002}.
+
+Una linea storica fondamentale per il count-distinct parte dal
+\emph{Probabilistic Counting} di Flajolet--Martin \cite{Flajolet_Martin_1985},
+che usa una funzione di hash per trasformare le chiavi in bitstring pseudo-casuali
+e ricavare $F_0$ da statistiche sui pattern di bit.
+Successivamente, LogLog \cite{Durand_Flajolet_2003} e HyperLogLog \cite{Flajolet_Fusy_Gandouet_Meunier_2007}
+introducono una struttura a $m$ registri (ottenuti partizionando via hash), aggiornata
+tramite il numero di zeri iniziali: l'aggregazione su più registri riduce la varianza
+e porta a un errore relativo che decresce tipicamente come $O(1/\sqrt{m})$.
+HyperLogLog++ \cite{Heule_Nunkesser_Hall_2013} mantiene l'impianto a registri ma introduce
+correzioni e accorgimenti pratici (ad esempio per il small-range) che riducono il bias
+e migliorano l'accuratezza su diverse scale di cardinalità.
+
+Questi algoritmi condividono inoltre una proprietà operativa importante: essendo lo stato
+basato su aggiornamenti monotoni per registro, la fusione di sketch costruiti su partizioni
+disgiunte della stream è naturale (ad esempio tramite massimo componente-per-componente),
+rendendo tali metodi adatti a scenari distribuiti \cite{Flajolet_Fusy_Gandouet_Meunier_2007,Agarwal_Cormode_Huang_Phillips_Wei_Yi_2012}.
+
 
 \section{Spazio--accuratezza: ordini di grandezza}
 Sezione opzionale ma utile per giustificare l'uso degli sketch. Da completare:
