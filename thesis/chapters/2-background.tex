@@ -342,7 +342,7 @@ dove $\hat{\theta}$ è una variabile aleatoria \cite{VanDeGeer_2015}.
 \begin{definition}[Bias e correttezza]
 Il \emph{bias} di uno stimatore è
 \[
-\mathrm{bias}(\hat{\theta}) = \mathbb{E}[\hat{\theta}] - \theta.
+\mathrm{Bias}(\hat{\theta}) = \mathbb{E}[\hat{\theta}] - \theta.
 \]
 Lo stimatore è \emph{corretto} (unbiased) se il bias è nullo; altrimenti è
 \emph{biased} \cite{VanDeGeer_2015}.
@@ -428,55 +428,64 @@ analitici delle formule di stima. Queste tecniche non eliminano necessariamente
 la varianza, ma migliorano l'accuratezza media della stima.
 
 \section{Metriche di errore}
-Questa sezione definisce le metriche usate per valutare empiricamente gli
-stimatori del Capitolo~2.5. Consideriamo $R$ esecuzioni indipendenti
-(run), con stime $\hat{F}_0^{(r)}$ e valori veri $F_0^{(r)}$.
+A seguire vengono definite le metriche usate per valutare empiricamente gli
+stimatori del Capitolo~2.5.  Vengono fatte $R$ esecuzioni indipendentim, chiamate \textit{run}, con
+stime $\hat{F}_0^{(r)}$ e valori veri $F_0^{(r)}$.
 
-\begin{definition}[Metriche empiriche]
-Definiamo le seguenti quantità:
+Per una singola run $r$ vengono calcolati l'errore di stima, il suo valore assoluto e l'errore relativo:
+\[
+e^{(r)}=\hat{F}_0^{(r)}-F_0^{(r)}, \qquad |e^{(r)}|, \qquad
+\mathrm{RE}^{(r)}=\frac{|e^{(r)}|}{F_0^{(r)}} \ \ (\text{se } F_0^{(r)}>0).
+\]
+
+Successivamente, vengono calcolati il bias, la varianza, l'errore standard e per collegarsi alla letteratura 
+sugli sketch, si usa la \emph{Relative Standard Error} (RSE), che
+normalizza la deviazione standard rispetto alla scala del problema.
+
+Siccome nel nostro framework le run
+sono eseguite su sottoinsiemi potenzialmente diversi, si introduce la media degli stimatori per il numero di elementi
+distinti:
 \[
 \bar{F}_0 = \frac{1}{R}\sum_{r=1}^{R} F_0^{(r)}, \qquad
 \bar{\hat{F}}_0 = \frac{1}{R}\sum_{r=1}^{R} \hat{F}_0^{(r)}.
 \]
 La \emph{varianza campionaria} delle stime è
 \[
-\mathrm{Var} = \frac{1}{R-1}\sum_{r=1}^{R}\bigl(\hat{F}_0^{(r)}-\bar{\hat{F}}_0\bigr)^2,
+Var(\hat{F}_0) = \frac{1}{R-1}\sum_{r=1}^{R}\bigl(\hat{F}_0^{(r)}-\bar{\hat{F}}_0\bigr)^2,
 \qquad
-\mathrm{Stddev}=\sqrt{\mathrm{Var}}.
+\sigma=\sqrt{Var}.
 \]
-Il \emph{bias osservato} è
+Come per l'errore , viene stimato il bias, il suo valore assoluto e il suo errore relativo:
 \[
-\mathrm{bias} = \bar{\hat{F}}_0 - \bar{F}_0,
+\widehat{\mathrm{Bias}}(\hat{F}_0) = \bar{\hat{F}}_0 - \bar{F}_0,
 \qquad
-\mathrm{difference}=|\mathrm{bias}|.
+\mathrm{AB}=|\widehat{\mathrm{Bias}}(\hat{F}_0)|,
+\qquad
+\mathrm{RB}=\frac{\widehat{\mathrm{Bias}}(\hat{F}_0)}{\bar{F}_0}\ (\bar{F}_0\neq 0).
 \]
-Il \emph{bias relativo} è
+L'\emph{errore relativo medio} (Mean Relative Error, MRE) è
 \[
-\mathrm{bias\_relative}=\frac{\mathrm{bias}}{\bar{F}_0},
+\mathrm{MRE}=\frac{1}{R}\sum_{r=1}^{R}\frac{|\hat{F}_0^{(r)}-F_0^{(r)}|}{F_0^{(r)}},
 \]
-quando $\bar{F}_0 \neq 0$.
-L'\emph{errore relativo medio} e le metriche aggregate sono
-\[
-\mathrm{mean\_relative\_error}=\frac{1}{R}\sum_{r=1}^{R}\frac{|\hat{F}_0^{(r)}-F_0^{(r)}|}{F_0^{(r)}},
-\]
+e le metriche aggregate usate nei risultati includono il
+Mean Absolute Error (MAE) e il Root Mean Squared Error (RMSE):
 \[
 \mathrm{MAE}=\frac{1}{R}\sum_{r=1}^{R}|\hat{F}_0^{(r)}-F_0^{(r)}|,
 \qquad
 \mathrm{RMSE}=\sqrt{\frac{1}{R}\sum_{r=1}^{R}\bigl(\hat{F}_0^{(r)}-F_0^{(r)}\bigr)^2}.
 \]
-Infine, definiamo l'\emph{RSE osservata} come
-\[
-\mathrm{RSE}_{\text{obs}}=\frac{\mathrm{Stddev}}{\bar{F}_0}.
-\]
-\end{definition}
 
-Le metriche sopra sono stime empiriche delle quantità teoriche definite nella
-sezione precedente. In particolare, il bias osservato approssima il bias
-teorico, mentre varianza e RMSE quantificano la dispersione e l'accuratezza
-media delle stime su più run. Quando disponibile, si confronta l'RSE osservata
-con un valore \emph{RSE teorico} derivato dalla letteratura (ad esempio una
-formula del tipo $c/\sqrt{m}$ per HLL), utile per verificare la coerenza tra
-risultati sperimentali e predizioni teoriche.
+Senza ulteriori spiegazioni, queste quantità sono stime empiriche dei corrispondenti concetti teorici presentati precedentemente.
+
+La \emph{RSE osservata} è stimata come
+\[
+\mathrm{RSE}_{\text{obs}}=\frac{\sigma}{\bar{F}_0}.
+\]
+Quando il valore vero è lo stesso in tutte le run ($F_0^{(r)}\equiv F_0$),
+questa definizione si riduce a $\sigma/F_0$. Quando disponibile, si
+confronta l'RSE osservata con una \emph{RSE teorica} fornita dalla letteratura
+(ad esempio formule del tipo $c/\sqrt{m}$), per verificare la coerenza tra
+predizioni teoriche e risultati sperimentali.
 
 \section{Famiglia di algoritmi per count-distinct}
 Sezione ponte (senza dettagli implementativi) per motivare il Capitolo 3. Da completare:
