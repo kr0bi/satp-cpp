@@ -23,10 +23,10 @@ In un modello \emph{insertion-only}, un algoritmo deve processare ogni elemento
 in uno o pochi passaggi, con tempo di aggiornamento molto basso e stato interno
 compatto. In generale, il calcolo esatto richiede memoria lineare nel numero di
 distinti osservati, di conseguenza non pu\`o scalare all'aumentare 
-degli elementi visti. In un contesto di dati in streaming,
-cio\'e che non c'\`e un limite di elementi, questa soluzione non pu\`o funzionare per questo motivo 
-si ricorre a utilizzare sketch randomizzati che seguono il modello di \emph{streaming probabilistico},
-che segue il modello $(\varepsilon,\delta)$.
+degli elementi visti. In un contesto in cui la stream può crescere senza un
+limite prefissato, questa soluzione non è praticabile. Per questo motivo si
+ricorre a sketch randomizzati con garanzie probabilistiche
+$(\varepsilon,\delta)$, già formalizzate nel Capitolo~\ref{chp:background}.
 
 Dal lato teorico, esistono algoritmi ottimali per il problema dei distinti che
 raggiungono spazio dell'ordine $O(\varepsilon^{-2}+\log n)$ (a fattori
@@ -35,6 +35,15 @@ $\varepsilon^{-2}$ è strutturale e non un artefatto implementativo
 \cite{Kane_Nelson_Woodruff_2010}. Questa cornice giustifica l'uso di famiglie
 algoritmiche in cui l'accuratezza cresce come $\Theta(1/\sqrt{m})$, dove $m$ è la
 memoria effettiva dello sketch.
+
+La Figura~1 di \cite{Kane_Nelson_Woodruff_2010} rende esplicito il salto
+rispetto allo stato precedente: i migliori risultati generali riportati prima
+dell'algoritmo ottimale avevano spazio
+$O\!\left(\varepsilon^{-2}(\log(1/\varepsilon)+\log\log n)+\log n\right)$ e
+tempo di update
+$O\!\left(\varepsilon^{-2}(\log(1/\varepsilon)+\log\log n)\right)$, mentre il
+risultato ottimale raggiunge spazio
+$O\!\left(\varepsilon^{-2}+\log n\right)$ bit e update/query in $O(1)$.
 
 \section{Sviluppo storico}
 La progressione storica degli algoritmi di cardinalità può essere vista come una
@@ -54,30 +63,65 @@ variante, chiamata \emph{Probabilistic Counting with Stochastic Averaging} (\tex
 partiziona la stream in più sottostream indipendenti tramite hash, riducendo la
 varianza rispetto a una singola statistica globale.
 
+\begin{definition}[PCSA]
+Sia $h:\mathcal{U}\rightarrow\{0,1\}^{L}$ una funzione di hash uniforme, con
+$L=w$ (lunghezza in bit del valore hash).
+Indicando con $\rho(y)$ la posizione del primo bit a 1 in $y$, vale:
+\[
+\rho(y)=\min\{r\geq 1: y_r=1\},
+\]
+e, sotto l'ipotesi di uniformità, la variabile $\rho(y)$ ha coda geometrica:
+\[
+\Pr[\rho(y)\geq t] = 2^{-(t-1)}.
+\]
+Questa proprietà è la base della stima di cardinalità: osservare valori grandi
+di $\rho$ diventa più probabile quando cresce il numero di distinti.
+Nel caso PCSA, la partizione in $m$ sottostream rende più stabile la stima
+rispetto alla versione FM con una sola statistica globale
+\cite{Flajolet_Martin_1985}.
+\end{definition}
+
 \begin{algorithm}[htbp]
-    \caption{PCSA}
+    \caption{PCSA (adapted from Fig. 1 in \cite{Flajolet_Martin_1985})}
     \label{alg:fm-pcsa}
     \begin{algorithmic}
-        \STATE Scegliere una hash $h: \mathcal{U}\rightarrow\{0,1\}^{L}$
-        \STATE Inizializzare $m$ bitmap $B_1,\dots,B_m$ a zero
-        \FOR{ogni elemento $x$ della stream}
+        \STATE Choose $m$ bitmaps $B[0],\dots,B[m-1]$ of length $L$, initialize all bits to $0$
+        \STATE Choose a hash function $h:\mathcal{U}\rightarrow\{0,1\}^{L}$ with $L$ large enough
+        \FOR{each element $x$ in the stream}
             \STATE $y \leftarrow h(x)$
-            \STATE $j \leftarrow$ indice sottostream (da un prefisso di $y$)
-            \STATE $w \leftarrow$ bit rimanenti di $y$
-            \STATE $r \leftarrow \rho(w)$ (posizione del primo 1, o numero di zeri iniziali $+1$)
-            \STATE Porre a 1 il bit $r$ nella bitmap $B_j$
+            \STATE $j \leftarrow y \bmod m$
+            \STATE $t \leftarrow \lfloor y/m \rfloor$
+            \STATE $r \leftarrow \rho(t)$
+            \STATE Set $B[j,r] \leftarrow 1$
         \ENDFOR
-        \FOR{$j=1$ \TO $m$}
-            \STATE $R_j \leftarrow$ indice del primo 0 nella bitmap $B_j$
+        \FOR{$j=0$ \TO $m-1$}
+            \STATE $R_j \leftarrow \textsc{FirstZero}(B[j])$
         \ENDFOR
-        \STATE Aggregare $R_1,\dots,R_m$ e applicare la costante di calibrazione del paper
-        \STATE Restituire la stima $\hat{F}_0$
+        \STATE $\bar{R} \leftarrow \frac{1}{m}\sum_{j=0}^{m-1} R_j$
+        \STATE $\hat{F}_0 \leftarrow \frac{m}{\phi}\cdot 2^{\bar{R}}$ with $\phi \approx 0.77351$
+        \STATE \textbf{return} $\hat{F}_0$
     \end{algorithmic}
 \end{algorithm}
 
 Nel paper originale vengono anche discussi bias, errore standard e modalità di
 uso pratico (numero di bitmap, correzioni per piccoli range, parallelizzazione)
 \cite{Flajolet_Martin_1985}.
+
+Nella forma PCSA del paper, la costante $\phi$ appare esplicitamente nel
+calibratore finale e l'errore relativo standard atteso è circa
+$0.78/\sqrt{m}$. Gli autori riportano anche ordini di grandezza pratici:
+con $m=64$ si ottiene tipicamente un errore intorno al $10\%$, mentre con
+$m=256$ si scende intorno al $5\%$ \cite{Flajolet_Martin_1985}.
+
+\paragraph{Complessità (formale).}
+Con $m$ bitmap di lunghezza $L$, lo spazio è
+\[
+S_{\text{PCSA}}(m,L)=\Theta(mL)\ \text{bit}.
+\]
+L'update richiede tempo $\Theta(1)$ per elemento. La query richiede
+$\Theta(mL)$ nel caso diretto (scansione per trovare il primo zero di ogni
+bitmap), oppure $\Theta(m)$ se si mantiene informazione ausiliaria sul primo
+zero per ciascuna bitmap.
 
 \subsection{LogLog}
 LogLog sostituisce la bitmap con un array di registri e applica
@@ -86,25 +130,73 @@ registro, mentre il suffisso determina il valore $\rho$ da propagare come
 massimo. La stima finale usa una media geometrica normalizzata
 \cite{Durand_Flajolet_2003}.
 
+\begin{definition}[LogLog]
+Sia $m=2^p$ il numero di registri. Per ogni elemento $x$ si calcola $y=h(x)$,
+si usa il prefisso di $p$ bit per selezionare il registro $j$, e il suffisso
+per calcolare $\rho(w)$.
+L'update è quindi:
+\[
+M[j] \leftarrow \max\{M[j],\rho(w)\}.
+\]
+Indicando con
+\[
+A=\frac{1}{m}\sum_{j=0}^{m-1} M[j],
+\]
+lo stimatore LogLog ha forma
+\[
+\hat{F}_0 = \alpha_m \cdot m \cdot 2^{A},
+\]
+dove $\alpha_m$ è una costante di calibrazione (asintoticamente circa $0.397$).
+L'errore relativo standard tipico è dell'ordine
+$\approx 1.30/\sqrt{m}$ \cite{Durand_Flajolet_2003}.
+
+La relazione con $F_0$ può essere letta anche in modo esplicito: il numero
+atteso di elementi che cadono in ciascun registro è circa $F_0/m$, quindi
+i massimi $M[j]$ tendono a concentrarsi attorno a $\log_2(F_0/m)$; la media
+dei registri fornisce quindi una stima logaritmica della cardinalità complessiva.
+\end{definition}
+
 \begin{algorithm}[htbp]
-    \caption{Schema LogLog (adattato da \cite{Durand_Flajolet_2003})}
+    \caption{LogLog (adapted from \cite{Durand_Flajolet_2003})}
     \label{alg:loglog}
     \begin{algorithmic}
-        \STATE Scegliere precisione $p$ e porre $m=2^p$
-        \STATE Inizializzare i registri $M[0],\dots,M[m-1] \leftarrow 0$
-        \FOR{ogni elemento $x$ della stream}
+        \STATE Choose precision $p$ and set $m=2^p$
+        \STATE Initialize registers $M[0],\dots,M[m-1]\leftarrow 0$
+        \FOR{each element $x$ in the stream}
             \STATE $y \leftarrow h(x)$
-            \STATE $j \leftarrow$ primi $p$ bit di $y$
-            \STATE $w \leftarrow$ bit rimanenti di $y$
+            \STATE $j \leftarrow \textsc{Prefix}_p(y)$
+            \STATE $w \leftarrow \textsc{Suffix}_{L-p}(y)$
             \STATE $M[j] \leftarrow \max\{M[j],\rho(w)\}$
         \ENDFOR
-        \STATE Calcolare la media geometrica dei registri e applicare la normalizzazione del paper
-        \STATE Restituire $\hat{F}_0$
+        \STATE $A \leftarrow \frac{1}{m}\sum_{j=0}^{m-1} M[j]$
+        \STATE $\hat{F}_0 \leftarrow \alpha_m \cdot m \cdot 2^A$
+        \STATE \textbf{return} $\hat{F}_0$
     \end{algorithmic}
 \end{algorithm}
 
 Il passaggio chiave rispetto a FM è che, a parità di memoria, la dispersione
 della stima si riduce sensibilmente grazie all'aggregazione su molti registri.
+
+\paragraph{Esempio.}
+Supponiamo $p=3$ ($m=8$). Se un hash produce prefisso $101$, viene aggiornato il
+registro $M[5]$. Se per il suffisso si ottiene $\rho(w)=4$ e prima
+$M[5]=2$, allora dopo l'update si ha $M[5]=4$. In questo modo ogni registro
+memorizza un massimo locale e l'aggregazione finale combina tali massimi in una
+stima globale.
+
+\paragraph{Complessità (formale).}
+Se ogni registro codifica valori in $[0,L-p+1]$, servono
+$\lceil\log_2(L-p+2)\rceil$ bit per registro. Quindi
+\[
+S_{\text{LogLog}}(m,L,p)=\Theta\!\bigl(m\log(L-p+2)\bigr)\ \text{bit}.
+\]
+L'update è $\Theta(1)$ per elemento e la query è $\Theta(m)$.
+
+\paragraph{Limiti pratici.}
+LogLog riduce nettamente la varianza rispetto a FM, ma resta sensibile alla
+costante di normalizzazione e alla qualità dell'hash. In particolare, quando
+la cardinalità è molto piccola rispetto a $m$, la stima tende ad avere bias
+maggiore rispetto alle varianti successive.
 
 \subsection{HyperLogLog}
 HyperLogLog (HLL) mantiene la stessa struttura a registri di LogLog ma cambia
@@ -113,34 +205,100 @@ ottiene una migliore analizzabilità e una costante di errore più favorevole.
 Il risultato classico è una deviazione standard relativa tipica
 $\mathrm{RSE}\approx 1.04/\sqrt{m}$ \cite{Flajolet_Fusy_Gandouet_Meunier_2007}.
 
+\begin{definition}[HyperLogLog]
+Definendo
+\[
+Z=\sum_{j=0}^{m-1}2^{-M[j]},
+\]
+la stima grezza di HLL è:
+\[
+E=\alpha_m\frac{m^2}{Z},
+\]
+con costanti pratiche
+\[
+\alpha_{16}=0.673,\qquad \alpha_{32}=0.697,\qquad \alpha_{64}=0.709,
+\]
+e per $m\ge 128$:
+\[
+\alpha_m \approx \frac{0.7213}{1+1.079/m}.
+\]
+
+La scelta della media armonica non è solo formale: attenua il peso dei registri
+con valori estremi e produce una stima più stabile rispetto a LogLog.
+Dal punto di vista statistico, la varianza scende mantenendo la stessa struttura
+di update, con un vantaggio diretto nel rapporto memoria/accuratezza.
+
+Nella variante pratica del paper, si applicano correzioni di range. Se $V_0$ è il
+numero di registri a zero:
+\[
+\hat{F}_0=
+\begin{cases}
+	m\log(m/V_0), & \text{se } E\le \frac{5}{2}m \text{ e } V_0>0 \\[2mm]
+	E, & \text{nel regime centrale} \\[2mm]
+	-2^{32}\log\!\left(1-\frac{E}{2^{32}}\right), & \text{nel regime vicino a }2^{32}.
+\end{cases}
+\]
+\end{definition}
+
 \begin{algorithm}[htbp]
-    \caption{Schema HLL pratico (adattato da \cite{Flajolet_Fusy_Gandouet_Meunier_2007})}
+    \caption{HyperLogLog (adapted from Fig. 3 in \cite{Flajolet_Fusy_Gandouet_Meunier_2007})}
     \label{alg:hll}
     \begin{algorithmic}
-        \STATE Scegliere precisione $p$, porre $m=2^p$, inizializzare $M[0..m-1]\leftarrow 0$
-        \FOR{ogni elemento $x$ della stream}
+        \STATE Choose precision $p$, set $m=2^p$, initialize $M[0..m-1]\leftarrow 0$
+        \FOR{each element $x$ in the stream}
             \STATE $y \leftarrow h(x)$
-            \STATE $j \leftarrow$ prefisso di $p$ bit di $y$
-            \STATE $w \leftarrow$ suffisso di $y$
+            \STATE $j \leftarrow \textsc{Prefix}_p(y)$
+            \STATE $w \leftarrow \textsc{Suffix}_{L-p}(y)$
             \STATE $M[j] \leftarrow \max\{M[j],\rho(w)\}$
         \ENDFOR
         \STATE $Z \leftarrow \sum_{j=0}^{m-1} 2^{-M[j]}$
-        \STATE $E \leftarrow \alpha_m m^2 / Z$ \quad (stima grezza)
-        \STATE $V \leftarrow$ numero di registri a zero
-        \IF{$E \leq \frac{5}{2}m$ e $V>0$}
-            \STATE $E^\star \leftarrow m\log(m/V)$ \quad (small-range, linear counting)
-        \ELSIF{$E$ è vicino al limite del dominio hash}
-            \STATE Applicare la large-range correction del paper
-        \ELSE
+        \STATE $E \leftarrow \alpha_m m^2 / Z$ \quad (raw estimate)
+        \IF{$E \leq \frac{5}{2}m$}
+            \STATE $V_0 \leftarrow$ number of registers equal to $0$
+            \IF{$V_0 \neq 0$}
+                \STATE $E^\star \leftarrow m\log(m/V_0)$
+            \ELSE
+                \STATE $E^\star \leftarrow E$
+            \ENDIF
+        \ELSIF{$E \leq \frac{1}{30}\cdot 2^{32}$}
             \STATE $E^\star \leftarrow E$
+        \ELSE
+            \STATE $E^\star \leftarrow -2^{32}\log(1-E/2^{32})$
         \ENDIF
-        \STATE Restituire $\hat{F}_0 \leftarrow E^\star$
+        \STATE \textbf{return} $\hat{F}_0 \leftarrow E^\star$
     \end{algorithmic}
 \end{algorithm}
 
 L'articolo del 2007 fornisce sia l'analisi asintotica, sia la variante pratica
 con correzioni di range, che costituisce il riferimento per implementazioni
 sperimentali riproducibili.
+
+\paragraph{Esempio.}
+Se $m=1024$ e dopo gli update molti registri restano nulli ($V_0$ grande), la
+stima $m\log(m/V_0)$ risulta più affidabile della stima grezza $E$. Quando la
+cardinalità cresce e i registri nulli diminuiscono, la stima entra nel regime
+centrale basato sulla media armonica.
+
+\paragraph{Complessità (formale).}
+Con $m=2^p$ registri, lo spazio è
+\[
+S_{\text{HLL}}(m,L,p)=\Theta\!\bigl(m\log(L-p+2)\bigr)\ \text{bit},
+\]
+che in pratica viene spesso implementato con registri di ampiezza fissa
+(tipicamente 5--6 bit).
+Il tempo di update è $\Theta(1)$ per elemento e la query è $\Theta(m)$.
+
+\paragraph{Ipotesi operative.}
+Le formule precedenti assumono parametrizzazione coerente dello sketch
+($m=2^p$), stessa definizione di $\rho$, e funzione di hash sufficientemente
+uniforme. In presenza di hash distorto, i registri non campionano più
+correttamente la stream e la stima può mostrare bias non trascurabile.
+
+Nel paper originale, la procedura è esplicitamente separata in due parti:
+\emph{raw estimator} e \emph{range correction}. Questa separazione è
+importante perché il comportamento asintotico (regime centrale) e quello ai
+bordi (cardinalità molto piccole o vicine al dominio hash) sono governati da
+meccanismi diversi \cite{Flajolet_Fusy_Gandouet_Meunier_2007}.
 
 \subsection{HyperLogLog++}
 HLL++ nasce come evoluzione ingegneristica di HLL in scenari industriali ad alta
@@ -152,31 +310,88 @@ scala. I miglioramenti principali sono:
     \item scelta adattiva tra linear counting e stima HLL corretta.
 \end{itemize}
 
+\begin{definition}[HyperLogLog++]
+La struttura mantiene la stessa regola di update di HLL sui registri, ma
+introduce due passaggi aggiuntivi: rappresentazione sparsa nelle cardinalità
+piccole e correzione empirica del bias.
+Indicando con $E$ la stima HLL grezza, la stima corretta è:
+\[
+E_{\mathrm{corr}} = E - \mathrm{bias}(E,p),
+\]
+dove il termine di bias è tabulato per ciascun livello di precisione $p$
+(interpolazione tra punti noti).
+La stima finale sceglie il ramo con errore atteso minore tra linear counting ed
+$E_{\mathrm{corr}}$ \cite{Heule_Nunkesser_Hall_2013}.
+
+Nel formato \emph{sparse}, lo sketch memorizza solo i registri non nulli
+(coppie indice-valore), riducendo spazio e costo costante nelle cardinalità
+piccole. Il passaggio a formato \emph{dense} avviene quando la rappresentazione
+sparsa non è più conveniente in memoria.
+
+La formulazione del paper usa due precisioni: $p$ per lo sketch \emph{dense} e
+$p'$ (con $p \le p' \le 64$) per la codifica \emph{sparse}; in questo modo lo
+stesso algoritmo può avere footprint molto ridotto quando la cardinalità è
+bassa, senza perdere compatibilità con la stima HLL nel regime normale
+\cite{Heule_Nunkesser_Hall_2013}.
+
+Le routine ausiliarie usate nel pseudocodice hanno significato preciso:
+\textsc{LinearCounting}$(m,V_0)=m\log(m/V_0)$ per $V_0>0$,
+\textsc{EstimateBias}$(E,p)$ applica l'interpolazione sulla tabella empirica del
+bias (nel paper con schema di nearest neighbors), e
+\textsc{Threshold}$(p)$ è la soglia empirica di switch tra i due rami di stima
+riportata in Figura~6 \cite{Heule_Nunkesser_Hall_2013}.
+Nel ramo \emph{sparse} la stessa formula di linear counting viene applicata con
+$m'=2^{p'}$ e con il numero di registri non nulli dedotto dalla sparse list.
+\end{definition}
+
 \begin{algorithm}[htbp]
-    \caption{Schema HLL++ (adattato da \cite{Heule_Nunkesser_Hall_2013})}
+    \caption{HyperLogLog++ (adapted from Fig. 6 in \cite{Heule_Nunkesser_Hall_2013})}
     \label{alg:hllpp}
     \begin{algorithmic}
-        \STATE Inizializzare struttura in formato \emph{sparse}
-        \FOR{ogni elemento $x$ della stream}
+        \STATE Input: stream $S$, precisions $p$ and $p'$ with $p \le p' \le 64$
+        \STATE $m \leftarrow 2^p$, \quad $m' \leftarrow 2^{p'}$
+        \STATE $\alpha_{16}\leftarrow 0.673$, $\alpha_{32}\leftarrow 0.697$, $\alpha_{64}\leftarrow 0.709$
+        \STATE $\alpha_m\leftarrow 0.7213/(1+1.079/m)$ for $m\ge 128$
+        \STATE Initialize sparse mode, temporary set, sparse list, and dense registers
+        \FOR{each element $x$ in $S$}
             \STATE $y \leftarrow h_{64}(x)$
-            \STATE Estrarre coppia $(j,\rho)$ da $y$
-            \IF{formato sparse}
-                \STATE Inserire/aggiornare la coppia codificata nella struttura sparsa
-                \IF{la struttura supera la soglia di memoria}
-                    \STATE Convertire in formato dense (registri)
+            \STATE Encode sparse value from $y$ using $(p,p')$
+            \IF{mode is sparse}
+                \STATE Insert encoded value in temporary set
+                \IF{temporary set is full ($|\text{temporary\_set}|\geq 0.25\cdot 2^{p'}$)}
+                    \STATE Merge temporary set into sparse list
+                \ENDIF
+                \IF{$|\text{sparse\_list}| > 6m$ bits}
+                    \STATE Convert sparse representation to dense registers
+                    \STATE mode $\leftarrow$ normal
                 \ENDIF
             \ELSE
+                \STATE Extract $(j,\rho)$ from $y$
                 \STATE $M[j] \leftarrow \max\{M[j],\rho\}$
             \ENDIF
         \ENDFOR
-        \IF{formato sparse e cardinalità stimata piccola}
-            \STATE Usare stima di linear counting
+        \IF{mode is sparse}
+            \STATE Merge temporary set into sparse list
+            \STATE \textbf{return} $\textsc{LinearCounting}(m',m'-|\text{sparse\_list}|)$
         \ELSE
-            \STATE Calcolare stima HLL grezza su registri
-            \STATE Applicare bias correction empirica
-            \STATE Applicare eventuali correzioni di range
+            \STATE $E \leftarrow \alpha_m m^2 \left(\sum_{j=0}^{m-1}2^{-M[j]}\right)^{-1}$
+            \IF{$E \leq 5m$}
+                \STATE $E' \leftarrow E-\textsc{EstimateBias}(E,p)$
+            \ELSE
+                \STATE $E' \leftarrow E$
+            \ENDIF
+            \STATE $V_0 \leftarrow$ number of registers equal to $0$
+            \IF{$V_0 \neq 0$}
+                \STATE $H \leftarrow \textsc{LinearCounting}(m,V_0)$
+            \ELSE
+                \STATE $H \leftarrow E'$
+            \ENDIF
+            \IF{$H \leq \textsc{Threshold}(p)$}
+                \STATE \textbf{return} $H$
+            \ELSE
+                \STATE \textbf{return} $E'$
+            \ENDIF
         \ENDIF
-        \STATE Restituire $\hat{F}_0$
     \end{algorithmic}
 \end{algorithm}
 
@@ -185,14 +400,51 @@ bensì una rifinitura sistematica di HLL per ridurre il bias pratico e migliorar
 l'accuratezza nelle cardinalità piccole e intermedie
 \cite{Heule_Nunkesser_Hall_2013}.
 
+Il paper specifica che \textsc{Threshold}$(p)$ è determinata empiricamente
+(tabulata per ogni precisione) e che le routine ausiliarie
+\textsc{Merge}/\textsc{ToNormal} sono parte essenziale della transizione
+sparse$\rightarrow$dense. Nella discussione implementativa, gli autori
+descrivono anche una strategia pratica in cui il \emph{temporary set} viene
+fuso periodicamente (ad esempio intorno al $25\%$ della capacità massima della
+rappresentazione sparsa) per mantenere efficiente la gestione degli inserimenti
+\cite{Heule_Nunkesser_Hall_2013}.
+
+\paragraph{Esempio.}
+Con $p=14$ ($m=16384$), per cardinalità piccole lo sketch può restare in formato
+sparse, riducendo la memoria effettiva. Superata una soglia, la struttura passa
+in dense e usa l'estimatore HLL corretto dal bias.
+
+\paragraph{Complessità (formale).}
+In modalità \emph{sparse}, lo spazio è
+$\Theta(|\text{sparse\_list}|)$ (in bit codificati) fino alla soglia di
+conversione; in modalità \emph{dense}, lo spazio è $\Theta(m)$ registri
+(spesso circa $6m$ bit in implementazioni pratiche).
+L'update è $\Theta(1)$ ammortizzato, con costo $\Theta(m)$ durante la
+conversione sparse$\rightarrow$dense. La query è
+$\Theta(|\text{sparse\_list}|)$ in sparse e $\Theta(m)$ in dense.
+
+\paragraph{Limiti e compromessi.}
+HLL++ riduce bias pratico, soprattutto nei range piccoli e intermedi, ma
+introduce maggiore complessità ingegneristica: soglie di switching, tabelle di
+correzione e doppia rappresentazione dello stato. Per questo motivo è
+importante distinguere sempre tra specifica teorica dell'estimatore e dettagli
+implementativi della variante ``in practice''.
+
 \section{Confronto sintetico tra gli approcci}
 La Tabella~\ref{tab:confronto-count-distinct} riassume le differenze principali
 tra gli algoritmi della linea storica.
 
+Dal punto di vista formale, la differenza principale non è l'ordine asintotico
+($\Theta(1/\sqrt{m})$ resta la scala dominante), ma la costante moltiplicativa
+dell'errore, il comportamento ai bordi di range e la robustezza in scenari
+reali dove hash, cardinalità e distribuzioni non sono ideali.
+
 \begin{table}[htbp]
     \centering
     \small
-    \begin{tabular}{|l|l|l|l|}
+    \setlength{\tabcolsep}{4pt}
+    \renewcommand{\arraystretch}{1.15}
+    \begin{tabular}{|p{2.2cm}|p{3.0cm}|p{5.7cm}|p{3.0cm}|}
         \hline
         Algoritmo & Stato dello sketch & Regola di stima & Ordine errore \\
         \hline
@@ -208,6 +460,11 @@ tra gli algoritmi della linea storica.
     \caption{Confronto ad alto livello tra i principali algoritmi count-distinct.}
     \label{tab:confronto-count-distinct}
 \end{table}
+
+Nella colonna ``Ordine errore'' si riporta l'andamento della RSE rispetto al
+numero di registri $m$ (non alla memoria totale in bit): l'ordine asintotico
+resta $\Theta(1/\sqrt{m})$, ma con costanti diverse (ad esempio $1.04$ per HLL)
+e con correzioni pratiche aggiuntive nel caso HLL++.
 
 La traiettoria evolutiva è quindi chiara: dalla robustezza concettuale di FM si
 passa a strutture a registri sempre più stabili, fino a HLL/HLL++, che
@@ -242,11 +499,33 @@ Una proprietà fondamentale degli sketch di cardinalità moderni è la
 della stream e combinarli in uno sketch globale senza dover rivedere i dati
 originali \cite{Agarwal_Cormode_Huang_Phillips_Wei_Yi_2012}.
 
-Per LogLog, HLL e HLL++, la regola di merge naturale è il massimo
-componente-per-componente dei registri:
+Per LogLog, HLL e HLL++, mantenendo la notazione del Capitolo~\ref{chp:background},
+la regola di merge naturale è:
 \[
-(M_1 \oplus M_2)[j] = \max\{M_1[j], M_2[j]\}.
+\bigl(\mathcal{K}(S_1)\oplus \mathcal{K}(S_2)\bigr)[j]
+=\max\{\mathcal{K}(S_1)[j],\mathcal{K}(S_2)[j]\}.
 \]
+
+\paragraph{Giustificazione formale.}
+Per ogni registro $j$, lo stato dello sketch di una stream $S$ contiene:
+\[
+\mathcal{K}(S)[j] = \max_{x\in S:\,j(x)=j}\rho(w(x)).
+\]
+Qui $j(x)$ è la funzione che mappa l'elemento $x$ nel registro selezionato dai
+primi $\log_2 m$ bit dell'hash, mentre $w(x)$ è il suffisso su cui si valuta
+$\rho$, in linea con le sezioni precedenti su LogLog e HLL.
+Se i due sketch sono costruiti con stessa parametrizzazione e stessa funzione
+di hash/seed, allora per ogni $j$:
+\[
+\mathcal{K}(S_1\!\cdot\! S_2)[j]
+=\max\!\left(\mathcal{K}(S_1)[j],\mathcal{K}(S_2)[j]\right).
+\]
+Quindi il merge registro-per-registro coincide con lo stato che si
+otterrebbe processando la concatenazione delle due stream:
+\[
+\mathcal{K}(S_1)\oplus\mathcal{K}(S_2)=\mathcal{K}(S_1\cdot S_2).
+\]
+
 Questa operazione è commutativa, associativa e idempotente, quindi è adatta a
 pipeline distribuite (albero, catena, map-reduce). Inoltre, a parità di
 parametri e funzione hash/seed, il risultato del merge è equivalente allo stato
@@ -256,3 +535,59 @@ Per FM/PCSA, la mergeabilità dipende dalla codifica dello stato: in forma bitma
 la combinazione è una OR componente-per-componente, mentre in forme basate su
 massimi si usa ancora il massimo per componente
 \cite{Flajolet_Martin_1985}.
+
+\section{Estensioni oltre il count-distinct}
+Oltre alla stima di $F_0$, il framework può trattare sketch con obiettivi
+diversi: stima di frequenze e query di membership.
+Riprendendo la notazione $(\varepsilon,\delta)$ e i simboli di memoria già
+introdotti nei capitoli precedenti, queste strutture mantengono la stessa
+impostazione metodologica: stato compatto, garanzie probabilistiche e trade-off
+esplicito tra precisione e spazio.
+Nel caso frequenze, $\varepsilon$ controlla un errore additivo
+$\varepsilon\|f\|_1$ con probabilità $1-\delta$; nel caso membership
+(Bloom filter), il trade-off è espresso soprattutto dalla probabilità di falso
+positivo $p_{\text{fp}}$, determinata da $m_{\text{bf}}$ e $k_{\text{bf}}$.
+
+\subsection{Count-Min Sketch (frequenze)}
+\begin{definition}[Count-Min Sketch]
+Il Count-Min Sketch mantiene una matrice di contatori
+$C\in\mathbb{N}^{d\times w_{\text{cm}}}$ e $d$ funzioni di hash
+$h_1,\dots,h_d:[n]\to[w_{\text{cm}}]$. Per ogni update dell'elemento $x$,
+si incrementa $C[j,h_j(x)]$ per ogni riga $j$; la stima puntuale è
+\[
+\hat f(x)=\min_{j\in[d]} C[j,h_j(x)].
+\]
+Per $w_{\text{cm}}=\lceil e/\varepsilon\rceil$ e
+$d=\lceil\ln(1/\delta)\rceil$, vale con probabilità almeno $1-\delta$:
+\[
+f(x)\le \hat f(x)\le f(x)+\varepsilon\|f\|_1.
+\]
+dove $\|f\|_1$ è la somma delle frequenze (lunghezza della stream).
+\cite{Cormode_CountMinSketch_Encyclopedia}
+\end{definition}
+
+\paragraph{Complessità (formale).}
+Lo spazio è $\Theta(d\,w_{\text{cm}})$ contatori, quindi
+$\Theta(d\,w_{\text{cm}}\log\|f\|_1)$ bit con contatori interi standard.
+Update e query puntuale costano $\Theta(d)=\Theta(\log(1/\delta))$.
+La mergeabilità è per somma componente-per-componente di matrici compatibili.
+
+\subsection{Bloom Filter (membership)}
+\begin{definition}[Bloom Filter]
+Un Bloom filter è un array di $m_{\text{bf}}$ bit con $k_{\text{bf}}$ hash.
+L'inserimento di $x$ imposta a 1 le celle
+$B[h_1(x)],\dots,B[h_{k_{\text{bf}}}(x)]$; la query di membership risponde
+``presente'' se tutte queste celle valgono 1.
+La struttura non produce falsi negativi, ma può produrre falsi positivi con
+probabilità approssimativa
+\[
+p_{\text{fp}}\approx\left(1-e^{-k_{\text{bf}}n_{\text{ins}}/m_{\text{bf}}}\right)^{k_{\text{bf}}},
+\]
+con $n_{\text{ins}}$ numero di elementi inseriti nel filtro.
+\cite{Bloom_1970,Agarwal_Trachtenberg_2006}
+\end{definition}
+
+\paragraph{Complessità (formale).}
+Lo spazio è esattamente $m_{\text{bf}}$ bit. Update e query costano
+$\Theta(k_{\text{bf}})$. La mergeabilità, a parità di parametri e hash, è la
+OR bit-a-bit.

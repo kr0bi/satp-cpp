@@ -571,6 +571,27 @@ rendendo tali metodi adatti a scenari distribuiti \cite{Flajolet_Fusy_Gandouet_M
 Il Capitolo~3 riprende questa linea evolutiva confrontando, per ogni algoritmo,
 la struttura dello sketch e i meccanismi di correzione dell'errore.
 
+\section{Altri obiettivi di sketching}
+Sebbene il focus principale della tesi sia il count-distinct, il framework è
+pensato per includere anche sketch con obiettivi diversi.
+
+\begin{definition}[Stima di frequenza puntuale]
+Dato un elemento $a\in\mathcal{U}$, una query di frequenza restituisce una stima
+$\hat f(a)$ della frequenza reale $f(a)$. Nei metodi approssimati, la garanzia è
+tipicamente espressa come errore additivo controllato con probabilità alta.
+\end{definition}
+
+\begin{definition}[Membership approssimata]
+Data una chiave $x$, una query di membership decide se $x$ appartiene
+all'insieme osservato. Le strutture approssimate sono spesso progettate per non
+produrre falsi negativi, accettando una probabilità controllata di falsi
+positivi.
+\end{definition}
+
+Nel Capitolo~3, oltre alla famiglia FM$\to$HLL++, verranno quindi introdotti
+anche Count-Min Sketch per frequenze e Bloom filter per membership
+\cite{Cormode_CountMinSketch_Encyclopedia,Bloom_1970,Agarwal_Trachtenberg_2006}.
+
 
 \section{Spazio e accuratezza}
 Analizzando algoritmi di streaming per il count-distinct, è importante

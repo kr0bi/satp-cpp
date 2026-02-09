@@ -11,19 +11,33 @@ In questa sezione si raccolgono le notazioni utilizzate nel resto della tesi.
     \item $S_1 \cdot S_2$: concatenazione di due stream.
     \item $n = |\mathcal{U}|$: dimensione dell'universo.
     \item $f(a)$: frequenza di $a \in \mathcal{U}$.
+    \item $f \in \mathbb{N}^{|\mathcal{U}|}$: vettore delle frequenze (componenti $f(a)$).
+    \item $\|f\|_1 = \sum_{a\in\mathcal{U}} f(a)$: lunghezza totale della stream.
     \item $F_k$: frequency moments.
     \item $F_0$: numero di distinti nella stream.
     \item $\hat{F}_0$: stima di $F_0$ prodotta da un algoritmo.
     \item $\bar{F}_0$: media dei valori veri su $R$ run.
     \item $\bar{\hat{F}}_0$: media delle stime su $R$ run.
     \item $(\varepsilon,\delta)$: parametri di accuratezza; $\varepsilon$ è l'errore relativo ammesso e $1-\delta$ è la probabilità di successo.
-    \item $m$: memoria dello sketch (tipicamente espressa in bit).
+    \item $m$: memoria dello sketch (tipicamente espressa in bit); nelle sezioni su LogLog/HLL/HLL++ il numero di registri è indicato anch'esso con $m=2^p$, quindi lo spazio complessivo dipende anche dalla larghezza di ciascun registro.
     \item $M$: stato interno dell'algoritmo di streaming (lo sketch).
     \item $\mathcal{K}(\cdot)$: procedura che costruisce uno sketch da una stream.
     \item $V$: dominio di uscita di una funzione di hash.
     \item $h:\mathcal{U}\to V$: funzione di hash.
     \item $\mathcal{H}$: famiglia di funzioni di hash.
+    \item $L$: lunghezza in bit del valore hash (nel Capitolo 3 si assume $L=w$).
     \item $w$: numero di bit del valore hash (se $V=\{0,1\}^w$).
+    \item $p$: parametro di precisione; tipicamente $m=2^p$.
+    \item $p'$: precisione usata nella rappresentazione sparsa di HLL++.
+    \item $\rho(\cdot)$: posizione del primo bit a 1 nel suffisso hash.
+    \item $\alpha_m$: costante di normalizzazione dipendente da $m$.
+    \item $\phi$: costante di calibrazione di PCSA ($\phi\approx 0.77351$).
+    \item $V_0$: numero di registri a zero (in HLL/HLL++).
+    \item $w_{\text{cm}}$: numero di colonne nel Count-Min Sketch.
+    \item $d$: numero di righe/funzioni hash nel Count-Min Sketch.
+    \item $m_{\text{bf}}$: numero di bit del Bloom filter.
+    \item $k_{\text{bf}}$: numero di funzioni hash del Bloom filter.
+    \item $n_{\text{ins}}$: numero di elementi inseriti in un Bloom filter.
     \item $\mathcal{S}$: spazio degli stati di uno sketch.
     \item $\oplus$: operatore di merge tra stati di sketch.
     \item $R$: numero di run (ripetizioni) sperimentali.
