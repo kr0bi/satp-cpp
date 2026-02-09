@@ -50,6 +50,7 @@ A_{t-1}[j] + \Delta_t & \text{se } a_t = j,\\
 A_{t-1}[j] & \text{altrimenti}.
 \end{cases}
 \]
+con inizializzazione $A_0[j]=0$ per ogni $j \in \mathcal{U}$.
 \end{definition}
 Se la stream è una lista di valori, ogni elemento $x_i$ può essere visto come
 un aggiornamento $(x_i,1)$.
@@ -90,7 +91,9 @@ produce una stima $\hat{F}_0$ tale che
 \Pr\bigl(|\hat{F}_0 - F_0| \le \varepsilon F_0\bigr) \ge 1 - \delta,
 \]
 dove la probabilità è rispetto alla randomizzazione interna dell'algoritmo
-\cite{BarYossef_Jayram_Kumar_Sivakumar_Trevisan_2002}.
+\cite{BarYossef_Jayram_Kumar_Sivakumar_Trevisan_2002}. La forma relativa è
+intesa per $F_0>0$; nel caso $F_0=0$ si richiede, in modo naturale,
+$\Pr(\hat{F}_0=0)\ge 1-\delta$.
 \end{definition}
 \paragraph{Esempio.}
 Con $\varepsilon = 0{,}05$ e $\delta = 0{,}01$, l'algoritmo deve restituire una stima
@@ -369,6 +372,7 @@ Con queste condizioni, lo sketch ottenuto dal merge coincide con quello
 costruito processando la concatenazione delle due stream.
 
 \section{Stimatori}
+\label{sec:stimatori}
 In statistica, uno \emph{stimatore} è una funzione dei
 dati osservati che restituisce una stima di un parametro d'interesse. Nel
 contesto dello streaming dei dati, la stima dipende sia dalla stream osservata sia dalla
@@ -479,7 +483,7 @@ eliminano necessariamente la varianza, ma migliorano l'accuratezza media.
 
 \section{Metriche di errore}
 A seguire vengono definite le metriche usate per valutare empiricamente gli
-stimatori del Capitolo~2.5. Vengono fatte $R$ esecuzioni indipendenti, chiamate \textit{run}, con
+stimatori della Sezione~\ref{sec:stimatori}. Vengono fatte $R$ esecuzioni indipendenti, chiamate \textit{run}, con
 stime $\hat{F}_0^{(r)}$ e valori veri $F_0^{(r)}$.
 
 Per una singola run $r$ vengono calcolati l'errore di stima, il suo valore assoluto e l'errore relativo:
@@ -499,11 +503,12 @@ distinti:
 \bar{F}_0 = \frac{1}{R}\sum_{r=1}^{R} F_0^{(r)}, \qquad
 \bar{\hat{F}}_0 = \frac{1}{R}\sum_{r=1}^{R} \hat{F}_0^{(r)}.
 \]
-La \emph{varianza campionaria} delle stime è
+Nel seguito distinguiamo la varianza teorica $\mathrm{Var}(\hat{F}_0)$ dalla
+\emph{varianza campionaria} delle run sperimentali:
 \[
-Var(\hat{F}_0) = \frac{1}{R-1}\sum_{r=1}^{R}\bigl(\hat{F}_0^{(r)}-\bar{\hat{F}}_0\bigr)^2,
+\widehat{\mathrm{Var}}(\hat{F}_0) = \frac{1}{R-1}\sum_{r=1}^{R}\bigl(\hat{F}_0^{(r)}-\bar{\hat{F}}_0\bigr)^2,
 \qquad
-\sigma=\sqrt{Var}.
+\widehat{\sigma}=\sqrt{\widehat{\mathrm{Var}}(\hat{F}_0)}.
 \]
 Come per l'errore, viene stimato il bias, il suo valore assoluto e il suo errore relativo:
 \[
@@ -530,10 +535,13 @@ presentati nella sezione precedente.
 
 La \emph{RSE osservata} è stimata come
 \[
-\mathrm{RSE}_{\text{obs}}=\frac{\sigma}{\bar{F}_0}.
+\mathrm{RSE}_{\text{obs}}=\frac{\widehat{\sigma}}{\bar{F}_0}.
 \]
+Questa formula è valida per $\bar{F}_0>0$. Se la cardinalità media è nulla,
+anche la deviazione standard campionaria risulta nulla e la RSE osservata viene
+posta convenzionalmente a $0$.
 Quando il valore vero è lo stesso in tutte le run ($F_0^{(r)}\equiv F_0$),
-questa definizione si riduce a $\sigma/F_0$. Quando disponibile, si
+questa definizione si riduce a $\widehat{\sigma}/F_0$. Quando disponibile, si
 confronta l'RSE osservata con una \emph{RSE teorica} fornita dalla letteratura
 (ad esempio formule del tipo $c/\sqrt{m}$), per verificare la coerenza tra
 predizioni teoriche e risultati sperimentali.

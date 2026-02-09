@@ -441,10 +441,10 @@ reali dove hash, cardinalità e distribuzioni non sono ideali.
 
 \begin{table}[htbp]
     \centering
-    \small
-    \setlength{\tabcolsep}{4pt}
+    \scriptsize
+    \setlength{\tabcolsep}{3pt}
     \renewcommand{\arraystretch}{1.15}
-    \begin{tabular}{|p{2.2cm}|p{3.0cm}|p{5.7cm}|p{3.0cm}|}
+    \begin{tabular}{|p{1.8cm}|p{2.3cm}|p{4.5cm}|p{2.2cm}|}
         \hline
         Algoritmo & Stato dello sketch & Regola di stima & Ordine errore \\
         \hline
@@ -466,10 +466,38 @@ numero di registri $m$ (non alla memoria totale in bit): l'ordine asintotico
 resta $\Theta(1/\sqrt{m})$, ma con costanti diverse (ad esempio $1.04$ per HLL)
 e con correzioni pratiche aggiuntive nel caso HLL++.
 
+Per completezza, riportiamo anche in forma tabellare i risultati comparativi
+della Figura~1 di \cite{Kane_Nelson_Woodruff_2010} sulle complessità
+teoriche degli approcci per il problema dei distinti.
+
+\begin{table}[htbp]
+    \centering
+    \scriptsize
+    \setlength{\tabcolsep}{3pt}
+    \renewcommand{\arraystretch}{1.1}
+    \begin{tabular}{|p{2.9cm}|p{3.2cm}|p{2.9cm}|p{1.9cm}|}
+        \hline
+        Algoritmo (fonte) & Space & Update Time & Note \\
+        \hline
+        \shortstack[l]{Probabilistic Counting\\(FM) \cite{Flajolet_Martin_1985}} & $O(\log n)$ & -- & Random oracle, $\varepsilon$ costante \\
+        \hline
+        \shortstack[l]{LogLog\\\cite{Durand_Flajolet_2003}} & $O(\varepsilon^{-2}\log\log n + \log n)$ & -- & Random oracle, errore additivo \\
+        \hline
+        \shortstack[l]{HyperLogLog\\\cite{Flajolet_Fusy_Gandouet_Meunier_2007}} & $O(\varepsilon^{-2}\log\log n + \log n)$ & -- & Random oracle, errore additivo \\
+        \hline
+    \end{tabular}
+    \caption{Confronto delle complessità per la stima dei distinti, riportato da Figura~1 in \cite{Kane_Nelson_Woodruff_2010}.}
+    \label{tab:knw-figure1}
+\end{table}
+
 La traiettoria evolutiva è quindi chiara: dalla robustezza concettuale di FM si
 passa a strutture a registri sempre più stabili, fino a HLL/HLL++, che
 rappresentano oggi il punto di riferimento pratico per il rapporto
 spazio-accuratezza.
+
+La tabella precedente evidenzia anche che, a parità di ordine asintotico
+dominante, le differenze pratiche dipendono molto dalla gestione dei regimi di
+cardinalità e della correzione del bias.
 
 \section{Correzioni di range e riduzione del bias}
 Nel confronto tra algoritmi non basta riportare una formula di stima grezza;
@@ -552,7 +580,7 @@ positivo $p_{\text{fp}}$, determinata da $m_{\text{bf}}$ e $k_{\text{bf}}$.
 \begin{definition}[Count-Min Sketch]
 Il Count-Min Sketch mantiene una matrice di contatori
 $C\in\mathbb{N}^{d\times w_{\text{cm}}}$ e $d$ funzioni di hash
-$h_1,\dots,h_d:[n]\to[w_{\text{cm}}]$. Per ogni update dell'elemento $x$,
+$h_1,\dots,h_d:\mathcal{U}\to[w_{\text{cm}}]$. Per ogni update dell'elemento $x$,
 si incrementa $C[j,h_j(x)]$ per ogni riga $j$; la stima puntuale è
 \[
 \hat f(x)=\min_{j\in[d]} C[j,h_j(x)].

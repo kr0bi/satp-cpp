@@ -1,0 +1,13 @@
+# Fdb version 4
+["pdflatex"] 1770678201.8306 "thesis/dissertation.tex" "dissertation.pdf" "dissertation" 1770678201.9555 2
+  "/usr/local/texlive/2025/texmf-dist/web2c/texmf.cnf" 1739380943 42148 61becc7c670cd061bb319c643c27fdd4 ""
+  "/usr/local/texlive/2025/texmf-var/web2c/pdftex/pdflatex.fmt" 1766482825 3345745 689d2f9141b0af671d1a02bb03239018 ""
+  "/usr/local/texlive/2025/texmf.cnf" 1741450484 577 418a7058ec8e006d8704f60ecd22c938 ""
+  "Dissertate.cls" 0 -1 0 ""
+  "dissertation.aux" 1770678201.83018 32 3985256e7290058c681f74d7a3565a19 "pdflatex"
+  "thesis/dissertation.tex" 1770573884.44283 972 b1312e2153daefa0a8b29c687162a66a ""
+  (generated)
+  "dissertation.aux"
+  "dissertation.log"
+  "dissertation.pdf"
+  (rewritten before read)

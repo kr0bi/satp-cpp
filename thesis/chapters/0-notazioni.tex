@@ -11,6 +11,9 @@ In questa sezione si raccolgono le notazioni utilizzate nel resto della tesi.
     \item $S_1 \cdot S_2$: concatenazione di due stream.
     \item $n = |\mathcal{U}|$: dimensione dell'universo.
     \item $f(a)$: frequenza di $a \in \mathcal{U}$.
+    \item $(a_t,\Delta_t)$: aggiornamento al tempo $t$, con chiave $a_t$ e incremento $\Delta_t$.
+    \item $A_t[j]$: frequenza dell'elemento $j$ dopo i primi $t$ aggiornamenti.
+    \item $A_0[j]=0$: condizione iniziale del modello insertion-only.
     \item $f \in \mathbb{N}^{|\mathcal{U}|}$: vettore delle frequenze (componenti $f(a)$).
     \item $\|f\|_1 = \sum_{a\in\mathcal{U}} f(a)$: lunghezza totale della stream.
     \item $F_k$: frequency moments.
@@ -30,6 +33,8 @@ In questa sezione si raccolgono le notazioni utilizzate nel resto della tesi.
     \item $p$: parametro di precisione; tipicamente $m=2^p$.
     \item $p'$: precisione usata nella rappresentazione sparsa di HLL++.
     \item $\rho(\cdot)$: posizione del primo bit a 1 nel suffisso hash.
+    \item $j(x)$: indice del registro selezionato dai $\log_2 m$ bit più significativi di $h(x)$.
+    \item $w(x)$: suffisso di $h(x)$ usato per calcolare $\rho(w(x))$ nel registro $j(x)$.
     \item $\alpha_m$: costante di normalizzazione dipendente da $m$.
     \item $\phi$: costante di calibrazione di PCSA ($\phi\approx 0.77351$).
     \item $V_0$: numero di registri a zero (in HLL/HLL++).
@@ -42,8 +47,11 @@ In questa sezione si raccolgono le notazioni utilizzate nel resto della tesi.
     \item $\oplus$: operatore di merge tra stati di sketch.
     \item $R$: numero di run (ripetizioni) sperimentali.
     \item $\sigma$: deviazione standard campionaria delle stime.
+    \item $\widehat{\mathrm{Var}}(\hat{F}_0)$: varianza campionaria delle stime su $R$ run.
+    \item $\widehat{\sigma}$: deviazione standard campionaria (\(\widehat{\sigma}=\sqrt{\widehat{\mathrm{Var}}(\hat{F}_0)}\)).
     \item $\mathrm{RE}$: errore relativo.
     \item $\mathrm{RSE}$: relative standard error.
+    \item $\mathrm{RSE}_{\text{obs}}$: relative standard error osservata, definita come \(\widehat{\sigma}/\bar{F}_0\).
     \item $\mathrm{Bias}(\hat{\theta})$: bias di uno stimatore.
     \item $\mathrm{Var}(\hat{\theta})$: varianza di uno stimatore.
     \item $\widehat{\mathrm{Bias}}(\hat{F}_0)$: stima empirica del bias su $R$ run.
