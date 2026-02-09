@@ -8,14 +8,18 @@ In questa sezione si raccolgono le notazioni utilizzate nel resto della tesi.
 \begin{itemize}
     \item $\mathcal{U}$: universo degli elementi.
     \item $S = \langle x_1, \dots, x_s \rangle$: stream di dati.
+    \item $S_1 \cdot S_2$: concatenazione di due stream.
     \item $n = |\mathcal{U}|$: dimensione dell'universo.
     \item $f(a)$: frequenza di $a \in \mathcal{U}$.
     \item $F_k$: frequency moments.
     \item $F_0$: numero di distinti nella stream.
     \item $\hat{F}_0$: stima di $F_0$ prodotta da un algoritmo.
+    \item $\bar{F}_0$: media dei valori veri su $R$ run.
+    \item $\bar{\hat{F}}_0$: media delle stime su $R$ run.
     \item $(\varepsilon,\delta)$: parametri di accuratezza; $\varepsilon$ è l'errore relativo ammesso e $1-\delta$ è la probabilità di successo.
-    \item $m$: memoria dello sketch (in bit o in byte).
+    \item $m$: memoria dello sketch (tipicamente espressa in bit).
     \item $M$: stato interno dell'algoritmo di streaming (lo sketch).
+    \item $\mathcal{K}(\cdot)$: procedura che costruisce uno sketch da una stream.
     \item $V$: dominio di uscita di una funzione di hash.
     \item $h:\mathcal{U}\to V$: funzione di hash.
     \item $\mathcal{H}$: famiglia di funzioni di hash.
@@ -24,10 +28,14 @@ In questa sezione si raccolgono le notazioni utilizzate nel resto della tesi.
     \item $\oplus$: operatore di merge tra stati di sketch.
     \item $R$: numero di run (ripetizioni) sperimentali.
     \item $\sigma$: deviazione standard campionaria delle stime.
+    \item $\mathrm{RE}$: errore relativo.
+    \item $\mathrm{RSE}$: relative standard error.
     \item $\mathrm{Bias}(\hat{\theta})$: bias di uno stimatore.
     \item $\mathrm{Var}(\hat{\theta})$: varianza di uno stimatore.
-    \item $\widehat{\mathrm{Bias}}(\hat{\theta})$: stima empirica del bias.
+    \item $\widehat{\mathrm{Bias}}(\hat{F}_0)$: stima empirica del bias su $R$ run.
+    \item $\mathrm{AB}$: absolute bias.
     \item $\mathrm{RB}$: relative bias.
     \item $\mathrm{MRE}$: mean relative error.
-    \item $\mathrm{AB}$: absolute bias.
+    \item $\mathrm{MAE}$: mean absolute error.
+    \item $\mathrm{RMSE}$: root mean squared error.
 \end{itemize}
