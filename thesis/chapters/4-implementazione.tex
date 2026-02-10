@@ -1,25 +1,13 @@
-%!TEX root = ../dissertation.tex
-
 \chapter{Implementazione}
 \label{chp:implementazione}
+In questo capitolo viene definito come gli algoritmi definiti nel capitolo \ref{chp:stato-arte} 
+sono stati implementati all'interno di un framework in \texttt{C++}.
+Il framework ha come scopo quello di permettere allo sviluppatore/ricercatore di implementare dei nuovi algoritmi
+di sketching, inizialmente per il problema del \textit{count distinct}, poi eventualmente generalizzato e ottenere
+in automatico dei test robusti sulla valutazione degli algoritmi, potendoli comparare empiricamente.
 
+\section{Dataset}
 \section{Algoritmi}
 
 \section{Framework di benchmark}
 
-Example of \autoref{alg:1} reference.
-
-\begin{algorithm}
-    \caption{Pseudocode}
-    \label{alg:1}
-    \begin{algorithmic}
-        \STATE $i\gets 10$
-        \IF {$i\geq 5$} 
-          \STATE $i\gets i-1$
-        \ELSE
-          \IF {$i\leq 3$}
-            \STATE $i\gets i+2$
-          \ENDIF
-        \ENDIF 
-    \end{algorithmic}
-\end{algorithm}
