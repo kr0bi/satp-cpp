@@ -6,42 +6,63 @@ Il framework ha come scopo quello di permettere allo sviluppatore/ricercatore di
 di sketching, inizialmente per il problema del \textit{count distinct}, poi eventualmente generalizzato e ottenere
 in automatico dei test robusti sulla valutazione degli algoritmi, potendoli comparare empiricamente.
 
-\section{Architettura Software}
+\section{Architettura del framework}
+\subsection{Panoramica dei componenti}
 Algoritmi in C++
-
-Dataset in Python
-
+Pipeline di sperimentazione: generazione/preprocessing → partizionamento → input al runner C++ → loop algoritmi → metriche → output CSV.
 Scrittura dei dataset tramite script python ed eventuale partizionamento pre-fatto
 
+\subsection{Flusso end-to-end di un esperimento}
 Il framework scritto in c++ prende direttamente il file di input con le sue partizioni ed esegue tutti gli algoritmi
 identificati in loop prendendo le eventuali misurazioni del caso.
+\subsection{Scelte progettuali}
 
-Volendo idea: sarebbe da prendere i dati in una stream continua e fare misurazione real-time di quello che
-accade, ovviamente non si puo' sapere il valore esatto in questo caso.
-
-Pero' si potrebbe invece fare che la stream esiste gia' pero' vengono dati un valore alla volta, in modo tale
-da avere effettivamente i valori.
-
-Pensare anche all'implementazione di un sistema reale di streaming di dati come Apache Kafka.
 
 \section{Dataset}
-\subsection{Generazione dataset}
-\subsection{Generazione partizioni}
+Qua verra' discussa come i dati vengono generati e gestiti.
+\subsection{Origine dei dati, formati e parsing}
+\subsection{Generazione e partizionamento}
 
-\section{Interfacce e componenti comuni}
+\section{Componenti comuni}
+Qua verra' descritti gli elementi comuni di ogni algoritmo implementato
 \subsection{Interfaccia Algorithm}
+Operazioni supportate all'interno di un algoritmo
 \subsection{Hashing}
+Algoritmo / algoritmi di hashing supportati
+\subsection{Misure di memoria e serializzazione}
 
 \section{Algoritmi}
+Qua verra' descritto come e' stato implementato ogni singolo algoritmo
+Parametri esposti
+Stato interno e layout memoria (footprint)
+Update (costo e operazioni chiave)
+Query (formula usata, correzioni applicate)
+Merge (se supportato) + prerequisiti (seed/parametri)
+Note pratiche (range, saturazioni, edge-case)
+
 \subsection{Naive Counting}
 \subsection{Probabilistic Counting}
+Parametri e come e' stato implementato e core del codice importante
 \subsection{LogLog}
+Parametri e come e' stato implementato e core del codice importante
 \subsection{HyperLogLog}
+Parametri e come e' stato implementato e core del codice importante
 \subsection{HyperLogLog++}
+Parametri e come e' stato implementato e core del codice importante
 
 \subsection{CountMin Sketch}
+Parametri e come e' stato implementato e core del codice importante
 
 \subsection{Bloom Filter}
+Parametri e come e' stato implementato e core del codice importante
 
 \section{Framework di benchmark}
-\subsection{Statistiche misurate}
+Descrizione del framework di benchmark, come funziona, quale e' il flusso
+\subsection{CLI e configurazione parametri}
+Operazioni da CLI che si possono fare all'interno del framework
+\subsection{Protocollo sperimentale}
+\subsection{Metriche misurate}
+Come sono state implementate le statistiche che sono state descritte all'interno del capitolo \ref{chp:stato-arte}
+\subsection{Formato output e organizzazione dei risultati}
+Come vengono visualizzati i risultati per ogni run degli algoritmi, dove vengono salvati?
+Come vengono visti?
