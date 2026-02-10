@@ -14,7 +14,6 @@ add_library(satp STATIC ${SRC_FILES}
         src/satp/algorithms/LogLog.h
         src/satp/algorithms/HyperLogLog.cpp
         src/satp/algorithms/HyperLogLog.h
-        src/satp/io/FileNaming.h
         src/satp/algorithms/HyperLogLogPlusPlus.cpp
         src/satp/algorithms/HyperLogLogPlusPlus.h
         src/satp/algorithms/hllpp_tables.h

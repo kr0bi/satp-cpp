@@ -6,9 +6,31 @@ Il framework ha come scopo quello di permettere allo sviluppatore/ricercatore di
 di sketching, inizialmente per il problema del \textit{count distinct}, poi eventualmente generalizzato e ottenere
 in automatico dei test robusti sulla valutazione degli algoritmi, potendoli comparare empiricamente.
 
-\section{Dataset}
+\section{Architettura Software}
+Algoritmi in C++
 
-\section{Interfaccia Algorithm}
+Dataset in Python
+
+Scrittura dei dataset tramite script python ed eventuale partizionamento pre-fatto
+
+Il framework scritto in c++ prende direttamente il file di input con le sue partizioni ed esegue tutti gli algoritmi
+identificati in loop prendendo le eventuali misurazioni del caso.
+
+Volendo idea: sarebbe da prendere i dati in una stream continua e fare misurazione real-time di quello che
+accade, ovviamente non si puo' sapere il valore esatto in questo caso.
+
+Pero' si potrebbe invece fare che la stream esiste gia' pero' vengono dati un valore alla volta, in modo tale
+da avere effettivamente i valori.
+
+Pensare anche all'implementazione di un sistema reale di streaming di dati come Apache Kafka.
+
+\section{Dataset}
+\subsection{Generazione dataset}
+\subsection{Generazione partizioni}
+
+\section{Interfacce e componenti comuni}
+\subsection{Interfaccia Algorithm}
+\subsection{Hashing}
 
 \section{Algoritmi}
 \subsection{Naive Counting}

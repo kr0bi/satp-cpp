@@ -302,7 +302,6 @@
 	  \textit{Relatore} \hfill \textit{Laureando Magistrale}\\
 	  \vspace{1pt}
 	  \@advisor \hfill \@author\\
-	  \@university \\
 	  \vspace{6pt}
 	\hfill \textit{Matricola}\\
 	  \hfill \@studentId \\
