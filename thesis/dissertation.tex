@@ -2,11 +2,29 @@
 %!TEX encoding = UTF-8 Unicode
 
 \documentclass{Dissertate}
+\usepackage[italian]{babel}
 \usepackage{wrapfig}
 \usepackage{amsthm}
 \theoremstyle{definition}
 \newtheorem{definition}{Def.}[chapter]
+\addto\captionsitalian{%
+    \renewcommand{\contentsname}{Indice}%
+    \renewcommand{\listfigurename}{Elenco delle figure}%
+    \renewcommand{\listtablename}{Elenco delle tabelle}%
+    \renewcommand{\bibname}{Bibliografia}%
+}
+\selectlanguage{italian}
+\floatname{algorithm}{Algoritmo}
+\renewcommand{\algorithmautorefname}{Algoritmo}
 \captionsetup{labelfont=bf, textfont=normalfont, font=small}
+
+\renewcommand{\acknowledgments}{
+    \phantomsection
+    \chapter*{Ringraziamenti}
+    \noindent
+    \input{frontmatter/thanks}
+    \vspace*{\fill} \newpage
+}
 \begin{document}
 
     % the front matter
@@ -27,12 +45,12 @@
     % afterword
     \cleardoublepage
     \phantomsection
-    \addcontentsline{toc}{chapter}{References}
+    \addcontentsline{toc}{chapter}{Bibliografia}
     \bibliography{references.bib}
     
     \cleardoublepage
     \phantomsection
-    \addcontentsline{toc}{chapter}{Acknowledgments}
+    \addcontentsline{toc}{chapter}{Ringraziamenti}
     \acknowledgments
 
 \end{document}

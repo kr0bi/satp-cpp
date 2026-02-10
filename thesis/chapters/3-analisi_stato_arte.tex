@@ -5,7 +5,7 @@ Nel capitolo \ref{chp:background} abbiamo definito le nozioni necessarie
 collegate agli \textit{algoritmi di streaming}, in questo capitolo
 analizzeremo lo \textit{stato dell'arte} degli algoritmi
 per la stima di $F_0$ (il numero di elementi distinti). L'obiettivo è
-ricostruire la linea evolutiva degli approcci classici e chiarire quali scelte
+definire l'attuale stato dell'arte e chiarire quali scelte
 algoritmiche portano ai migliori compromessi tra memoria, accuratezza e
 componibilità distribuita.
 
@@ -20,8 +20,8 @@ stima con memoria sublineare in streaming
 \cite{Alon_Matias_Szegedy_2002,BarYossef_Jayram_Kumar_Sivakumar_Trevisan_2002}.
 
 In un modello \emph{insertion-only}, un algoritmo deve processare ogni elemento
-in uno o pochi passaggi, con tempo di aggiornamento molto basso e stato interno
-compatto. In generale, il calcolo esatto richiede memoria lineare nel numero di
+in uno o pochi passaggi, con tempo di aggiornamento molto basso e stato
+ridotto. In generale, il calcolo esatto richiede memoria lineare nel numero di
 distinti osservati, di conseguenza non pu\`o scalare all'aumentare 
 degli elementi visti. In un contesto in cui la stream può crescere senza un
 limite prefissato, questa soluzione non è praticabile. Per questo motivo si
@@ -29,15 +29,13 @@ ricorre a sketch randomizzati con garanzie probabilistiche
 $(\varepsilon,\delta)$, già formalizzate nel Capitolo~\ref{chp:background}.
 
 Dal lato teorico, esistono algoritmi ottimali per il problema dei distinti che
-raggiungono spazio dell'ordine $O(\varepsilon^{-2}+\log n)$ (a fattori
-logaritmici noti), mostrando che la dipendenza da
+raggiungono spazio dell'ordine $O((\varepsilon^{-2} + \log n)\operatorname{polylog} n)$, mostrando che la dipendenza da
 $\varepsilon^{-2}$ è strutturale e non un artefatto implementativo
 \cite{Kane_Nelson_Woodruff_2010}. Questa cornice giustifica l'uso di famiglie
 algoritmiche in cui l'accuratezza cresce come $\Theta(1/\sqrt{m})$, dove $m$ è la
 memoria effettiva dello sketch.
 
-La Figura~1 di \cite{Kane_Nelson_Woodruff_2010} rende esplicito il salto
-rispetto allo stato precedente: i migliori risultati generali riportati prima
+In \cite{Kane_Nelson_Woodruff_2010} viene mostrato come i migliori risultati generali riportati prima
 dell'algoritmo ottimale avevano spazio
 $O\!\left(\varepsilon^{-2}(\log(1/\varepsilon)+\log\log n)+\log n\right)$ e
 tempo di update
@@ -56,7 +54,7 @@ Il lavoro in \cite{Flajolet_Martin_1985} introduce il paradigma del conteggio
 probabilistico: da ogni chiave si ricava un valore di hash e si osserva la
 posizione del primo bit significativo (oppure il numero di zeri iniziali). 
 Gli eventi rari, come molti zeri iniziali, diventano indicatori della
-scala di $F_0$.
+scala di grandezza di $F_0$.
 
 La formulazione di base mantiene una bitmap e marca posizioni osservate; la successiva
 variante, chiamata \emph{Probabilistic Counting with Stochastic Averaging} (\textbf{PCSA}),
@@ -65,7 +63,7 @@ varianza rispetto a una singola statistica globale.
 
 \begin{definition}[PCSA]
 Sia $h:\mathcal{U}\rightarrow\{0,1\}^{L}$ una funzione di hash uniforme, con
-$L=w$ (lunghezza in bit del valore hash).
+$L=w$ (lunghezza in bit del valore di hash).
 Indicando con $\rho(y)$ la posizione del primo bit a 1 in $y$, vale:
 \[
 \rho(y)=\min\{r\geq 1: y_r=1\},
@@ -76,10 +74,52 @@ e, sotto l'ipotesi di uniformità, la variabile $\rho(y)$ ha coda geometrica:
 \]
 Questa proprietà è la base della stima di cardinalità: osservare valori grandi
 di $\rho$ diventa più probabile quando cresce il numero di distinti.
-Nel caso PCSA, la partizione in $m$ sottostream rende più stabile la stima
-rispetto alla versione FM con una sola statistica globale
+Nel caso di PCSA, la partizione in $m$ sottostream rende più stabile la stima
+rispetto alla versione PC con una sola statistica globale
 \cite{Flajolet_Martin_1985}.
 \end{definition}
+
+In pratica, PCSA non crea $m$ stream fisiche separate: la partizione è
+\emph{virtuale} ed è indotta dalla funzione di hash. Ogni elemento $x$ viene
+assegnato a un indice $j\in\{0,\dots,m-1\}$; gli elementi con lo stesso indice
+aggiornano la stessa bitmap $B[j]$. In questo modo, la stima finale combina
+informazione proveniente da più sottogruppi indipendenti (in media), riducendo
+la variabilità rispetto al caso con una sola bitmap.
+
+Per l'esempio seguente assumiamo bitmap di lunghezza $4$ e rappresentiamo ogni
+bitmap come $[b_1b_2b_3b_4]$, dove $b_r=1$ indica che la posizione $r$ è stata
+osservata almeno una volta.
+
+\begin{table}[htbp]
+    \centering
+    \small
+    \setlength{\tabcolsep}{4pt}
+    \renewcommand{\arraystretch}{1.1}
+    \resizebox{\textwidth}{!}{%
+    \begin{tabular}{|c|c|c|c|c|c|c|c|c|}
+        \hline
+        Passo & $x$ & $y=h(x)$ & $j=y\bmod 4$ & $t=\lfloor y/4\rfloor$ & $r=\rho(t)$ & Update & Stato bitmap $(B_0|B_1|B_2|B_3)$ & $\hat{F}_0$ (PCSA) \\
+        \hline
+        1 & $a$ & 25 & 1 & $6\;(110_2)$ & 2 & $B[1,2]\leftarrow 1$ & $0000\;|\;0100\;|\;0000\;|\;0000$ & $\approx 10.34$ \\
+        \hline
+        2 & $b$ & 14 & 2 & $3\;(11_2)$ & 1 & $B[2,1]\leftarrow 1$ & $0000\;|\;0100\;|\;1000\;|\;0000$ & $\approx 12.29$ \\
+        \hline
+        3 & $c$ & 9 & 1 & $2\;(10_2)$ & 2 & $B[1,2]\leftarrow 1$ & $0000\;|\;0100\;|\;1000\;|\;0000$ & $\approx 12.29$ \\
+        \hline
+        4 & $d$ & 7 & 3 & $1\;(1_2)$ & 1 & $B[3,1]\leftarrow 1$ & $0000\;|\;0100\;|\;1000\;|\;1000$ & $\approx 14.62$ \\
+        \hline
+    \end{tabular}
+    }
+    \caption{Esempio minimale di partizione PCSA in $m=4$ sottostream virtuali.}
+    \label{tab:pcsa-sottostream-esempio}
+\end{table}
+
+Nell'esempio della Tabella~\ref{tab:pcsa-sottostream-esempio}, gli elementi
+$a$ e $c$ finiscono nello stesso sottostream ($j=1$), mentre $b$ e $d$ vengono
+indirizzati a sottostream diversi. Ogni riga aggiorna quindi una sola bitmap
+$B[j]$ e la stima finale media i contributi delle bitmap. In particolare, nello
+stato finale risultano attive tre bitmap su quattro, con stima finale
+$\hat{F}_0\approx 14.62$ (in questo esempio volutamente piccolo).
 
 \begin{algorithm}[htbp]
     \caption{PCSA (adapted from Fig. 1 in \cite{Flajolet_Martin_1985})}
@@ -103,29 +143,28 @@ rispetto alla versione FM con una sola statistica globale
     \end{algorithmic}
 \end{algorithm}
 
-Nel paper originale vengono anche discussi bias, errore standard e modalità di
+Nel paper \cite{Flajolet_Martin_1985} vengono anche discussi bias, errore standard e modalità di
 uso pratico (numero di bitmap, correzioni per piccoli range, parallelizzazione)
-\cite{Flajolet_Martin_1985}.
 
-Nella forma PCSA del paper, la costante $\phi$ appare esplicitamente nel
-calibratore finale e l'errore relativo standard atteso è circa
+Nella forma PCSA, ai fini di trovare il valore corretto per la costante $\phi$ esso è stato calcolato empiricamente
+e l'errore relativo standard atteso è circa
 $0.78/\sqrt{m}$. Gli autori riportano anche ordini di grandezza pratici:
 con $m=64$ si ottiene tipicamente un errore intorno al $10\%$, mentre con
-$m=256$ si scende intorno al $5\%$ \cite{Flajolet_Martin_1985}.
+$m=256$ si scende intorno al $5\%$.
 
-\paragraph{Complessità (formale).}
+\paragraph{Complessità}
 Con $m$ bitmap di lunghezza $L$, lo spazio è
 \[
 S_{\text{PCSA}}(m,L)=\Theta(mL)\ \text{bit}.
 \]
 L'update richiede tempo $\Theta(1)$ per elemento. La query richiede
 $\Theta(mL)$ nel caso diretto (scansione per trovare il primo zero di ogni
-bitmap), oppure $\Theta(m)$ se si mantiene informazione ausiliaria sul primo
+bitmap) oppure $\Theta(m)$ se si mantiene informazione ausiliaria sul primo
 zero per ciascuna bitmap.
 
 \subsection{LogLog}
 LogLog sostituisce la bitmap con un array di registri e applica
-\emph{stochastic averaging} in modo più efficiente: il prefisso hash seleziona il
+\emph{stochastic averaging} in modo più efficiente: il prefisso dell'hash seleziona il
 registro, mentre il suffisso determina il valore $\rho$ da propagare come
 massimo. La stima finale usa una media geometrica normalizzata
 \cite{Durand_Flajolet_2003}.
@@ -174,17 +213,47 @@ dei registri fornisce quindi una stima logaritmica della cardinalità complessiv
     \end{algorithmic}
 \end{algorithm}
 
-Il passaggio chiave rispetto a FM è che, a parità di memoria, la dispersione
+Il passaggio chiave rispetto a PC è che, a parità di memoria, la dispersione
 della stima si riduce sensibilmente grazie all'aggregazione su molti registri.
 
 \paragraph{Esempio.}
-Supponiamo $p=3$ ($m=8$). Se un hash produce prefisso $101$, viene aggiornato il
-registro $M[5]$. Se per il suffisso si ottiene $\rho(w)=4$ e prima
-$M[5]=2$, allora dopo l'update si ha $M[5]=4$. In questo modo ogni registro
-memorizza un massimo locale e l'aggregazione finale combina tali massimi in una
-stima globale.
+Consideriamo un caso minimale con $p=2$ ($m=4$ registri) e hash su 8 bit.
+I primi 2 bit selezionano il registro $j$, i restanti 6 bit formano il
+suffisso $w$ su cui si calcola $\rho(w)$.
 
-\paragraph{Complessità (formale).}
+\begin{table}[htbp]
+    \centering
+    \small
+    \setlength{\tabcolsep}{4pt}
+    \renewcommand{\arraystretch}{1.1}
+    \resizebox{\textwidth}{!}{%
+    \begin{tabular}{|c|c|c|c|c|c|c|c|c|}
+        \hline
+        Passo & $x$ & $y=h(x)$ & $j=\textsc{Prefix}_2(y)$ & $w=\textsc{Suffix}_6(y)$ & $\rho(w)$ & Update & Stato registri $(M_0,M_1,M_2,M_3)$ & $\hat{F}_0$ (LogLog) \\
+        \hline
+        1 & $a$ & $10010100_2$ & $2$ & $010100_2$ & $2$ & $M[2]\leftarrow \max(0,2)=2$ & $(0,0,2,0)$ & $\approx 2.25$ \\
+        \hline
+        2 & $b$ & $10111000_2$ & $2$ & $111000_2$ & $1$ & $M[2]\leftarrow \max(2,1)=2$ & $(0,0,2,0)$ & $\approx 2.25$ \\
+        \hline
+        3 & $c$ & $01001100_2$ & $1$ & $001100_2$ & $3$ & $M[1]\leftarrow \max(0,3)=3$ & $(0,3,2,0)$ & $\approx 3.78$ \\
+        \hline
+        4 & $d$ & $11001000_2$ & $3$ & $001000_2$ & $3$ & $M[3]\leftarrow \max(0,3)=3$ & $(0,3,2,3)$ & $\approx 6.35$ \\
+        \hline
+        5 & $e$ & $10000100_2$ & $2$ & $000100_2$ & $4$ & $M[2]\leftarrow \max(2,4)=4$ & $(0,3,4,3)$ & $\approx 8.99$ \\
+        \hline
+    \end{tabular}
+    }
+    \caption{Esempio operativo di LogLog con aggiornamento dei registri.}
+    \label{tab:loglog-esempio}
+\end{table}
+
+Nella Tabella~\ref{tab:loglog-esempio} si vede la logica centrale di LogLog:
+ogni elemento aggiorna un solo registro e l'operazione è sempre un massimo,
+quindi i registri crescono monotonicamente. La colonna $\hat{F}_0$ mostra la
+stima LogLog ottenuta dopo ogni passo, usando la formula del paragrafo con
+$\alpha_m\approx 0.397$.
+
+\paragraph{Complessità}
 Se ogni registro codifica valori in $[0,L-p+1]$, servono
 $\lceil\log_2(L-p+2)\rceil$ bit per registro. Quindi
 \[
@@ -269,7 +338,7 @@ numero di registri a zero:
     \end{algorithmic}
 \end{algorithm}
 
-L'articolo del 2007 fornisce sia l'analisi asintotica, sia la variante pratica
+L'articolo \cite{Flajolet_Fusy_Gandouet_Meunier_2007} fornisce sia l'analisi asintotica, sia la variante pratica
 con correzioni di range, che costituisce il riferimento per implementazioni
 sperimentali riproducibili.
 
@@ -279,7 +348,7 @@ stima $m\log(m/V_0)$ risulta più affidabile della stima grezza $E$. Quando la
 cardinalità cresce e i registri nulli diminuiscono, la stima entra nel regime
 centrale basato sulla media armonica.
 
-\paragraph{Complessità (formale).}
+\paragraph{Complessità}
 Con $m=2^p$ registri, lo spazio è
 \[
 S_{\text{HLL}}(m,L,p)=\Theta\!\bigl(m\log(L-p+2)\bigr)\ \text{bit},
@@ -288,7 +357,6 @@ che in pratica viene spesso implementato con registri di ampiezza fissa
 (tipicamente 5--6 bit).
 Il tempo di update è $\Theta(1)$ per elemento e la query è $\Theta(m)$.
 
-\paragraph{Ipotesi operative.}
 Le formule precedenti assumono parametrizzazione coerente dello sketch
 ($m=2^p$), stessa definizione di $\rho$, e funzione di hash sufficientemente
 uniforme. In presenza di hash distorto, i registri non campionano più
@@ -301,10 +369,10 @@ bordi (cardinalità molto piccole o vicine al dominio hash) sono governati da
 meccanismi diversi \cite{Flajolet_Fusy_Gandouet_Meunier_2007}.
 
 \subsection{HyperLogLog++}
-HLL++ nasce come evoluzione ingegneristica di HLL in scenari industriali ad alta
+HLL++ nasce come evoluzione pratica di HLL in scenari industriali ad alta
 scala. I miglioramenti principali sono:
 \begin{itemize}
-    \item uso di hash a 64 bit per ritardare gli effetti di saturazione;
+    \item uso di una hash a 64 bit per ritardare gli effetti di saturazione;
     \item rappresentazione \emph{sparse} per cardinalità piccole;
     \item bias correction empirica tramite tabelle/interpolazione;
     \item scelta adattiva tra linear counting e stima HLL corretta.
@@ -328,16 +396,16 @@ Nel formato \emph{sparse}, lo sketch memorizza solo i registri non nulli
 piccole. Il passaggio a formato \emph{dense} avviene quando la rappresentazione
 sparsa non è più conveniente in memoria.
 
-La formulazione del paper usa due precisioni: $p$ per lo sketch \emph{dense} e
+La formulazione in \cite{Heule_Nunkesser_Hall_2013} usa due precisioni: $p$ per lo sketch \emph{dense} e
 $p'$ (con $p \le p' \le 64$) per la codifica \emph{sparse}; in questo modo lo
-stesso algoritmo può avere footprint molto ridotto quando la cardinalità è
+stesso algoritmo può avere uno spazio molto pi\`u piccolo quando la cardinalità è
 bassa, senza perdere compatibilità con la stima HLL nel regime normale
 \cite{Heule_Nunkesser_Hall_2013}.
 
 Le routine ausiliarie usate nel pseudocodice hanno significato preciso:
 \textsc{LinearCounting}$(m,V_0)=m\log(m/V_0)$ per $V_0>0$,
 \textsc{EstimateBias}$(E,p)$ applica l'interpolazione sulla tabella empirica del
-bias (nel paper con schema di nearest neighbors), e
+bias (nel paper con schema di nearest neighbours), e
 \textsc{Threshold}$(p)$ è la soglia empirica di switch tra i due rami di stima
 riportata in Figura~6 \cite{Heule_Nunkesser_Hall_2013}.
 Nel ramo \emph{sparse} la stessa formula di linear counting viene applicata con
@@ -403,7 +471,7 @@ l'accuratezza nelle cardinalità piccole e intermedie
 Il paper specifica che \textsc{Threshold}$(p)$ è determinata empiricamente
 (tabulata per ogni precisione) e che le routine ausiliarie
 \textsc{Merge}/\textsc{ToNormal} sono parte essenziale della transizione
-sparse$\rightarrow$dense. Nella discussione implementativa, gli autori
+sparse to dense. Nella discussione implementativa, gli autori
 descrivono anche una strategia pratica in cui il \emph{temporary set} viene
 fuso periodicamente (ad esempio intorno al $25\%$ della capacità massima della
 rappresentazione sparsa) per mantenere efficiente la gestione degli inserimenti
@@ -414,13 +482,13 @@ Con $p=14$ ($m=16384$), per cardinalità piccole lo sketch può restare in forma
 sparse, riducendo la memoria effettiva. Superata una soglia, la struttura passa
 in dense e usa l'estimatore HLL corretto dal bias.
 
-\paragraph{Complessità (formale).}
+\paragraph{Complessità}
 In modalità \emph{sparse}, lo spazio è
 $\Theta(|\text{sparse\_list}|)$ (in bit codificati) fino alla soglia di
 conversione; in modalità \emph{dense}, lo spazio è $\Theta(m)$ registri
 (spesso circa $6m$ bit in implementazioni pratiche).
 L'update è $\Theta(1)$ ammortizzato, con costo $\Theta(m)$ durante la
-conversione sparse$\rightarrow$dense. La query è
+conversione sparse to dense. La query è
 $\Theta(|\text{sparse\_list}|)$ in sparse e $\Theta(m)$ in dense.
 
 \paragraph{Limiti e compromessi.}
@@ -435,7 +503,7 @@ La Tabella~\ref{tab:confronto-count-distinct} riassume le differenze principali
 tra gli algoritmi della linea storica.
 
 Dal punto di vista formale, la differenza principale non è l'ordine asintotico
-($\Theta(1/\sqrt{m})$ resta la scala dominante), ma la costante moltiplicativa
+($\Theta(1/\sqrt{m})$ domina asintoticamente), ma la costante moltiplicativa
 dell'errore, il comportamento ai bordi di range e la robustezza in scenari
 reali dove hash, cardinalità e distribuzioni non sono ideali.
 
@@ -444,51 +512,33 @@ reali dove hash, cardinalità e distribuzioni non sono ideali.
     \scriptsize
     \setlength{\tabcolsep}{3pt}
     \renewcommand{\arraystretch}{1.15}
-    \begin{tabular}{|p{1.8cm}|p{2.3cm}|p{4.5cm}|p{2.2cm}|}
+    \resizebox{\textwidth}{!}{%
+    \begin{tabular}{|p{1.4cm}|p{1.9cm}|p{3.2cm}|p{2.7cm}|p{2.0cm}|}
         \hline
-        Algoritmo & Stato dello sketch & Regola di stima & Ordine errore \\
+        Algoritmo & Stato dello sketch & Regola di stima & Space & Ordine errore \\
         \hline
-        FM/PCSA & Bitmap (una o più) & Primo zero / media su bitmap & $\Theta(1/\sqrt{m})$ \\
+        PCSA & Bitmap (una o più) & Primo zero / media su bitmap & $O(\varepsilon^{-2}\log n)$ & $\Theta(1/\sqrt{m})$ \\
         \hline
-        LogLog & Array registri (max di $\rho$) & Media geometrica normalizzata & $\Theta(1/\sqrt{m})$ \\
+        LogLog & Array registri (max di $\rho$) & Media geometrica normalizzata & \shortstack[l]{$O(\varepsilon^{-2}\log\log n$\\$+\log n)$} & $\Theta(1/\sqrt{m})$ \\
         \hline
-        HyperLogLog & Array registri (max di $\rho$) & Media armonica + range corrections & $\approx 1.04/\sqrt{m}$ \\
+        HLL & Array registri (max di $\rho$) & Media armonica + range corrections & \shortstack[l]{$O(\varepsilon^{-2}\log\log n$\\$+\log n)$} & $\approx 1.04/\sqrt{m}$ \\
         \hline
-        HyperLogLog++ & Registri + formato sparse & HLL + bias correction + adaptive switching & $\Theta(1/\sqrt{m})$ con minore bias pratico \\
+        HLL++ & Registri + formato sparse & HLL + bias correction + adaptive switching & \shortstack[l]{$O(\varepsilon^{-2}\log\log n$\\$+\log n)$} & $\Theta(1/\sqrt{m})$ con minore bias pratico \\
         \hline
     \end{tabular}
+    }
     \caption{Confronto ad alto livello tra i principali algoritmi count-distinct.}
     \label{tab:confronto-count-distinct}
 \end{table}
 
-Nella colonna ``Ordine errore'' si riporta l'andamento della RSE rispetto al
+La colonna ``Space'' è uniformata in notazione teorica rispetto a $n$ ed
+$\varepsilon$. In questa forma, LogLog/HLL/HLL++ hanno lo stesso ordine
+$O(\varepsilon^{-2}\log\log n+\log n)$; HLL++ migliora soprattutto costanti e
+regimi pratici (bias e small-range), non l'ordine asintotico dominante. Nella
+colonna ``Ordine errore'' si riporta invece l'andamento della RSE rispetto al
 numero di registri $m$ (non alla memoria totale in bit): l'ordine asintotico
 resta $\Theta(1/\sqrt{m})$, ma con costanti diverse (ad esempio $1.04$ per HLL)
 e con correzioni pratiche aggiuntive nel caso HLL++.
-
-Per completezza, riportiamo anche in forma tabellare i risultati comparativi
-della Figura~1 di \cite{Kane_Nelson_Woodruff_2010} sulle complessità
-teoriche degli approcci per il problema dei distinti.
-
-\begin{table}[htbp]
-    \centering
-    \scriptsize
-    \setlength{\tabcolsep}{3pt}
-    \renewcommand{\arraystretch}{1.1}
-    \begin{tabular}{|p{2.9cm}|p{3.2cm}|p{2.9cm}|p{1.9cm}|}
-        \hline
-        Algoritmo (fonte) & Space & Update Time & Note \\
-        \hline
-        \shortstack[l]{Probabilistic Counting\\(FM) \cite{Flajolet_Martin_1985}} & $O(\log n)$ & -- & Random oracle, $\varepsilon$ costante \\
-        \hline
-        \shortstack[l]{LogLog\\\cite{Durand_Flajolet_2003}} & $O(\varepsilon^{-2}\log\log n + \log n)$ & -- & Random oracle, errore additivo \\
-        \hline
-        \shortstack[l]{HyperLogLog\\\cite{Flajolet_Fusy_Gandouet_Meunier_2007}} & $O(\varepsilon^{-2}\log\log n + \log n)$ & -- & Random oracle, errore additivo \\
-        \hline
-    \end{tabular}
-    \caption{Confronto delle complessità per la stima dei distinti, riportato da Figura~1 in \cite{Kane_Nelson_Woodruff_2010}.}
-    \label{tab:knw-figure1}
-\end{table}
 
 La traiettoria evolutiva è quindi chiara: dalla robustezza concettuale di FM si
 passa a strutture a registri sempre più stabili, fino a HLL/HLL++, che
@@ -534,7 +584,6 @@ la regola di merge naturale è:
 =\max\{\mathcal{K}(S_1)[j],\mathcal{K}(S_2)[j]\}.
 \]
 
-\paragraph{Giustificazione formale.}
 Per ogni registro $j$, lo stato dello sketch di una stream $S$ contiene:
 \[
 \mathcal{K}(S)[j] = \max_{x\in S:\,j(x)=j}\rho(w(x)).
@@ -548,7 +597,7 @@ di hash/seed, allora per ogni $j$:
 \mathcal{K}(S_1\!\cdot\! S_2)[j]
 =\max\!\left(\mathcal{K}(S_1)[j],\mathcal{K}(S_2)[j]\right).
 \]
-Quindi il merge registro-per-registro coincide con lo stato che si
+Quindi il merge registro per registro coincide con lo stato che si
 otterrebbe processando la concatenazione delle due stream:
 \[
 \mathcal{K}(S_1)\oplus\mathcal{K}(S_2)=\mathcal{K}(S_1\cdot S_2).
@@ -559,7 +608,7 @@ pipeline distribuite (albero, catena, map-reduce). Inoltre, a parità di
 parametri e funzione hash/seed, il risultato del merge è equivalente allo stato
 che si otterrebbe processando sequenzialmente l'unione delle stream.
 
-Per FM/PCSA, la mergeabilità dipende dalla codifica dello stato: in forma bitmap
+Per PC/PCSA, la mergeabilità dipende dalla codifica dello stato: in forma bitmap
 la combinazione è una OR componente-per-componente, mentre in forme basate su
 massimi si usa ancora il massimo per componente
 \cite{Flajolet_Martin_1985}.
@@ -576,7 +625,7 @@ $\varepsilon\|f\|_1$ con probabilità $1-\delta$; nel caso membership
 (Bloom filter), il trade-off è espresso soprattutto dalla probabilità di falso
 positivo $p_{\text{fp}}$, determinata da $m_{\text{bf}}$ e $k_{\text{bf}}$.
 
-\subsection{Count-Min Sketch (frequenze)}
+\subsection{Count-Min Sketch}
 \begin{definition}[Count-Min Sketch]
 Il Count-Min Sketch mantiene una matrice di contatori
 $C\in\mathbb{N}^{d\times w_{\text{cm}}}$ e $d$ funzioni di hash
@@ -594,7 +643,43 @@ dove $\|f\|_1$ è la somma delle frequenze (lunghezza della stream).
 \cite{Cormode_CountMinSketch_Encyclopedia}
 \end{definition}
 
-\paragraph{Complessità (formale).}
+\paragraph{Esempio.}
+Consideriamo un CMS con $d=2$ righe e $w_{\text{cm}}=5$ colonne (indici
+$0,\dots,4$), inizialmente tutto a zero. Supponiamo:
+$h_1(a)=1,\ h_2(a)=3$, $h_1(b)=4,\ h_2(b)=1$, $h_1(c)=1,\ h_2(c)=4$.
+Processiamo la stream $a,b,a,c,a$.
+
+\begin{table}[htbp]
+    \centering
+    \small
+    \setlength{\tabcolsep}{4pt}
+    \renewcommand{\arraystretch}{1.1}
+    \resizebox{\textwidth}{!}{%
+    \begin{tabular}{|c|c|c|c|c|c|}
+        \hline
+        Passo & $x$ & $(h_1(x),h_2(x))$ & Update & Stato riga 1 & Stato riga 2 \\
+        \hline
+        1 & $a$ & $(1,3)$ & $C[1,1]++,\ C[2,3]++$ & $[0,1,0,0,0]$ & $[0,0,0,1,0]$ \\
+        \hline
+        2 & $b$ & $(4,1)$ & $C[1,4]++,\ C[2,1]++$ & $[0,1,0,0,1]$ & $[0,1,0,1,0]$ \\
+        \hline
+        3 & $a$ & $(1,3)$ & $C[1,1]++,\ C[2,3]++$ & $[0,2,0,0,1]$ & $[0,1,0,2,0]$ \\
+        \hline
+        4 & $c$ & $(1,4)$ & $C[1,1]++,\ C[2,4]++$ & $[0,3,0,0,1]$ & $[0,1,0,2,1]$ \\
+        \hline
+        5 & $a$ & $(1,3)$ & $C[1,1]++,\ C[2,3]++$ & $[0,4,0,0,1]$ & $[0,1,0,3,1]$ \\
+        \hline
+    \end{tabular}
+    }
+    \caption{Esempio operativo di Count-Min Sketch.}
+    \label{tab:cms-esempio}
+\end{table}
+
+Dallo stato finale della Tabella~\ref{tab:cms-esempio}, per $a$ si ottiene
+$\hat f(a)=\min\{C[1,1],C[2,3]\}=\min\{4,3\}=3$ (valore esatto), mentre la
+struttura resta in generale sovrastimante in presenza di collisioni.
+
+\paragraph{Complessità}
 Lo spazio è $\Theta(d\,w_{\text{cm}})$ contatori, quindi
 $\Theta(d\,w_{\text{cm}}\log\|f\|_1)$ bit con contatori interi standard.
 Update e query puntuale costano $\Theta(d)=\Theta(\log(1/\delta))$.
@@ -615,7 +700,42 @@ con $n_{\text{ins}}$ numero di elementi inseriti nel filtro.
 \cite{Bloom_1970,Agarwal_Trachtenberg_2006}
 \end{definition}
 
-\paragraph{Complessità (formale).}
+\paragraph{Esempio.}
+Consideriamo un Bloom filter con $m_{\text{bf}}=10$ bit (indici $0,\dots,9$) e
+$k_{\text{bf}}=2$ hash. Supponiamo:
+$h_1(a)=1,\ h_2(a)=6$, $h_1(b)=4,\ h_2(b)=6$, $h_1(c)=1,\ h_2(c)=8$.
+
+\begin{table}[htbp]
+    \centering
+    \small
+    \setlength{\tabcolsep}{4pt}
+    \renewcommand{\arraystretch}{1.1}
+    \resizebox{\textwidth}{!}{%
+    \begin{tabular}{|c|c|c|c|c|c|}
+        \hline
+        Passo & Operazione & $(h_1,h_2)$ & Celle toccate & Stato bitset $[b_0\dots b_9]$ & Esito \\
+        \hline
+        1 & insert($a$) & $(1,6)$ & $b_1,b_6\leftarrow 1$ & $[0100001000]$ & -- \\
+        \hline
+        2 & insert($b$) & $(4,6)$ & $b_4,b_6\leftarrow 1$ & $[0100101000]$ & -- \\
+        \hline
+        3 & insert($c$) & $(1,8)$ & $b_1,b_8\leftarrow 1$ & $[0100101010]$ & -- \\
+        \hline
+        4 & query($z$) & $(1,4)$ & verifica $b_1,b_4$ & $[0100101010]$ & ``presente'' (falso positivo) \\
+        \hline
+        5 & query($q$) & $(2,9)$ & verifica $b_2,b_9$ & $[0100101010]$ & ``assente'' \\
+        \hline
+    \end{tabular}
+    }
+    \caption{Esempio operativo di Bloom filter con un falso positivo.}
+    \label{tab:bloom-esempio}
+\end{table}
+
+La Tabella~\ref{tab:bloom-esempio} mostra il comportamento tipico: nessun falso
+negativo sugli elementi inseriti, ma possibile falso positivo su query di
+elementi non inseriti.
+
+\paragraph{Complessità}
 Lo spazio è esattamente $m_{\text{bf}}$ bit. Update e query costano
 $\Theta(k_{\text{bf}})$. La mergeabilità, a parità di parametri e hash, è la
 OR bit-a-bit.
