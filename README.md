@@ -65,26 +65,87 @@ mean_relative_error,rmse,mae
 ## Hash robustness analysis (scientific reproducibility)
 Current hashing is deterministic (splitmix64), so results are reproducible for a fixed dataset. If you want to study robustness to different hash functions/seeds, introduce a configurable hash seed (e.g., `splitmix64(id ^ seed)`), log it in the CSV, and optionally centralize hashing in the framework.
 
-## Work to do
-- Hash robustness analysis: add a configurable hash seed (e.g., `splitmix64(id ^ seed)`), log it in the CSV, and optionally centralize hashing in the framework.
-- Distributed/merge core (thesis):
-  - Interface for mergeable sketches: `merge(const Sketch&)`, `serialize/deserialize`, `size_bytes()`, `params()`, `clone()`.
-  - Implement merge:
-    - HLL/HLL++/LogLog: register-wise max.
-    - ProbabilisticCounting: bitmap OR.
-    - NaiveCounting: union set (exact baseline).
-  - Property tests:
-    - Commutativity, associativity, idempotence (where applicable).
-    - Equivalence: insert-all vs merge-of-partitions.
-    - Stability across topology (chain vs tree).
-- Error-vs-cardinality and per-run logging:
-  - Export per-run metrics (estimate, truth, rel_error, run_id, seed, params, dataset_id).
-  - Sweep across cardinalities (log-scale x) instead of a single fixed dataset.
-  - Confidence intervals / bootstrapping for error bands (offline or in-script).
-- Optional (discuss with advisor): realistic partitioning for merge experiments:
-  - Generate P shards with controlled cross-shard duplicates (not uniform sampling).
-  - Run merge experiments across different topologies (chain vs tree).
-- Optional (discuss with advisor): performance/footprint metrics:
-  - Separate timing for update / estimate / merge.
-  - RAM footprint and serialized payload size.
-  - (Optional) allocation counts / memory counters.
+## TODO
+1. Refactor della generazione dataset:
+   - Dati `n` (numero totale di elementi), `d` (numero di elementi distinti), `p` (numero di partizioni) e `seed`.
+   - Generare un unico file con nomenclatura `dataset_n_{n}_d_{d}_p_{p}`.
+   - Il file deve essere in formato JSON con lo schema seguente.
+   - A differenza del metodo precedente, creare gia' tutte le partizioni dentro lo stesso file.
+   - Obiettivo: eseguire tutti gli algoritmi su un singolo file pre-costruito.
+
+   Schema JSON:
+   ```json
+   {
+     "nOfElements": 5,
+     "distinct": 4,
+     "partizioni": [
+       {
+         "stream": [
+           {
+             "id": 1,
+             "freq": 1
+           },
+           {
+             "id": 2,
+             "freq": 1
+           },
+           {
+             "id": 100,
+             "freq": 1
+           },
+           {
+             "id": 4,
+             "freq": 1
+           },
+           {
+             "id": 1,
+             "freq": 2
+           }
+         ]
+       },
+       {
+         "stream": [
+           {
+             "id": 4,
+             "freq": 1
+           },
+           {
+             "id": 2,
+             "freq": 1
+           },
+           {
+             "id": 25,
+             "freq": 1
+           },
+           {
+             "id": 4,
+             "freq": 2
+           },
+           {
+             "id": 8,
+             "freq": 1
+           }
+         ]
+       }
+     ]
+   }
+   ```
+
+2. Aggiungere l'operazione di merge.
+3. Estendere il framework con i seguenti workflow:
+   - a) Dato un file dataset nel formato sopra, leggerlo e caricare una partizione alla volta in memoria; fissati `n`, `d` e `p`, misurare bias, varianza, media e altre metriche.
+   - b) Abilitare una modalita' streaming: input da file intero, lettura elemento per elemento, calcolo progressivo delle metriche per osservare lo scostamento della stima nel tempo.
+   - c) Abilitare una prima modalita' merge: merge di soli due sketch (inizialmente), confronto tra stima di `F_0` via merge e lettura seriale delle partizioni, sia con parametri fissi sia in modalita' streaming elemento per elemento.
+4. Correggere la dicitura `Sketch Mergeable` in `Mergeable Sketch`.
+5. Correggere la definizione dell'operatore di chiusura per il merge (attualmente errata).
+6. Fare grafici teorici dello spazio consumato dagli sketch all'aumentare degli elementi.
+7. Fare grafici variando numero di ID, parametri e merge, misurando precisione e varianza.
+8. Implementare Count-Min Sketch e Bloom Filter.
+9. Implementare Ring Bloom Filter.
+10. Iniziare a produrre tutti i grafici sensati per l'analisi sperimentale.
+11. Opzionali:
+   - a) Fare grafici empirici dello spazio realmente usato da ogni sketch (thread/processo per algoritmo) al crescere degli elementi.
+   - b) Fare merge di `k` cluster e misurare il deterioramento.
+   - c) Usare un sistema concreto come Apache Kafka per gli input.
+   - d) Aggiungere piu' funzioni di hash e rifare i grafici al variare della funzione.
+   - e) Aggiungere serializzazione per abilitare scenari distribuiti.
