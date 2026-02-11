@@ -88,11 +88,16 @@ CMakeLists.txt.user
 /cmake-build-debug/*
 
 # ----------------- Generated datasets ------------------
-dataset_*.json
-/dataset*.json
-/scripts/*.json
+compressed_dataset_*.bin
+dataset_*.bin
+/compressed_dataset_*.bin
+/dataset*.bin
+/scripts/compressed_dataset_*.bin
+/scripts/*.bin
+/datasets/compressed_dataset_*.bin
 /datasets/
-!/tests/data/*.json
+!/tests/compressed_dataset_*.bin
+!/tests/data/*.bin
 
 # ----------------- LaTeX (thesis) ----------------------
 /thesis/**/*.aux

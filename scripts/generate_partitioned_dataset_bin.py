@@ -2,18 +2,33 @@
 from __future__ import annotations
 
 import argparse
+import array
 import multiprocessing as mp
 import os
 import pathlib
 import queue
 import random
+import shutil
+import struct
 import sys
 import tempfile
 import time
+import zlib
 from typing import Any, Dict, List, Tuple
 
 
 DEFAULT_PROGRESS_UPDATES = 200
+UINT32_MAX = (1 << 32) - 1
+
+# Binary format:
+# - Header: magic/version/global params.
+# - Partition table: (offset, byte_size, n, d, encoding, reserved) repeated p times.
+# - Data blocks: zlib-compressed uint32 little-endian IDs.
+MAGIC = b"SATPDBN1"
+VERSION = 1
+ENCODING_ZLIB_U32_LE = 1
+HEADER_FMT = "<8sIQQQQ"
+PARTITION_ENTRY_FMT = "<QQQQII"
 
 
 def _validate_params(n: int, d: int, p: int) -> None:
@@ -25,6 +40,8 @@ def _validate_params(n: int, d: int, p: int) -> None:
         raise ValueError("d must be <= n")
     if n > 0 and d == 0:
         raise ValueError("d=0 requires n=0")
+    if n > (UINT32_MAX + 1):
+        raise ValueError("n must be <= 2^32")
 
 
 def _derive_partition_seed(seed: int, partition_index: int) -> int:
@@ -72,10 +89,20 @@ def _drain_progress_queue(progress_queue: Any,
     return produced
 
 
+def _u32_chunk_bytes(buffer_u32: array.array) -> bytes:
+    if not buffer_u32:
+        return b""
+    if sys.byteorder != "little":
+        tmp = array.array("I", buffer_u32)
+        tmp.byteswap()
+        return tmp.tobytes()
+    return buffer_u32.tobytes()
+
+
 def _write_partition_fragment(task: Tuple[int, int, int, int, str, Any, int]) -> Tuple[int, str]:
     part_idx, n_per_partition, d_per_partition, part_seed, tmp_dir, progress_queue, progress_batch = task
     rng = random.Random(part_seed)
-    out_path = pathlib.Path(tmp_dir) / f"part_{part_idx}.jsonfrag"
+    out_path = pathlib.Path(tmp_dir) / f"part_{part_idx}.binfrag"
 
     distinct_ids = rng.sample(range(n_per_partition), d_per_partition) if d_per_partition > 0 else []
     forced_by_pos: Dict[int, int] = {}
@@ -86,11 +113,11 @@ def _write_partition_fragment(task: Tuple[int, int, int, int, str, Any, int]) ->
             forced_by_pos[pos] = distinct_ids[i]
 
     pending_progress = 0
-    local_freq: Dict[int, int] = {}
-    with out_path.open("w", encoding="utf-8", buffering=1024 * 1024) as out:
-        out.write("    {\n")
-        out.write("      \"stream\": [\n")
+    chunk = array.array("I")
+    chunk_capacity = 1 << 20  # values per flush (~4 MiB)
 
+    with out_path.open("wb", buffering=1024 * 1024) as out:
+        compressor = zlib.compressobj(level=6)
         for i in range(n_per_partition):
             forced = forced_by_pos.get(i)
             if forced is not None:
@@ -98,12 +125,13 @@ def _write_partition_fragment(task: Tuple[int, int, int, int, str, Any, int]) ->
             else:
                 value = distinct_ids[rng.randrange(d_per_partition)]
 
-            freq = local_freq.get(value, 0) + 1
-            local_freq[value] = freq
-
-            if i > 0:
-                out.write(",\n")
-            out.write(f"        {{\"id\": {value}, \"freq\": {freq}}}")
+            chunk.append(value)
+            if len(chunk) >= chunk_capacity:
+                raw_chunk = _u32_chunk_bytes(chunk)
+                compressed_chunk = compressor.compress(raw_chunk)
+                if compressed_chunk:
+                    out.write(compressed_chunk)
+                del chunk[:]
 
             if progress_queue is not None:
                 pending_progress += 1
@@ -111,9 +139,13 @@ def _write_partition_fragment(task: Tuple[int, int, int, int, str, Any, int]) ->
                     progress_queue.put(pending_progress)
                     pending_progress = 0
 
-        out.write("\n")
-        out.write("      ]\n")
-        out.write("    }")
+        if chunk:
+            raw_chunk = _u32_chunk_bytes(chunk)
+            compressed_chunk = compressor.compress(raw_chunk)
+            if compressed_chunk:
+                out.write(compressed_chunk)
+            del chunk[:]
+        out.write(compressor.flush())
 
     if progress_queue is not None and pending_progress > 0:
         progress_queue.put(pending_progress)
@@ -121,18 +153,19 @@ def _write_partition_fragment(task: Tuple[int, int, int, int, str, Any, int]) ->
     return part_idx, str(out_path)
 
 
-def generate_partitioned_dataset(output_dir: pathlib.Path,
-                                 n: int,
-                                 d: int,
-                                 p: int,
-                                 seed: int,
-                                 show_progress: bool = False,
-                                 workers: int | None = None,
-                                 progress_batch: int | None = None) -> pathlib.Path:
+def generate_partitioned_dataset_bin(output_dir: pathlib.Path,
+                                     n: int,
+                                     d: int,
+                                     p: int,
+                                     seed: int,
+                                     show_progress: bool = False,
+                                     workers: int | None = None,
+                                     progress_batch: int | None = None) -> pathlib.Path:
     _validate_params(n, d, p)
 
     output_dir.mkdir(parents=True, exist_ok=True)
-    out_path = output_dir / f"dataset_n_{n}_d_{d}_p_{p}.json"
+    out_name = f"compressed_dataset_n_{n}_d_{d}_p_{p}.bin"
+    out_path = output_dir / out_name
 
     max_workers = os.cpu_count() or 1
     if workers is not None and workers <= 0:
@@ -145,11 +178,12 @@ def generate_partitioned_dataset(output_dir: pathlib.Path,
         progress_batch = max(1, total_elements // DEFAULT_PROGRESS_UPDATES)
     if progress_batch <= 0:
         raise ValueError("progress_batch must be > 0")
+
     produced = 0
     start = time.time()
     part_paths: Dict[int, str] = {}
 
-    with tempfile.TemporaryDirectory(prefix="satp_parts_", dir=str(output_dir)) as tmp_dir:
+    with tempfile.TemporaryDirectory(prefix="satp_parts_bin_", dir=str(output_dir)) as tmp_dir:
         tasks: List[Tuple[int, int, int, int, str, Any, int]] = []
         for part_idx in range(p):
             tasks.append((
@@ -194,24 +228,31 @@ def generate_partitioned_dataset(output_dir: pathlib.Path,
 
                     produced = _drain_progress_queue(progress_queue, produced, total_elements, start, show_progress)
 
-        with out_path.open("w", encoding="utf-8", buffering=1024 * 1024) as out:
-            out.write("{\n")
-            out.write(f"  \"nOfElements\": {n},\n")
-            out.write(f"  \"distinct\": {d},\n")
-            out.write(f"  \"seed\": {seed},\n")
-            out.write(f"  \"nOfPartitions\": {p},\n")
-            out.write(f"  \"totalElements\": {total_elements},\n")
-            out.write("  \"partizioni\": [\n")
+        part_sizes: List[int] = []
+        for part_idx in range(p):
+            size = pathlib.Path(part_paths[part_idx]).stat().st_size
+            part_sizes.append(size)
+
+        header_size = struct.calcsize(HEADER_FMT)
+        entry_size = struct.calcsize(PARTITION_ENTRY_FMT)
+        first_data_offset = header_size + p * entry_size
+
+        entries: List[Tuple[int, int, int, int, int, int]] = []
+        current_offset = first_data_offset
+        for part_idx in range(p):
+            byte_size = part_sizes[part_idx]
+            entries.append((current_offset, byte_size, n, d, ENCODING_ZLIB_U32_LE, 0))
+            current_offset += byte_size
+
+        seed_u64 = seed & ((1 << 64) - 1)
+        with out_path.open("wb", buffering=8 * 1024 * 1024) as out:
+            out.write(struct.pack(HEADER_FMT, MAGIC, VERSION, n, d, p, seed_u64))
+            for entry in entries:
+                out.write(struct.pack(PARTITION_ENTRY_FMT, *entry))
 
             for part_idx in range(p):
-                if part_idx > 0:
-                    out.write(",\n")
-                with pathlib.Path(part_paths[part_idx]).open("r", encoding="utf-8") as part_file:
-                    out.write(part_file.read())
-
-            out.write("\n")
-            out.write("  ]\n")
-            out.write("}\n")
+                with pathlib.Path(part_paths[part_idx]).open("rb") as part_file:
+                    shutil.copyfileobj(part_file, out, length=8 * 1024 * 1024)
 
     if show_progress and total_elements > 0:
         if produced < total_elements:
@@ -224,10 +265,10 @@ def generate_partitioned_dataset(output_dir: pathlib.Path,
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        description="Generate one JSON dataset with precomputed partitions (n,d,p,seed)."
+        description="Generate one compressed binary dataset with precomputed partitions (n,d,p,seed)."
     )
     parser.add_argument("--output-dir", type=pathlib.Path, default=pathlib.Path("."),
-                        help="Directory where dataset_n_{n}_d_{d}_p_{p}.json is written")
+                        help="Directory where compressed_dataset_n_{n}_d_{d}_p_{p}.bin is written")
     parser.add_argument("--n", required=True, type=int, help="Number of elements per partition")
     parser.add_argument("--d", required=True, type=int, help="Number of distinct elements per partition")
     parser.add_argument("--p", required=True, type=int, help="Number of partitions")
@@ -235,14 +276,14 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--workers", type=int, default=None,
                         help="Number of worker processes (default: CPU count)")
     parser.add_argument("--progress-batch", type=int, default=None,
-                        help="Elements per worker progress update (default: auto ~= totalElements/200)")
+                        help="Elements per worker progress update (default: auto ~= (n*p)/200)")
     parser.add_argument("--no-progress", action="store_true", help="Disable progress output")
     return parser.parse_args()
 
 
 def main() -> None:
     args = parse_args()
-    out_path = generate_partitioned_dataset(
+    out_path = generate_partitioned_dataset_bin(
         output_dir=args.output_dir,
         n=args.n,
         d=args.d,
