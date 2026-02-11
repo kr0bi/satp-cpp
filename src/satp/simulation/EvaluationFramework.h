@@ -12,10 +12,11 @@
 #include <unordered_set>
 #include <utility>      // forward
 #include <cmath>
+#include <optional>
 
 #include "../algorithms/Algorithm.h"
 #include "satp/ProgressBar.h"
-#include "satp/io/TextDatasetIO.h"
+#include "satp/io/BinaryDatasetIO.h"
 
 using namespace std;
 
@@ -36,35 +37,29 @@ namespace satp::evaluation {
         double mae = 0.0;
         double stddev = 0.0;
         double rse_observed = 0.0;
+        double truth_mean = 0.0; // \bar{F}_0
     };
 
     class EvaluationFramework {
     public:
         static constexpr uint32_t DEFAULT_SEED = 5489u;
 
-        explicit EvaluationFramework(Dataset dataset,
-                                     uint32_t seed = DEFAULT_SEED)
-            : valori(std::move(dataset.values)),
-              numElementiDistintiEffettivi(dataset.distinct_count),
-              seed(seed),
+        explicit EvaluationFramework(const filesystem::path &filePath)
+            : seed(DEFAULT_SEED),
               rng(seed) {
+            binaryDataset = satp::io::indexBinaryDataset(filePath);
+            numElementiDistintiEffettivi = binaryDataset->info.distinct_per_partition;
+            seed = binaryDataset->info.seed;
+            rng.seed(seed);
         }
 
-        explicit EvaluationFramework(vector<uint32_t> data,
-                                     size_t distinctCount,
-                                     uint32_t seed = DEFAULT_SEED)
-            : valori(std::move(data)),
-              numElementiDistintiEffettivi(distinctCount),
-              seed(seed),
+        explicit EvaluationFramework(satp::io::BinaryDatasetIndex datasetIndex)
+            : seed(DEFAULT_SEED),
               rng(seed) {
-        }
-
-        explicit EvaluationFramework(const filesystem::path &filePath,
-                                     uint32_t seed = DEFAULT_SEED)
-            : seed(seed),
-              rng(seed) {
-            const auto info = satp::io::loadTextDataset(filePath, valori);
-            numElementiDistintiEffettivi = info.distinct_elements;
+            binaryDataset = std::move(datasetIndex);
+            numElementiDistintiEffettivi = binaryDataset->info.distinct_per_partition;
+            seed = binaryDataset->info.seed;
+            rng.seed(seed);
         }
 
         /**
@@ -76,6 +71,12 @@ namespace satp::evaluation {
                                      size_t sampleSize,
                                      Args &&... ctorArgs) const {
             if (runs == 0 || sampleSize == 0) return {};
+
+            if (binaryDataset.has_value()) {
+                (void) runs;
+                (void) sampleSize;
+                return evaluateFromBinary<Algo>(std::forward<Args>(ctorArgs)...);
+            }
 
             cout << "Creazione dei sottoinsiemi\n";
             ensureSubsets(runs, sampleSize);
@@ -135,12 +136,18 @@ namespace satp::evaluation {
             const double mae = absErrSum / runs;
             const double rseObserved = (gtMean != 0.0) ? (stddev / gtMean) : 0.0;
 
-            return {difference, mean, variance, bias, meanRelativeError, biasRelative, rmse, mae, stddev, rseObserved};
+            return {difference, mean, variance, bias, meanRelativeError, biasRelative, rmse, mae, stddev, rseObserved, gtMean};
         }
 
         [[nodiscard]] size_t getNumElementiDistintiEffettivi() const noexcept { return numElementiDistintiEffettivi; }
         [[nodiscard]] const vector<uint32_t> &data() const noexcept { return valori; }
         [[nodiscard]] uint32_t getSeed() const noexcept { return seed; }
+        [[nodiscard]] size_t getDatasetRuns() const noexcept {
+            return binaryDataset.has_value() ? binaryDataset->info.partition_count : 0;
+        }
+        [[nodiscard]] size_t getDatasetSampleSize() const noexcept {
+            return binaryDataset.has_value() ? binaryDataset->info.elements_per_partition : 0;
+        }
 
         template<typename Algo, typename... Args>
         [[nodiscard]] Stats evaluateToCsv(const filesystem::path &csvPath,
@@ -150,8 +157,10 @@ namespace satp::evaluation {
                                           double rseTheoretical,
                                           Args &&... ctorArgs) const {
             Algo algo(ctorArgs...);
-            const auto stats = evaluate<Algo>(runs, sampleSize, std::forward<Args>(ctorArgs)...);
-            appendCsv(csvPath, algo.getName(), algorithmParams, runs, sampleSize, rseTheoretical, stats);
+            const size_t effectiveRuns = binaryDataset.has_value() ? binaryDataset->info.partition_count : runs;
+            const size_t effectiveSampleSize = binaryDataset.has_value() ? binaryDataset->info.elements_per_partition : sampleSize;
+            const auto stats = evaluate<Algo>(effectiveRuns, effectiveSampleSize, std::forward<Args>(ctorArgs)...);
+            appendCsv(csvPath, algo.getName(), algorithmParams, effectiveRuns, effectiveSampleSize, rseTheoretical, stats);
             return stats;
         }
 
@@ -184,6 +193,75 @@ namespace satp::evaluation {
         }
 
     private:
+        template<typename Algo, typename... Args>
+        [[nodiscard]] Stats evaluateFromBinary(Args &&... ctorArgs) const {
+            if (!binaryDataset.has_value()) {
+                throw runtime_error("Internal error: binary dataset is not loaded");
+            }
+
+            const auto &info = binaryDataset->info;
+            const size_t runs = info.partition_count;
+            const size_t sampleSize = info.elements_per_partition;
+
+            using satp::util::ProgressBar;
+            ProgressBar bar{runs * sampleSize, cout, 50, 10'000};
+
+            vector<double> estimates;
+            estimates.reserve(runs);
+
+            vector<double> truths;
+            truths.reserve(runs);
+
+            double absErrSum = 0.0;
+            double sqErrSum = 0.0;
+            double absRelErrSum = 0.0;
+
+            vector<uint32_t> partitionValues;
+            for (size_t r = 0; r < runs; ++r) {
+                satp::io::loadBinaryPartition(*binaryDataset, r, partitionValues);
+                Algo algo(std::forward<Args>(ctorArgs)...);
+
+                for (auto v: partitionValues) {
+                    algo.process(v);
+                    bar.tick();
+                }
+
+                const double estimate = static_cast<double>(algo.count());
+                const double truth = static_cast<double>(numElementiDistintiEffettivi);
+                estimates.push_back(estimate);
+                truths.push_back(truth);
+
+                const double err = estimate - truth;
+                absErrSum += std::abs(err);
+                sqErrSum += err * err;
+                if (truth > 0.0) {
+                    absRelErrSum += std::abs(err) / truth;
+                }
+            }
+
+            bar.finish();
+            cout.flush();
+
+            const auto mean = reduce(estimates.begin(), estimates.end()) / runs;
+            const auto gtMean = reduce(truths.begin(), truths.end()) / runs;
+
+            double varAcc = 0.0;
+            for (double e: estimates) varAcc += (e - mean) * (e - mean);
+            const double variance = (runs > 1) ? (varAcc / (runs - 1)) : 0.0;
+            const double stddev = std::sqrt(variance);
+
+            const double bias = mean - gtMean;
+            const double difference = abs(bias);
+            const double biasRelative = (gtMean != 0.0) ? (bias / gtMean) : 0.0;
+
+            const double meanRelativeError = absRelErrSum / runs;
+            const double rmse = std::sqrt(sqErrSum / runs);
+            const double mae = absErrSum / runs;
+            const double rseObserved = (gtMean != 0.0) ? (stddev / gtMean) : 0.0;
+
+            return {difference, mean, variance, bias, meanRelativeError, biasRelative, rmse, mae, stddev, rseObserved, gtMean};
+        }
+
         static size_t exactDistinctCount(const vector<uint32_t> &values) {
             unordered_set<uint32_t> distinct(values.begin(), values.end());
             return distinct.size();
@@ -221,7 +299,10 @@ namespace satp::evaluation {
 
             out << std::setprecision(10);
             if (writeHeader) {
-                out << "algorithm,params,runs,sample_size,dataset_size,distinct_count,seed,"
+                // TODO(streaming): when streaming mode is implemented, export per-run/per-element
+                // metrics too (estimate, truth, abs_error, rel_error, run_id, element_index).
+                out << "algorithm,params,runs,sample_size,distinct_count,seed,"
+                       "f0_mean,f0_hat_mean,"
                        "mean,variance,stddev,rse_theoretical,rse_observed,bias,difference,bias_relative,"
                        "mean_relative_error,rmse,mae\n";
             }
@@ -230,9 +311,10 @@ namespace satp::evaluation {
                 << escapeCsvField(algorithmParams) << ','
                 << runs << ','
                 << sampleSize << ','
-                << valori.size() << ','
                 << numElementiDistintiEffettivi << ','
                 << seed << ','
+                << stats.truth_mean << ','
+                << stats.mean << ','
                 << stats.mean << ','
                 << stats.variance << ','
                 << stats.stddev << ','
@@ -255,5 +337,7 @@ namespace satp::evaluation {
         // Cache key for generated subsets.
         mutable size_t cachedRuns = 0;
         mutable size_t cachedSampleSize = 0;
+
+        std::optional<satp::io::BinaryDatasetIndex> binaryDataset;
     };
 } // namespace satp::evaluation

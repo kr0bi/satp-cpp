@@ -5,6 +5,7 @@ project(satp LANGUAGES CXX)
 set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 add_compile_options(-Wall -Wextra -Wpedantic -Wconversion)
+find_package(ZLIB REQUIRED)
 
 # ---- Libreria core -------------------------------------------------
 file(GLOB_RECURSE SRC_FILES CONFIGURE_DEPENDS src/satp/*.cpp)
@@ -20,6 +21,7 @@ add_library(satp STATIC ${SRC_FILES}
         src/satp/algorithms/hllpp_tables.cpp
 )
 target_include_directories(satp PUBLIC src)
+target_link_libraries(satp PUBLIC ZLIB::ZLIB)
 
 # --------------------------------------------------------------------
 #  ESEGUIBILE **BENCHMARK**  ← NUOVO

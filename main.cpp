@@ -1,23 +1,23 @@
 #include <iostream>
+#include <algorithm>
 #include <sstream>
 #include <string>
 #include <unordered_set>
 #include <cmath>
 #include <limits>
+#include <stdexcept>
 
 #include "src/satp/algorithms/HyperLogLog.h"
 #include "src/satp/algorithms/HyperLogLogPlusPlus.h"
 #include "src/satp/algorithms/LogLog.h"
 #include "src/satp/algorithms/ProbabilisticCounting.h"
+#include "src/satp/io/BinaryDatasetIO.h"
 #include "src/satp/simulation/EvaluationFramework.h"
 
 namespace eval = satp::evaluation;
 namespace alg = satp::algorithms;
 struct RunConfig {
-    std::string datasetPath = "dataset.txt";
-    std::size_t sampleSize = 1'000'000;
-    std::size_t runs = 10;
-    std::uint32_t seed = eval::EvaluationFramework::DEFAULT_SEED;
+    std::string datasetPath = "compressed_dataset.bin";
 
     std::uint32_t k = 16; // registri per HLL/LL
     std::uint32_t l = 16; // bitmap PC
@@ -57,12 +57,24 @@ static void printHelp() {
 }
 
 static void printConfig(const RunConfig &cfg) {
+    std::size_t sampleSize = 0;
+    std::size_t runs = 0;
+    std::uint32_t seed = 0;
+    try {
+        const auto index = satp::io::indexBinaryDataset(cfg.datasetPath);
+        sampleSize = index.info.elements_per_partition;
+        runs = index.info.partition_count;
+        seed = index.info.seed;
+    } catch (const std::exception &) {
+        // Keep defaults below and report file parsing issue in output.
+    }
+
     std::cout
         << "Parametri correnti:\n"
         << "  datasetPath   = " << cfg.datasetPath << '\n'
-        << "  sampleSize    = " << cfg.sampleSize << '\n'
-        << "  runs          = " << cfg.runs << '\n'
-        << "  seed          = " << cfg.seed << '\n'
+        << "  sampleSize    = " << sampleSize << " (dal dataset)\n"
+        << "  runs          = " << runs << " (dal dataset)\n"
+        << "  seed          = " << seed << " (dal dataset)\n"
         << "  k             = " << cfg.k << '\n'
         << "  l             = " << cfg.l << '\n'
         << "  lLog          = " << cfg.lLog << '\n'
@@ -89,11 +101,6 @@ static Command parseCommand(const std::string &line) {
 }
 
 static bool setParam(RunConfig &cfg, const std::string &param, const std::string &value) {
-    auto toSizeT = [](const std::string &s, std::size_t &out) {
-        std::size_t idx = 0;
-        out = std::stoull(s, &idx);
-        return idx == s.size();
-    };
     auto toU32 = [](const std::string &s, std::uint32_t &out) {
         std::size_t idx = 0;
         unsigned long v = std::stoul(s, &idx);
@@ -106,9 +113,6 @@ static bool setParam(RunConfig &cfg, const std::string &param, const std::string
         cfg.datasetPath = value;
         return true;
     }
-    if (param == "sampleSize") return toSizeT(value, cfg.sampleSize);
-    if (param == "runs") return toSizeT(value, cfg.runs);
-    if (param == "seed") return toU32(value, cfg.seed);
     if (param == "k") return toU32(value, cfg.k);
     if (param == "l") return toU32(value, cfg.l);
     if (param == "lLog") return toU32(value, cfg.lLog);
@@ -120,18 +124,29 @@ static bool setParam(RunConfig &cfg, const std::string &param, const std::string
 }
 
 static void runAlgorithms(const RunConfig &cfg, const std::vector<std::string> &algs) {
-    eval::EvaluationFramework bench(
-        cfg.datasetPath,
-        cfg.seed);
+    const auto datasetIndex = satp::io::indexBinaryDataset(cfg.datasetPath);
+    const std::size_t sampleSize = datasetIndex.info.elements_per_partition;
+    const std::size_t runs = datasetIndex.info.partition_count;
+    const std::uint32_t seed = datasetIndex.info.seed;
+
+    eval::EvaluationFramework bench(datasetIndex);
 
     std::unordered_set<std::string> todo;
     for (const auto &name : algs) todo.insert(name);
 
+
+    std::cout << "sampleSize: " << sampleSize
+              << '\t' << "runs: " << runs
+              << '\t' << "seed: " << seed << '\n';
+
+
     auto runHllpp = [&]() {
         const std::string params = "k=" + std::to_string(cfg.k);
         const auto stats = bench.evaluateToCsv<alg::HyperLogLogPlusPlus>(
-            cfg.csvPath, cfg.runs, cfg.sampleSize, params, rseHll(cfg.k), cfg.k);
+            cfg.csvPath, runs, sampleSize, params, rseHll(cfg.k), cfg.k);
         std::cout << "[HLL++] mean=" << stats.mean
+                  << "  f0_hat=" << stats.mean
+                  << "  f0_true=" << stats.truth_mean
                   << "  var=" << stats.variance
                   << "  stddev=" << stats.stddev
                   << "  bias=" << stats.bias
@@ -143,8 +158,10 @@ static void runAlgorithms(const RunConfig &cfg, const std::vector<std::string> &
     auto runHll = [&]() {
         const std::string params = "k=" + std::to_string(cfg.k) + ",L=" + std::to_string(cfg.lLog);
         const auto stats = bench.evaluateToCsv<alg::HyperLogLog>(
-            cfg.csvPath, cfg.runs, cfg.sampleSize, params, rseHll(cfg.k), cfg.k, cfg.lLog);
+            cfg.csvPath, runs, sampleSize, params, rseHll(cfg.k), cfg.k, cfg.lLog);
         std::cout << "[HLL ] mean=" << stats.mean
+                  << "  f0_hat=" << stats.mean
+                  << "  f0_true=" << stats.truth_mean
                   << "  var=" << stats.variance
                   << "  stddev=" << stats.stddev
                   << "  bias=" << stats.bias
@@ -156,8 +173,10 @@ static void runAlgorithms(const RunConfig &cfg, const std::vector<std::string> &
     auto runLl = [&]() {
         const std::string params = "k=" + std::to_string(cfg.k) + ",L=" + std::to_string(cfg.lLog);
         const auto stats = bench.evaluateToCsv<alg::LogLog>(
-            cfg.csvPath, cfg.runs, cfg.sampleSize, params, rseLogLog(cfg.k), cfg.k, cfg.lLog);
+            cfg.csvPath, runs, sampleSize, params, rseLogLog(cfg.k), cfg.k, cfg.lLog);
         std::cout << "[LL  ] mean=" << stats.mean
+                  << "  f0_hat=" << stats.mean
+                  << "  f0_true=" << stats.truth_mean
                   << "  var=" << stats.variance
                   << "  stddev=" << stats.stddev
                   << "  bias=" << stats.bias
@@ -169,8 +188,10 @@ static void runAlgorithms(const RunConfig &cfg, const std::vector<std::string> &
     auto runPc = [&]() {
         const std::string params = "L=" + std::to_string(cfg.l);
         const auto stats = bench.evaluateToCsv<alg::ProbabilisticCounting>(
-            cfg.csvPath, cfg.runs, cfg.sampleSize, params, rseUnknown(), cfg.l);
+            cfg.csvPath, runs, sampleSize, params, rseUnknown(), cfg.l);
         std::cout << "[PC  ] mean=" << stats.mean
+                  << "  f0_hat=" << stats.mean
+                  << "  f0_true=" << stats.truth_mean
                   << "  var=" << stats.variance
                   << "  stddev=" << stats.stddev
                   << "  bias=" << stats.bias

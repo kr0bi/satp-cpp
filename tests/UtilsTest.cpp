@@ -3,7 +3,8 @@
 
 TEST_CASE("Caricamento dataset da file", "[dataset]") {
     auto dataset = satp::testdata::loadDataset();
-    REQUIRE(dataset.total == 10000u);
+    REQUIRE(dataset.elements_per_partition == 2000u);
     REQUIRE(dataset.distinct == 1000u);
-    REQUIRE(dataset.values.size() == dataset.total);
+    REQUIRE(dataset.partition_count == 3u);
+    REQUIRE(dataset.values.size() == dataset.elements_per_partition);
 }

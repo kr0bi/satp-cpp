@@ -34,15 +34,15 @@ static void requireFiniteNonNegative(const eval::Stats &stats) {
 
 TEST_CASE("Evaluation Framework", "[eval-framework]") {
         // --------------- parametri del benchmark ---------------------------
-        constexpr std::size_t SAMPLE_SIZE = 2'000;
-        constexpr std::size_t RUNS = 3;
-
         constexpr std::uint32_t K = 16; // registri LogLog
         constexpr std::uint32_t L = 16; // bitmap ProbabilisticCounting
         constexpr std::uint32_t L_LOG = 32; // bitmap LogLog
 
         // --------------- dataset da file ----------------------------------
         eval::EvaluationFramework bench(satp::testdata::datasetPath());
+        const auto dataset = satp::testdata::loadDataset();
+        const auto SAMPLE_SIZE = dataset.elements_per_partition;
+        const auto RUNS = dataset.partition_count;
 
         std::cout << "Ground‑truth distinct = " << bench.getNumElementiDistintiEffettivi() << '\n';
 
