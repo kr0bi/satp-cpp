@@ -5,12 +5,14 @@ import pathlib
 import sys
 import tempfile
 import unittest
+import json
 
 SCRIPT_DIR = pathlib.Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(SCRIPT_DIR))
 
 from generate_dataset import generate_dataset  # noqa: E402
 from generate_dataset_puppis import FrequencyBuckets, generate_dataset as generate_dataset_puppis  # noqa: E402
+from generate_partitioned_dataset import generate_partitioned_dataset  # noqa: E402
 
 
 def read_dataset(path: pathlib.Path) -> tuple[int, int, list[int]]:
@@ -71,6 +73,58 @@ class GenerateDatasetTests(unittest.TestCase):
         self.assertEqual(buckets.get(20), 2)
         self.assertEqual(buckets.get(30), 1)
         self.assertEqual(buckets.get(99), 0)
+
+    def test_partitioned_json_schema_and_counts(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            out_dir = pathlib.Path(tmpdir)
+            out_path = generate_partitioned_dataset(
+                output_dir=out_dir,
+                n=30,
+                d=7,
+                p=4,
+                seed=123,
+                show_progress=False,
+            )
+
+            self.assertEqual(out_path.name, "dataset_n_30_d_7_p_4.json")
+            self.assertTrue(out_path.exists())
+
+            with out_path.open("r", encoding="utf-8") as f:
+                payload = json.load(f)
+
+            self.assertEqual(payload["nOfElements"], 30)
+            self.assertEqual(payload["distinct"], 7)
+            self.assertEqual(payload["seed"], 123)
+            self.assertEqual(len(payload["partizioni"]), 4)
+
+            all_ids: list[int] = []
+            total_stream_items = 0
+            for partition in payload["partizioni"]:
+                local_counts: dict[int, int] = {}
+                stream = partition["stream"]
+                total_stream_items += len(stream)
+                for item in stream:
+                    value = int(item["id"])
+                    freq = int(item["freq"])
+                    local_counts[value] = local_counts.get(value, 0) + 1
+                    self.assertEqual(freq, local_counts[value])
+                    all_ids.append(value)
+
+            self.assertEqual(total_stream_items, 30)
+            self.assertEqual(len(set(all_ids)), 7)
+
+    def test_partitioned_json_invalid_params(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            out_dir = pathlib.Path(tmpdir)
+            with self.assertRaises(ValueError):
+                generate_partitioned_dataset(
+                    output_dir=out_dir,
+                    n=10,
+                    d=11,
+                    p=2,
+                    seed=1,
+                    show_progress=False,
+                )
 
 
 if __name__ == "__main__":
