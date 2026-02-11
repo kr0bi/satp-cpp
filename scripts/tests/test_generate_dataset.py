@@ -95,23 +95,24 @@ class GenerateDatasetTests(unittest.TestCase):
             self.assertEqual(payload["nOfElements"], 30)
             self.assertEqual(payload["distinct"], 7)
             self.assertEqual(payload["seed"], 123)
+            self.assertEqual(payload["nOfPartitions"], 4)
+            self.assertEqual(payload["totalElements"], 120)
             self.assertEqual(len(payload["partizioni"]), 4)
 
-            all_ids: list[int] = []
             total_stream_items = 0
             for partition in payload["partizioni"]:
                 local_counts: dict[int, int] = {}
                 stream = partition["stream"]
                 total_stream_items += len(stream)
+                self.assertEqual(len(stream), 30)
                 for item in stream:
                     value = int(item["id"])
                     freq = int(item["freq"])
                     local_counts[value] = local_counts.get(value, 0) + 1
                     self.assertEqual(freq, local_counts[value])
-                    all_ids.append(value)
+                self.assertEqual(len(local_counts), 7)
 
-            self.assertEqual(total_stream_items, 30)
-            self.assertEqual(len(set(all_ids)), 7)
+            self.assertEqual(total_stream_items, 120)
 
     def test_partitioned_json_invalid_params(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -125,6 +126,35 @@ class GenerateDatasetTests(unittest.TestCase):
                     seed=1,
                     show_progress=False,
                 )
+
+    def test_partitioned_json_deterministic_across_workers(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            out_dir = pathlib.Path(tmpdir)
+            path_w1 = generate_partitioned_dataset(
+                output_dir=out_dir,
+                n=120,
+                d=20,
+                p=6,
+                seed=99,
+                show_progress=False,
+                workers=1,
+            )
+            with path_w1.open("r", encoding="utf-8") as f:
+                payload_w1 = json.load(f)
+
+            path_w2 = generate_partitioned_dataset(
+                output_dir=out_dir,
+                n=120,
+                d=20,
+                p=6,
+                seed=99,
+                show_progress=False,
+                workers=2,
+            )
+            with path_w2.open("r", encoding="utf-8") as f:
+                payload_w2 = json.load(f)
+
+            self.assertEqual(payload_w1, payload_w2)
 
 
 if __name__ == "__main__":

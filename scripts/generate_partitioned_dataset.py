@@ -2,12 +2,18 @@
 from __future__ import annotations
 
 import argparse
-import json
+import multiprocessing as mp
+import os
 import pathlib
+import queue
 import random
 import sys
+import tempfile
 import time
-from typing import Dict, Iterator, List
+from typing import Any, Dict, List, Tuple
+
+
+DEFAULT_PROGRESS_UPDATES = 200
 
 
 def _validate_params(n: int, d: int, p: int) -> None:
@@ -21,36 +27,8 @@ def _validate_params(n: int, d: int, p: int) -> None:
         raise ValueError("d=0 requires n=0")
 
 
-def _partition_sizes(n: int, p: int) -> List[int]:
-    base = n // p
-    rem = n % p
-    return [base + (1 if i < rem else 0) for i in range(p)]
-
-
-def _pick_distinct_ids(n: int, d: int, rng: random.Random) -> List[int]:
-    if d == 0:
-        return []
-    return rng.sample(range(n), d)
-
-
-def _generate_ids(n: int, distinct_ids: List[int], rng: random.Random) -> Iterator[int]:
-    if n == 0:
-        return
-    if not distinct_ids:
-        raise ValueError("distinct_ids cannot be empty when n > 0")
-
-    mandatory_positions = rng.sample(range(n), len(distinct_ids))
-    shuffled_ids = list(distinct_ids)
-    rng.shuffle(shuffled_ids)
-    mandatory_by_pos = {pos: shuffled_ids[i] for i, pos in enumerate(mandatory_positions)}
-
-    d = len(shuffled_ids)
-    for pos in range(n):
-        forced = mandatory_by_pos.get(pos)
-        if forced is not None:
-            yield forced
-        else:
-            yield shuffled_ids[rng.randrange(d)]
+def _derive_partition_seed(seed: int, partition_index: int) -> int:
+    return (seed * 0x9E3779B97F4A7C15 + partition_index * 0xBF58476D1CE4E5B9) & ((1 << 64) - 1)
 
 
 def _format_seconds(seconds: float) -> str:
@@ -75,62 +53,169 @@ def _print_progress(done: int, total: int, start_time: float) -> None:
     sys.stderr.flush()
 
 
+def _drain_progress_queue(progress_queue: Any,
+                          produced: int,
+                          total: int,
+                          start_time: float,
+                          show_progress: bool) -> int:
+    if progress_queue is None:
+        return produced
+
+    while True:
+        try:
+            inc = progress_queue.get_nowait()
+        except queue.Empty:
+            break
+        produced += int(inc)
+        if show_progress and total > 0:
+            _print_progress(produced, total, start_time)
+    return produced
+
+
+def _write_partition_fragment(task: Tuple[int, int, int, int, str, Any, int]) -> Tuple[int, str]:
+    part_idx, n_per_partition, d_per_partition, part_seed, tmp_dir, progress_queue, progress_batch = task
+    rng = random.Random(part_seed)
+    out_path = pathlib.Path(tmp_dir) / f"part_{part_idx}.jsonfrag"
+
+    distinct_ids = rng.sample(range(n_per_partition), d_per_partition) if d_per_partition > 0 else []
+    forced_by_pos: Dict[int, int] = {}
+    if d_per_partition > 0:
+        mandatory_positions = rng.sample(range(n_per_partition), d_per_partition)
+        rng.shuffle(distinct_ids)
+        for i, pos in enumerate(mandatory_positions):
+            forced_by_pos[pos] = distinct_ids[i]
+
+    pending_progress = 0
+    local_freq: Dict[int, int] = {}
+    with out_path.open("w", encoding="utf-8", buffering=1024 * 1024) as out:
+        out.write("    {\n")
+        out.write("      \"stream\": [\n")
+
+        for i in range(n_per_partition):
+            forced = forced_by_pos.get(i)
+            if forced is not None:
+                value = forced
+            else:
+                value = distinct_ids[rng.randrange(d_per_partition)]
+
+            freq = local_freq.get(value, 0) + 1
+            local_freq[value] = freq
+
+            if i > 0:
+                out.write(",\n")
+            out.write(f"        {{\"id\": {value}, \"freq\": {freq}}}")
+
+            if progress_queue is not None:
+                pending_progress += 1
+                if pending_progress >= progress_batch:
+                    progress_queue.put(pending_progress)
+                    pending_progress = 0
+
+        out.write("\n")
+        out.write("      ]\n")
+        out.write("    }")
+
+    if progress_queue is not None and pending_progress > 0:
+        progress_queue.put(pending_progress)
+
+    return part_idx, str(out_path)
+
+
 def generate_partitioned_dataset(output_dir: pathlib.Path,
                                  n: int,
                                  d: int,
                                  p: int,
                                  seed: int,
-                                 show_progress: bool = False) -> pathlib.Path:
+                                 show_progress: bool = False,
+                                 workers: int | None = None,
+                                 progress_batch: int | None = None) -> pathlib.Path:
     _validate_params(n, d, p)
+
     output_dir.mkdir(parents=True, exist_ok=True)
     out_path = output_dir / f"dataset_n_{n}_d_{d}_p_{p}.json"
 
-    rng = random.Random(seed)
-    distinct_ids = _pick_distinct_ids(n, d, rng)
-    sizes = _partition_sizes(n, p)
-    id_stream = _generate_ids(n, distinct_ids, rng)
+    max_workers = os.cpu_count() or 1
+    if workers is not None and workers <= 0:
+        raise ValueError("workers must be > 0")
+    requested_workers = max_workers if workers is None else workers
+    workers_eff = max(1, min(requested_workers, p, max_workers))
 
+    total_elements = n * p
+    if progress_batch is None:
+        progress_batch = max(1, total_elements // DEFAULT_PROGRESS_UPDATES)
+    if progress_batch <= 0:
+        raise ValueError("progress_batch must be > 0")
     produced = 0
-    update_every = max(1, n // 200) if n > 0 else 1
     start = time.time()
+    part_paths: Dict[int, str] = {}
 
-    with out_path.open("w", encoding="utf-8", buffering=1024 * 1024) as out:
-        out.write("{\n")
-        out.write(f"  \"nOfElements\": {n},\n")
-        out.write(f"  \"distinct\": {d},\n")
-        out.write(f"  \"seed\": {seed},\n")
-        out.write("  \"partizioni\": [\n")
+    with tempfile.TemporaryDirectory(prefix="satp_parts_", dir=str(output_dir)) as tmp_dir:
+        tasks: List[Tuple[int, int, int, int, str, Any, int]] = []
+        for part_idx in range(p):
+            tasks.append((
+                part_idx,
+                n,
+                d,
+                _derive_partition_seed(seed, part_idx),
+                tmp_dir,
+                None,
+                progress_batch,
+            ))
 
-        for part_idx, part_size in enumerate(sizes):
-            if part_idx > 0:
-                out.write(",\n")
-            out.write("    {\n")
-            out.write("      \"stream\": [\n")
+        if workers_eff == 1:
+            for task in tasks:
+                part_idx, part_path = _write_partition_fragment(task)
+                part_paths[part_idx] = part_path
+                produced += n
+                if show_progress and total_elements > 0:
+                    _print_progress(produced, total_elements, start)
+        else:
+            ctx = mp.get_context("spawn")
+            with ctx.Manager() as manager:
+                progress_queue = manager.Queue()
+                tasks = [
+                    (part_idx, n_part, d_part, part_seed, tdir, progress_queue, pbatch)
+                    for (part_idx, n_part, d_part, part_seed, tdir, _, pbatch) in tasks
+                ]
 
-            local_freq: Dict[int, int] = {}
-            for i in range(part_size):
-                value = next(id_stream)
-                freq = local_freq.get(value, 0) + 1
-                local_freq[value] = freq
+                with ctx.Pool(processes=workers_eff) as pool:
+                    async_results = [pool.apply_async(_write_partition_fragment, args=(task,)) for task in tasks]
 
-                if i > 0:
+                    while True:
+                        produced = _drain_progress_queue(progress_queue, produced, total_elements, start, show_progress)
+                        done = sum(1 for r in async_results if r.ready())
+                        if done == len(async_results):
+                            break
+                        time.sleep(0.05)
+
+                    for async_result in async_results:
+                        part_idx, part_path = async_result.get()
+                        part_paths[part_idx] = part_path
+
+                    produced = _drain_progress_queue(progress_queue, produced, total_elements, start, show_progress)
+
+        with out_path.open("w", encoding="utf-8", buffering=1024 * 1024) as out:
+            out.write("{\n")
+            out.write(f"  \"nOfElements\": {n},\n")
+            out.write(f"  \"distinct\": {d},\n")
+            out.write(f"  \"seed\": {seed},\n")
+            out.write(f"  \"nOfPartitions\": {p},\n")
+            out.write(f"  \"totalElements\": {total_elements},\n")
+            out.write("  \"partizioni\": [\n")
+
+            for part_idx in range(p):
+                if part_idx > 0:
                     out.write(",\n")
-                out.write("        ")
-                json.dump({"id": value, "freq": freq}, out, separators=(", ", ": "))
-
-                produced += 1
-                if show_progress and (produced % update_every == 0 or produced == n):
-                    _print_progress(produced, n, start)
+                with pathlib.Path(part_paths[part_idx]).open("r", encoding="utf-8") as part_file:
+                    out.write(part_file.read())
 
             out.write("\n")
-            out.write("      ]\n")
-            out.write("    }")
+            out.write("  ]\n")
+            out.write("}\n")
 
-        out.write("\n")
-        out.write("  ]\n")
-        out.write("}\n")
-
-    if show_progress and n > 0:
+    if show_progress and total_elements > 0:
+        if produced < total_elements:
+            _print_progress(total_elements, total_elements, start)
         sys.stderr.write("\n")
         sys.stderr.flush()
 
@@ -139,14 +224,18 @@ def generate_partitioned_dataset(output_dir: pathlib.Path,
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        description="Generate one JSON dataset with precomputed partitions (n, d, p, seed)."
+        description="Generate one JSON dataset with precomputed partitions (n,d,p,seed)."
     )
     parser.add_argument("--output-dir", type=pathlib.Path, default=pathlib.Path("."),
                         help="Directory where dataset_n_{n}_d_{d}_p_{p}.json is written")
-    parser.add_argument("--n", required=True, type=int, help="Total number of elements")
-    parser.add_argument("--d", required=True, type=int, help="Number of distinct elements")
+    parser.add_argument("--n", required=True, type=int, help="Number of elements per partition")
+    parser.add_argument("--d", required=True, type=int, help="Number of distinct elements per partition")
     parser.add_argument("--p", required=True, type=int, help="Number of partitions")
     parser.add_argument("--seed", required=True, type=int, help="Random seed")
+    parser.add_argument("--workers", type=int, default=None,
+                        help="Number of worker processes (default: CPU count)")
+    parser.add_argument("--progress-batch", type=int, default=None,
+                        help="Elements per worker progress update (default: auto ~= totalElements/200)")
     parser.add_argument("--no-progress", action="store_true", help="Disable progress output")
     return parser.parse_args()
 
@@ -160,6 +249,8 @@ def main() -> None:
         p=args.p,
         seed=args.seed,
         show_progress=not args.no_progress,
+        workers=args.workers,
+        progress_batch=args.progress_batch,
     )
     print(out_path)
 
