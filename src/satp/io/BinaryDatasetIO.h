@@ -208,4 +208,60 @@ namespace satp::io {
             out[i] = detail::readU32LE(p);
         }
     }
+
+    class BinaryDatasetPartitionReader {
+    public:
+        explicit BinaryDatasetPartitionReader(const BinaryDatasetIndex &index)
+            : index(index), in(index.path, std::ios::binary) {
+            if (!in) {
+                throw std::runtime_error("Cannot open binary dataset file");
+            }
+        }
+
+        void load(std::size_t partitionIndex, std::vector<std::uint32_t> &out) {
+            if (partitionIndex >= index.partitions.size()) {
+                throw std::runtime_error("Requested partition index out of range");
+            }
+            const auto &entry = index.partitions[partitionIndex];
+
+            out.clear();
+            out.resize(entry.elements);
+            if (entry.elements == 0) {
+                return;
+            }
+
+            const auto offset = detail::toStreamoffChecked(entry.offset, "entry.offset");
+            in.clear();
+            in.seekg(offset, std::ios::beg);
+            if (!in) throw std::runtime_error("Cannot seek binary dataset partition");
+
+            compressed.resize(detail::toSizeTChecked(entry.byte_size, "entry.byte_size"));
+            detail::readExact(in, compressed.data(), compressed.size(), "Cannot read binary dataset partition payload");
+
+            const std::uint64_t expectedBytesU64 = static_cast<std::uint64_t>(entry.elements) * 4ull;
+            const std::size_t expectedBytes = detail::toSizeTChecked(expectedBytesU64, "partition.uncompressed_size");
+
+            decompressed.resize(expectedBytes);
+            uLongf decompressedLen = static_cast<uLongf>(decompressed.size());
+            const int rc = ::uncompress(
+                reinterpret_cast<Bytef *>(decompressed.data()),
+                &decompressedLen,
+                reinterpret_cast<const Bytef *>(compressed.data()),
+                static_cast<uLong>(compressed.size()));
+            if (rc != Z_OK || decompressedLen != static_cast<uLongf>(expectedBytes)) {
+                throw std::runtime_error("Cannot decompress binary dataset partition");
+            }
+
+            for (std::size_t i = 0; i < entry.elements; ++i) {
+                const auto *p = decompressed.data() + (i * 4u);
+                out[i] = detail::readU32LE(p);
+            }
+        }
+
+    private:
+        const BinaryDatasetIndex &index;
+        std::ifstream in;
+        std::vector<std::uint8_t> compressed;
+        std::vector<std::uint8_t> decompressed;
+    };
 } // namespace satp::io

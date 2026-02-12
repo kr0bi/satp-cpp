@@ -216,9 +216,10 @@ namespace satp::evaluation {
             double sqErrSum = 0.0;
             double absRelErrSum = 0.0;
 
+            satp::io::BinaryDatasetPartitionReader reader(*binaryDataset);
             vector<uint32_t> partitionValues;
             for (size_t r = 0; r < runs; ++r) {
-                satp::io::loadBinaryPartition(*binaryDataset, r, partitionValues);
+                reader.load(r, partitionValues);
                 Algo algo(std::forward<Args>(ctorArgs)...);
 
                 for (auto v: partitionValues) {
