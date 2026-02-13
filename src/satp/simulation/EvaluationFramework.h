@@ -13,6 +13,7 @@
 #include <utility>      // forward
 #include <cmath>
 #include <optional>
+#include <limits>
 
 #include "../algorithms/Algorithm.h"
 #include "satp/ProgressBar.h"
@@ -38,6 +39,21 @@ namespace satp::evaluation {
         double stddev = 0.0;
         double rse_observed = 0.0;
         double truth_mean = 0.0; // \bar{F}_0
+    };
+
+    struct StreamingPointStats {
+        size_t element_index = 0; // 1-based index t
+        double difference = 0.0;
+        double mean = 0.0; // \bar{\hat{F}_0(t)}
+        double variance = 0.0;
+        double bias = 0.0;
+        double mean_relative_error = 0.0;
+        double bias_relative = 0.0;
+        double rmse = 0.0;
+        double mae = 0.0;
+        double stddev = 0.0;
+        double rse_observed = 0.0;
+        double truth_mean = 0.0; // \bar{F_0(t)}
     };
 
     class EvaluationFramework {
@@ -164,6 +180,33 @@ namespace satp::evaluation {
             return stats;
         }
 
+        template<typename Algo, typename... Args>
+        [[nodiscard]] vector<StreamingPointStats> evaluateStreaming(size_t runs,
+                                                                    size_t sampleSize,
+                                                                    Args &&... ctorArgs) const {
+            if (!binaryDataset.has_value()) {
+                throw runtime_error("Streaming evaluation is supported only for binary datasets");
+            }
+            (void) runs;
+            (void) sampleSize;
+            return evaluateStreamingFromBinary<Algo>(std::forward<Args>(ctorArgs)...);
+        }
+
+        template<typename Algo, typename... Args>
+        [[nodiscard]] vector<StreamingPointStats> evaluateStreamingToCsv(const filesystem::path &csvPath,
+                                                                         size_t runs,
+                                                                         size_t sampleSize,
+                                                                         const string &algorithmParams,
+                                                                         double rseTheoretical,
+                                                                         Args &&... ctorArgs) const {
+            Algo algo(ctorArgs...);
+            const size_t effectiveRuns = binaryDataset.has_value() ? binaryDataset->info.partition_count : runs;
+            const size_t effectiveSampleSize = binaryDataset.has_value() ? binaryDataset->info.elements_per_partition : sampleSize;
+            auto series = evaluateStreaming<Algo>(effectiveRuns, effectiveSampleSize, std::forward<Args>(ctorArgs)...);
+            appendStreamingCsv(csvPath, algo.getName(), algorithmParams, effectiveRuns, effectiveSampleSize, rseTheoretical, series);
+            return series;
+        }
+
         /**
          * Viene chiamato al primo evaluate() e riutilizza i sotto-insiemi per le chiamate successive dello stesso EvaluationFramework
          * @param runs
@@ -193,6 +236,16 @@ namespace satp::evaluation {
         }
 
     private:
+        struct StreamingAccumulator {
+            double estimateMean = 0.0;
+            double estimateM2 = 0.0;
+            double truthSum = 0.0;
+            double absErrSum = 0.0;
+            double sqErrSum = 0.0;
+            double absRelErrSum = 0.0;
+            size_t count = 0;
+        };
+
         template<typename Algo, typename... Args>
         [[nodiscard]] Stats evaluateFromBinary(Args &&... ctorArgs) const {
             if (!binaryDataset.has_value()) {
@@ -263,6 +316,109 @@ namespace satp::evaluation {
             return {difference, mean, variance, bias, meanRelativeError, biasRelative, rmse, mae, stddev, rseObserved, gtMean};
         }
 
+        template<typename Algo, typename... Args>
+        [[nodiscard]] vector<StreamingPointStats> evaluateStreamingFromBinary(Args &&... ctorArgs) const {
+            if (!binaryDataset.has_value()) {
+                throw runtime_error("Internal error: binary dataset is not loaded");
+            }
+
+            const auto &info = binaryDataset->info;
+            const size_t runs = info.partition_count;
+            const size_t sampleSize = info.elements_per_partition;
+            if (runs == 0 || sampleSize == 0) return {};
+
+            using satp::util::ProgressBar;
+            ProgressBar bar{runs * sampleSize, cout, 50, 10'000};
+
+            vector<StreamingAccumulator> accumulators(sampleSize);
+
+            satp::io::BinaryDatasetPartitionReader reader(*binaryDataset);
+            vector<uint32_t> partitionValues;
+            vector<uint8_t> partitionTruthBits;
+
+            for (size_t r = 0; r < runs; ++r) {
+                reader.loadWithTruthBits(r, partitionValues, partitionTruthBits);
+                if (partitionValues.size() != sampleSize) {
+                    throw runtime_error("Invalid binary dataset: partition size mismatch while streaming");
+                }
+                if (partitionTruthBits.size() != (sampleSize + 7u) / 8u) {
+                    throw runtime_error("Invalid binary dataset: truth bitset size mismatch while streaming");
+                }
+
+                Algo algo(std::forward<Args>(ctorArgs)...);
+                std::uint64_t truthPrefix = 0;
+
+                for (size_t t = 0; t < sampleSize; ++t) {
+                    const std::uint32_t value = partitionValues[t];
+                    algo.process(value);
+
+                    const std::uint8_t byte = partitionTruthBits[t >> 3u];
+                    const bool isNew = ((byte >> (t & 7u)) & 0x1u) != 0;
+                    if (isNew) {
+                        ++truthPrefix;
+                    }
+
+                    const double estimate = static_cast<double>(algo.count());
+                    const double truth = static_cast<double>(truthPrefix);
+                    const double err = estimate - truth;
+
+                    auto &acc = accumulators[t];
+                    ++acc.count;
+                    const double delta = estimate - acc.estimateMean;
+                    acc.estimateMean += delta / static_cast<double>(acc.count);
+                    const double delta2 = estimate - acc.estimateMean;
+                    acc.estimateM2 += delta * delta2;
+
+                    acc.truthSum += truth;
+                    acc.absErrSum += std::abs(err);
+                    acc.sqErrSum += err * err;
+                    if (truth > 0.0) {
+                        acc.absRelErrSum += std::abs(err) / truth;
+                    }
+
+                    bar.tick();
+                }
+            }
+
+            bar.finish();
+            cout.flush();
+
+            vector<StreamingPointStats> out;
+            out.reserve(sampleSize);
+            for (size_t t = 0; t < sampleSize; ++t) {
+                const auto &acc = accumulators[t];
+                const double runCount = static_cast<double>(acc.count);
+                const double mean = acc.estimateMean;
+                const double gtMean = acc.truthSum / runCount;
+                const double variance = (acc.count > 1) ? (acc.estimateM2 / static_cast<double>(acc.count - 1)) : 0.0;
+                const double stddev = std::sqrt(variance);
+                const double bias = mean - gtMean;
+                const double difference = std::abs(bias);
+                const double biasRelative = (gtMean != 0.0) ? (bias / gtMean) : 0.0;
+                const double meanRelativeError = acc.absRelErrSum / runCount;
+                const double rmse = std::sqrt(acc.sqErrSum / runCount);
+                const double mae = acc.absErrSum / runCount;
+                const double rseObserved = (gtMean != 0.0) ? (stddev / gtMean) : 0.0;
+
+                out.push_back({
+                    t + 1,
+                    difference,
+                    mean,
+                    variance,
+                    bias,
+                    meanRelativeError,
+                    biasRelative,
+                    rmse,
+                    mae,
+                    stddev,
+                    rseObserved,
+                    gtMean
+                });
+            }
+
+            return out;
+        }
+
         static size_t exactDistinctCount(const vector<uint32_t> &values) {
             unordered_set<uint32_t> distinct(values.begin(), values.end());
             return distinct.size();
@@ -287,6 +443,16 @@ namespace satp::evaluation {
             return out;
         }
 
+        static void writeCsvHeaderIfNeeded(const filesystem::path &csvPath, std::ofstream &out) {
+            const bool writeHeader = !filesystem::exists(csvPath) || filesystem::file_size(csvPath) == 0;
+            if (!writeHeader) return;
+
+            out << "algorithm,params,mode,runs,sample_size,element_index,distinct_count,seed,"
+                   "f0_mean,f0_hat_mean,"
+                   "mean,variance,stddev,rse_theoretical,rse_observed,bias,difference,bias_relative,"
+                   "mean_relative_error,rmse,mae\n";
+        }
+
         void appendCsv(const filesystem::path &csvPath,
                        const string &algorithmName,
                        const string &algorithmParams,
@@ -294,23 +460,17 @@ namespace satp::evaluation {
                        size_t sampleSize,
                        double rseTheoretical,
                        const Stats &stats) const {
-            const bool writeHeader = !filesystem::exists(csvPath) || filesystem::file_size(csvPath) == 0;
             ofstream out(csvPath, ios::app);
             if (!out) throw runtime_error("Impossibile aprire il file CSV");
 
             out << std::setprecision(10);
-            if (writeHeader) {
-                // TODO(streaming): when streaming mode is implemented, export per-run/per-element
-                // metrics too (estimate, truth, abs_error, rel_error, run_id, element_index).
-                out << "algorithm,params,runs,sample_size,distinct_count,seed,"
-                       "f0_mean,f0_hat_mean,"
-                       "mean,variance,stddev,rse_theoretical,rse_observed,bias,difference,bias_relative,"
-                       "mean_relative_error,rmse,mae\n";
-            }
+            writeCsvHeaderIfNeeded(csvPath, out);
 
             out << escapeCsvField(algorithmName) << ','
                 << escapeCsvField(algorithmParams) << ','
+                << "normal,"
                 << runs << ','
+                << sampleSize << ','
                 << sampleSize << ','
                 << numElementiDistintiEffettivi << ','
                 << seed << ','
@@ -327,6 +487,44 @@ namespace satp::evaluation {
                 << stats.mean_relative_error << ','
                 << stats.rmse << ','
                 << stats.mae << '\n';
+        }
+
+        void appendStreamingCsv(const filesystem::path &csvPath,
+                                const string &algorithmName,
+                                const string &algorithmParams,
+                                size_t runs,
+                                size_t sampleSize,
+                                double rseTheoretical,
+                                const vector<StreamingPointStats> &series) const {
+            ofstream out(csvPath, ios::app);
+            if (!out) throw runtime_error("Impossibile aprire il file CSV");
+
+            out << std::setprecision(10);
+            writeCsvHeaderIfNeeded(csvPath, out);
+
+            for (const auto &point : series) {
+                out << escapeCsvField(algorithmName) << ','
+                    << escapeCsvField(algorithmParams) << ','
+                    << "streaming,"
+                    << runs << ','
+                    << sampleSize << ','
+                    << point.element_index << ','
+                    << numElementiDistintiEffettivi << ','
+                    << seed << ','
+                    << point.truth_mean << ','
+                    << point.mean << ','
+                    << point.mean << ','
+                    << point.variance << ','
+                    << point.stddev << ','
+                    << rseTheoretical << ','
+                    << point.rse_observed << ','
+                    << point.bias << ','
+                    << point.difference << ','
+                    << point.bias_relative << ','
+                    << point.mean_relative_error << ','
+                    << point.rmse << ','
+                    << point.mae << '\n';
+            }
         }
 
         vector<uint32_t> valori;

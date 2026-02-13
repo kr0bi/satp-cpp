@@ -52,7 +52,8 @@ static void printHelp() {
         << "  show                         Stampa i parametri correnti\n"
         << "  list                         Elenca algoritmi supportati\n"
         << "  set <param> <value>          Imposta un parametro\n"
-        << "  run <algo|all>               Esegue uno o piu' algoritmi\n"
+        << "  run <algo|all>               Esegue uno o piu' algoritmi (modalita' normale)\n"
+        << "  runstream <algo|all>         Esegue uno o piu' algoritmi (modalita' streaming)\n"
         << "  quit                         Esce\n";
 }
 
@@ -123,7 +124,7 @@ static bool setParam(RunConfig &cfg, const std::string &param, const std::string
     return false;
 }
 
-static void runAlgorithms(const RunConfig &cfg, const std::vector<std::string> &algs) {
+static void runAlgorithms(const RunConfig &cfg, const std::vector<std::string> &algs, bool streamingMode) {
     const auto datasetIndex = satp::io::indexBinaryDataset(cfg.datasetPath);
     const std::size_t sampleSize = datasetIndex.info.elements_per_partition;
     const std::size_t runs = datasetIndex.info.partition_count;
@@ -135,69 +136,134 @@ static void runAlgorithms(const RunConfig &cfg, const std::vector<std::string> &
     for (const auto &name : algs) todo.insert(name);
 
 
-    std::cout << "sampleSize: " << sampleSize
+    std::cout << "mode: " << (streamingMode ? "streaming" : "normal")
+              << '\t' << "sampleSize: " << sampleSize
               << '\t' << "runs: " << runs
               << '\t' << "seed: " << seed << '\n';
 
 
     auto runHllpp = [&]() {
         const std::string params = "k=" + std::to_string(cfg.k);
-        const auto stats = bench.evaluateToCsv<alg::HyperLogLogPlusPlus>(
-            cfg.csvPath, runs, sampleSize, params, rseHll(cfg.k), cfg.k);
-        std::cout << "[HLL++] mean=" << stats.mean
-                  << "  f0_hat=" << stats.mean
-                  << "  f0_true=" << stats.truth_mean
-                  << "  var=" << stats.variance
-                  << "  stddev=" << stats.stddev
-                  << "  bias=" << stats.bias
-                  << "  mre=" << stats.mean_relative_error
-                  << "  rmse=" << stats.rmse
-                  << "  mae=" << stats.mae << '\n';
+        if (streamingMode) {
+            const auto series = bench.evaluateStreamingToCsv<alg::HyperLogLogPlusPlus>(
+                cfg.csvPath, runs, sampleSize, params, rseHll(cfg.k), cfg.k);
+            const auto &last = series.back();
+            std::cout << "[HLL++][stream] t=" << last.element_index
+                      << "  mean=" << last.mean
+                      << "  f0_hat=" << last.mean
+                      << "  f0_true=" << last.truth_mean
+                      << "  var=" << last.variance
+                      << "  stddev=" << last.stddev
+                      << "  bias=" << last.bias
+                      << "  mre=" << last.mean_relative_error
+                      << "  rmse=" << last.rmse
+                      << "  mae=" << last.mae << '\n';
+        } else {
+            const auto stats = bench.evaluateToCsv<alg::HyperLogLogPlusPlus>(
+                cfg.csvPath, runs, sampleSize, params, rseHll(cfg.k), cfg.k);
+            std::cout << "[HLL++] mean=" << stats.mean
+                      << "  f0_hat=" << stats.mean
+                      << "  f0_true=" << stats.truth_mean
+                      << "  var=" << stats.variance
+                      << "  stddev=" << stats.stddev
+                      << "  bias=" << stats.bias
+                      << "  mre=" << stats.mean_relative_error
+                      << "  rmse=" << stats.rmse
+                      << "  mae=" << stats.mae << '\n';
+        }
     };
 
     auto runHll = [&]() {
         const std::string params = "k=" + std::to_string(cfg.k) + ",L=" + std::to_string(cfg.lLog);
-        const auto stats = bench.evaluateToCsv<alg::HyperLogLog>(
-            cfg.csvPath, runs, sampleSize, params, rseHll(cfg.k), cfg.k, cfg.lLog);
-        std::cout << "[HLL ] mean=" << stats.mean
-                  << "  f0_hat=" << stats.mean
-                  << "  f0_true=" << stats.truth_mean
-                  << "  var=" << stats.variance
-                  << "  stddev=" << stats.stddev
-                  << "  bias=" << stats.bias
-                  << "  mre=" << stats.mean_relative_error
-                  << "  rmse=" << stats.rmse
-                  << "  mae=" << stats.mae << '\n';
+        if (streamingMode) {
+            const auto series = bench.evaluateStreamingToCsv<alg::HyperLogLog>(
+                cfg.csvPath, runs, sampleSize, params, rseHll(cfg.k), cfg.k, cfg.lLog);
+            const auto &last = series.back();
+            std::cout << "[HLL ][stream] t=" << last.element_index
+                      << "  mean=" << last.mean
+                      << "  f0_hat=" << last.mean
+                      << "  f0_true=" << last.truth_mean
+                      << "  var=" << last.variance
+                      << "  stddev=" << last.stddev
+                      << "  bias=" << last.bias
+                      << "  mre=" << last.mean_relative_error
+                      << "  rmse=" << last.rmse
+                      << "  mae=" << last.mae << '\n';
+        } else {
+            const auto stats = bench.evaluateToCsv<alg::HyperLogLog>(
+                cfg.csvPath, runs, sampleSize, params, rseHll(cfg.k), cfg.k, cfg.lLog);
+            std::cout << "[HLL ] mean=" << stats.mean
+                      << "  f0_hat=" << stats.mean
+                      << "  f0_true=" << stats.truth_mean
+                      << "  var=" << stats.variance
+                      << "  stddev=" << stats.stddev
+                      << "  bias=" << stats.bias
+                      << "  mre=" << stats.mean_relative_error
+                      << "  rmse=" << stats.rmse
+                      << "  mae=" << stats.mae << '\n';
+        }
     };
 
     auto runLl = [&]() {
         const std::string params = "k=" + std::to_string(cfg.k) + ",L=" + std::to_string(cfg.lLog);
-        const auto stats = bench.evaluateToCsv<alg::LogLog>(
-            cfg.csvPath, runs, sampleSize, params, rseLogLog(cfg.k), cfg.k, cfg.lLog);
-        std::cout << "[LL  ] mean=" << stats.mean
-                  << "  f0_hat=" << stats.mean
-                  << "  f0_true=" << stats.truth_mean
-                  << "  var=" << stats.variance
-                  << "  stddev=" << stats.stddev
-                  << "  bias=" << stats.bias
-                  << "  mre=" << stats.mean_relative_error
-                  << "  rmse=" << stats.rmse
-                  << "  mae=" << stats.mae << '\n';
+        if (streamingMode) {
+            const auto series = bench.evaluateStreamingToCsv<alg::LogLog>(
+                cfg.csvPath, runs, sampleSize, params, rseLogLog(cfg.k), cfg.k, cfg.lLog);
+            const auto &last = series.back();
+            std::cout << "[LL  ][stream] t=" << last.element_index
+                      << "  mean=" << last.mean
+                      << "  f0_hat=" << last.mean
+                      << "  f0_true=" << last.truth_mean
+                      << "  var=" << last.variance
+                      << "  stddev=" << last.stddev
+                      << "  bias=" << last.bias
+                      << "  mre=" << last.mean_relative_error
+                      << "  rmse=" << last.rmse
+                      << "  mae=" << last.mae << '\n';
+        } else {
+            const auto stats = bench.evaluateToCsv<alg::LogLog>(
+                cfg.csvPath, runs, sampleSize, params, rseLogLog(cfg.k), cfg.k, cfg.lLog);
+            std::cout << "[LL  ] mean=" << stats.mean
+                      << "  f0_hat=" << stats.mean
+                      << "  f0_true=" << stats.truth_mean
+                      << "  var=" << stats.variance
+                      << "  stddev=" << stats.stddev
+                      << "  bias=" << stats.bias
+                      << "  mre=" << stats.mean_relative_error
+                      << "  rmse=" << stats.rmse
+                      << "  mae=" << stats.mae << '\n';
+        }
     };
 
     auto runPc = [&]() {
         const std::string params = "L=" + std::to_string(cfg.l);
-        const auto stats = bench.evaluateToCsv<alg::ProbabilisticCounting>(
-            cfg.csvPath, runs, sampleSize, params, rseUnknown(), cfg.l);
-        std::cout << "[PC  ] mean=" << stats.mean
-                  << "  f0_hat=" << stats.mean
-                  << "  f0_true=" << stats.truth_mean
-                  << "  var=" << stats.variance
-                  << "  stddev=" << stats.stddev
-                  << "  bias=" << stats.bias
-                  << "  mre=" << stats.mean_relative_error
-                  << "  rmse=" << stats.rmse
-                  << "  mae=" << stats.mae << '\n';
+        if (streamingMode) {
+            const auto series = bench.evaluateStreamingToCsv<alg::ProbabilisticCounting>(
+                cfg.csvPath, runs, sampleSize, params, rseUnknown(), cfg.l);
+            const auto &last = series.back();
+            std::cout << "[PC  ][stream] t=" << last.element_index
+                      << "  mean=" << last.mean
+                      << "  f0_hat=" << last.mean
+                      << "  f0_true=" << last.truth_mean
+                      << "  var=" << last.variance
+                      << "  stddev=" << last.stddev
+                      << "  bias=" << last.bias
+                      << "  mre=" << last.mean_relative_error
+                      << "  rmse=" << last.rmse
+                      << "  mae=" << last.mae << '\n';
+        } else {
+            const auto stats = bench.evaluateToCsv<alg::ProbabilisticCounting>(
+                cfg.csvPath, runs, sampleSize, params, rseUnknown(), cfg.l);
+            std::cout << "[PC  ] mean=" << stats.mean
+                      << "  f0_hat=" << stats.mean
+                      << "  f0_true=" << stats.truth_mean
+                      << "  var=" << stats.variance
+                      << "  stddev=" << stats.stddev
+                      << "  bias=" << stats.bias
+                      << "  mre=" << stats.mean_relative_error
+                      << "  rmse=" << stats.rmse
+                      << "  mae=" << stats.mae << '\n';
+        }
     };
 
     if (todo.count("all")) {
@@ -249,7 +315,15 @@ int main() {
                 std::cout << "Uso: run <algo|all>\n";
                 continue;
             }
-            runAlgorithms(cfg, cmd.args);
+            runAlgorithms(cfg, cmd.args, false);
+            continue;
+        }
+        if (cmd.name == "runstream") {
+            if (cmd.args.empty()) {
+                std::cout << "Uso: runstream <algo|all>\n";
+                continue;
+            }
+            runAlgorithms(cfg, cmd.args, true);
             continue;
         }
         if (cmd.name == "quit") {
