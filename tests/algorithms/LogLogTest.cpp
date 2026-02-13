@@ -30,7 +30,10 @@ TEST_CASE("LogLog stima ~1000 distinti su 10000 campioni", "[log-count]") {
 
 TEST_CASE("LogLog valida parametri", "[loglog-params]") {
     REQUIRE_THROWS_AS(satp::algorithms::LogLog(0, 32), std::invalid_argument);
-    REQUIRE_THROWS_AS(satp::algorithms::LogLog(32, 32), std::invalid_argument);
-    REQUIRE_THROWS_AS(satp::algorithms::LogLog(5, 5), std::invalid_argument);
+    REQUIRE_THROWS_AS(satp::algorithms::LogLog(3, 32), std::invalid_argument);
+    REQUIRE_THROWS_AS(satp::algorithms::LogLog(17, 32), std::invalid_argument);
+    REQUIRE_THROWS_AS(satp::algorithms::LogLog(5, 31), std::invalid_argument);
     REQUIRE_THROWS_AS(satp::algorithms::LogLog(5, 33), std::invalid_argument);
+    REQUIRE_NOTHROW(satp::algorithms::LogLog(4, 32));
+    REQUIRE_NOTHROW(satp::algorithms::LogLog(16, 32));
 }

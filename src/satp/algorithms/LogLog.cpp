@@ -8,36 +8,43 @@
 using namespace std;
 
 namespace satp::algorithms {
+    namespace {
+        constexpr uint32_t LOGLOG_MIN_K = 4;
+        constexpr uint32_t LOGLOG_MAX_K = 16;
+        constexpr uint32_t LOGLOG_PAPER_L = 32;
+
+        [[nodiscard]] uint32_t validateAndBucketCount(uint32_t K, uint32_t L) {
+            if (L != LOGLOG_PAPER_L) {
+                throw invalid_argument("LogLog paper-strict requires L = 32");
+            }
+            if (K < LOGLOG_MIN_K || K > LOGLOG_MAX_K) {
+                throw invalid_argument("LogLog paper-strict requires k in [4,16]");
+            }
+            return (1u << K);
+        }
+    } // namespace
+
     LogLog::LogLog(uint32_t K, uint32_t L)
         : k(K),
-          numberOfBuckets(1u << k),
+          numberOfBuckets(validateAndBucketCount(K, L)),
           lengthOfBitMap(L),
-          bitmap(1u << k, 0u),
-          sumRegisters(0.0) {
-        if (k == 0) throw invalid_argument("k must be > 0");
-        if (k >= 32) throw invalid_argument("k must be < 32");
-        if (lengthOfBitMap <= k) throw invalid_argument("L must be > k");
-        if (lengthOfBitMap > 32) throw invalid_argument("L must be <= 32");
-    }
+          bitmap(numberOfBuckets, 0u),
+          sumRegisters(0.0) {}
 
     void LogLog::process(uint32_t id) {
         const uint64_t hash64 = util::hashing::splitmix64(id);
         const uint32_t h32 = util::hashing::hash32_from_64(hash64);
-        const uint32_t hash = (lengthOfBitMap >= 32)
-                                  ? h32
-                                  : (h32 & ((1u << lengthOfBitMap) - 1u));
+        const uint32_t hash = h32;
 
-        uint32_t firstKBits = hash >> (lengthOfBitMap - k); // primi k bit
-
+        const uint32_t firstKBits = hash >> (lengthOfBitMap - k);
+        // remaining (32-k) bits shifted to MSB side; rho = leading zeros + 1.
+        const uint32_t rem = hash << k;
         const uint32_t wbits = lengthOfBitMap - k;
-        const uint32_t rem = hash & ((1u << wbits) - 1u); // restanti length - k bit
-        const uint32_t b = (rem == 0)
-                               ? (wbits + 1) // caso: tutti zeri =>  L+1 stando al paper
-                               : (static_cast<uint32_t>(countl_zero(rem)) - (32u - wbits) + 1); // rho su wbits
+        const uint32_t b = (rem == 0u) ? (wbits + 1u) : (static_cast<uint32_t>(countl_zero(rem)) + 1u);
 
         const uint32_t old = bitmap[firstKBits];
         if (b > old) {
-            bitmap[firstKBits] = b;
+            bitmap[firstKBits] = static_cast<uint8_t>(b);
             sumRegisters += static_cast<double>(b - old);
         }
     }

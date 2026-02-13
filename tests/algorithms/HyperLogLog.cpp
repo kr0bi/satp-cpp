@@ -52,9 +52,12 @@ TEST_CASE("HyperLogLog++ stima ~1000 distinti su 10000 campioni", "[hyperloglogp
 
 TEST_CASE("HyperLogLog valida parametri", "[hyperloglog-params]") {
     REQUIRE_THROWS_AS(satp::algorithms::HyperLogLog(0, 32), std::invalid_argument);
-    REQUIRE_THROWS_AS(satp::algorithms::HyperLogLog(32, 32), std::invalid_argument);
-    REQUIRE_THROWS_AS(satp::algorithms::HyperLogLog(5, 5), std::invalid_argument);
+    REQUIRE_THROWS_AS(satp::algorithms::HyperLogLog(3, 32), std::invalid_argument);
+    REQUIRE_THROWS_AS(satp::algorithms::HyperLogLog(17, 32), std::invalid_argument);
+    REQUIRE_THROWS_AS(satp::algorithms::HyperLogLog(5, 31), std::invalid_argument);
     REQUIRE_THROWS_AS(satp::algorithms::HyperLogLog(5, 33), std::invalid_argument);
+    REQUIRE_NOTHROW(satp::algorithms::HyperLogLog(4, 32));
+    REQUIRE_NOTHROW(satp::algorithms::HyperLogLog(16, 32));
 }
 
 TEST_CASE("HyperLogLog++ valida parametri", "[hyperloglogpp-params]") {
