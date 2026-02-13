@@ -38,6 +38,30 @@ cmake --build build
 ./build/main
 ```
 
+The CLI no longer takes a manual CSV output path. Results are written automatically under:
+```text
+results/<AlgorithmName>/<params>/results_oneshot.csv
+results/<AlgorithmName>/<params>/results_streaming.csv
+```
+
+Example:
+```text
+results/HyperLogLog++/k_16/results_oneshot.csv
+```
+
+## Orchestration script
+To generate a matrix of datasets and run benchmarks in batch:
+```sh
+python3 scripts/orchestrate_benchmarks.py
+```
+
+Useful options:
+```sh
+python3 scripts/orchestrate_benchmarks.py --skip-generate
+python3 scripts/orchestrate_benchmarks.py --skip-streaming
+python3 scripts/orchestrate_benchmarks.py --clean-results
+```
+
 ## Run tests
 ```sh
 ctest --test-dir build

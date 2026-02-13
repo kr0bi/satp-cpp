@@ -1,10 +1,12 @@
 #include <iostream>
 #include <algorithm>
+#include <filesystem>
 #include <sstream>
 #include <string>
 #include <unordered_set>
 #include <cmath>
 #include <limits>
+#include <optional>
 #include <stdexcept>
 
 #include "src/satp/algorithms/HyperLogLog.h"
@@ -17,13 +19,11 @@
 namespace eval = satp::evaluation;
 namespace alg = satp::algorithms;
 struct RunConfig {
-    std::string datasetPath = "compressed_dataset.bin";
+    std::string datasetPath = "dataset.bin";
 
     std::uint32_t k = 16; // registri per HLL/LL
     std::uint32_t l = 16; // bitmap PC
     std::uint32_t lLog = 32; // bitmap LL
-
-    std::string csvPath = "results.csv";
 };
 
 struct Command {
@@ -45,6 +45,65 @@ static double rseUnknown() {
     return std::numeric_limits<double>::quiet_NaN();
 }
 
+static std::string sanitizeForPath(std::string value) {
+    for (char &c : value) {
+        const bool keep = (c >= 'a' && c <= 'z') ||
+                          (c >= 'A' && c <= 'Z') ||
+                          (c >= '0' && c <= '9');
+        if (!keep) c = '_';
+    }
+    std::string out;
+    out.reserve(value.size());
+    bool prevUnderscore = false;
+    for (char c : value) {
+        if (c == '_') {
+            if (!prevUnderscore) out.push_back(c);
+            prevUnderscore = true;
+        } else {
+            out.push_back(c);
+            prevUnderscore = false;
+        }
+    }
+    while (!out.empty() && out.front() == '_') out.erase(out.begin());
+    while (!out.empty() && out.back() == '_') out.pop_back();
+    return out.empty() ? "default" : out;
+}
+
+static std::optional<std::filesystem::path> tryFindRepoRoot(const std::filesystem::path &start) {
+    namespace fs = std::filesystem;
+    if (start.empty()) return std::nullopt;
+    fs::path p = fs::absolute(start);
+    if (fs::is_regular_file(p)) p = p.parent_path();
+    while (!p.empty()) {
+        if (fs::exists(p / "CMakeLists.txt") && fs::exists(p / "src")) {
+            return p;
+        }
+        if (p == p.root_path()) break;
+        p = p.parent_path();
+    }
+    return std::nullopt;
+}
+
+static std::filesystem::path detectRepoRoot(const std::filesystem::path &datasetPath) {
+    if (auto fromDataset = tryFindRepoRoot(datasetPath)) {
+        return *fromDataset;
+    }
+    if (auto fromCwd = tryFindRepoRoot(std::filesystem::current_path())) {
+        return *fromCwd;
+    }
+    throw std::runtime_error("Impossibile individuare la root della repository");
+}
+
+static std::filesystem::path buildResultCsvPath(const std::filesystem::path &repoRoot,
+                                                const std::string &algorithmName,
+                                                const std::string &params,
+                                                bool streamingMode) {
+    namespace fs = std::filesystem;
+    const std::string paramsDir = sanitizeForPath(params);
+    const std::string fileName = streamingMode ? "results_streaming.csv" : "results_oneshot.csv";
+    return repoRoot / "results" / algorithmName / paramsDir / fileName;
+}
+
 static void printHelp() {
     std::cout
         << "Comandi disponibili:\n"
@@ -54,6 +113,7 @@ static void printHelp() {
         << "  set <param> <value>          Imposta un parametro\n"
         << "  run <algo|all>               Esegue uno o piu' algoritmi (modalita' normale)\n"
         << "  runstream <algo|all>         Esegue uno o piu' algoritmi (modalita' streaming)\n"
+        << "                               CSV automatico in results/<algoritmo>/<params>/\n"
         << "  quit                         Esce\n";
 }
 
@@ -78,8 +138,7 @@ static void printConfig(const RunConfig &cfg) {
         << "  seed          = " << seed << " (dal dataset)\n"
         << "  k             = " << cfg.k << '\n'
         << "  l             = " << cfg.l << '\n'
-        << "  lLog          = " << cfg.lLog << '\n'
-        << "  csvPath       = " << cfg.csvPath << '\n';
+        << "  lLog          = " << cfg.lLog << '\n';
 }
 
 static void printAlgorithms() {
@@ -117,18 +176,16 @@ static bool setParam(RunConfig &cfg, const std::string &param, const std::string
     if (param == "k") return toU32(value, cfg.k);
     if (param == "l") return toU32(value, cfg.l);
     if (param == "lLog") return toU32(value, cfg.lLog);
-    if (param == "csvPath") {
-        cfg.csvPath = value;
-        return true;
-    }
     return false;
 }
 
 static void runAlgorithms(const RunConfig &cfg, const std::vector<std::string> &algs, bool streamingMode) {
+    namespace fs = std::filesystem;
     const auto datasetIndex = satp::io::indexBinaryDataset(cfg.datasetPath);
     const std::size_t sampleSize = datasetIndex.info.elements_per_partition;
     const std::size_t runs = datasetIndex.info.partition_count;
     const std::uint32_t seed = datasetIndex.info.seed;
+    const fs::path repoRoot = detectRepoRoot(cfg.datasetPath);
 
     eval::EvaluationFramework bench(datasetIndex);
 
@@ -139,16 +196,20 @@ static void runAlgorithms(const RunConfig &cfg, const std::vector<std::string> &
     std::cout << "mode: " << (streamingMode ? "streaming" : "normal")
               << '\t' << "sampleSize: " << sampleSize
               << '\t' << "runs: " << runs
-              << '\t' << "seed: " << seed << '\n';
+              << '\t' << "seed: " << seed << '\n'
+              << "resultsRoot: " << (repoRoot / "results").string() << '\n';
 
 
     auto runHllpp = [&]() {
+        const std::string algoName = "HyperLogLog++";
         const std::string params = "k=" + std::to_string(cfg.k);
+        const fs::path csvPath = buildResultCsvPath(repoRoot, algoName, params, streamingMode);
+        fs::create_directories(csvPath.parent_path());
         if (streamingMode) {
             const auto series = bench.evaluateStreamingToCsv<alg::HyperLogLogPlusPlus>(
-                cfg.csvPath, runs, sampleSize, params, rseHll(cfg.k), cfg.k);
+                csvPath, runs, sampleSize, params, rseHll(cfg.k), cfg.k);
             const auto &last = series.back();
-            std::cout << "[HLL++][stream] t=" << last.element_index
+            std::cout << "[HLL++][stream] csv=" << csvPath.string() << "  t=" << last.element_index
                       << "  mean=" << last.mean
                       << "  f0_hat=" << last.mean
                       << "  f0_true=" << last.truth_mean
@@ -160,8 +221,9 @@ static void runAlgorithms(const RunConfig &cfg, const std::vector<std::string> &
                       << "  mae=" << last.mae << '\n';
         } else {
             const auto stats = bench.evaluateToCsv<alg::HyperLogLogPlusPlus>(
-                cfg.csvPath, runs, sampleSize, params, rseHll(cfg.k), cfg.k);
-            std::cout << "[HLL++] mean=" << stats.mean
+                csvPath, runs, sampleSize, params, rseHll(cfg.k), cfg.k);
+            std::cout << "[HLL++] csv=" << csvPath.string()
+                      << "  mean=" << stats.mean
                       << "  f0_hat=" << stats.mean
                       << "  f0_true=" << stats.truth_mean
                       << "  var=" << stats.variance
@@ -174,12 +236,15 @@ static void runAlgorithms(const RunConfig &cfg, const std::vector<std::string> &
     };
 
     auto runHll = [&]() {
+        const std::string algoName = "HyperLogLog";
         const std::string params = "k=" + std::to_string(cfg.k) + ",L=" + std::to_string(cfg.lLog);
+        const fs::path csvPath = buildResultCsvPath(repoRoot, algoName, params, streamingMode);
+        fs::create_directories(csvPath.parent_path());
         if (streamingMode) {
             const auto series = bench.evaluateStreamingToCsv<alg::HyperLogLog>(
-                cfg.csvPath, runs, sampleSize, params, rseHll(cfg.k), cfg.k, cfg.lLog);
+                csvPath, runs, sampleSize, params, rseHll(cfg.k), cfg.k, cfg.lLog);
             const auto &last = series.back();
-            std::cout << "[HLL ][stream] t=" << last.element_index
+            std::cout << "[HLL ][stream] csv=" << csvPath.string() << "  t=" << last.element_index
                       << "  mean=" << last.mean
                       << "  f0_hat=" << last.mean
                       << "  f0_true=" << last.truth_mean
@@ -191,8 +256,9 @@ static void runAlgorithms(const RunConfig &cfg, const std::vector<std::string> &
                       << "  mae=" << last.mae << '\n';
         } else {
             const auto stats = bench.evaluateToCsv<alg::HyperLogLog>(
-                cfg.csvPath, runs, sampleSize, params, rseHll(cfg.k), cfg.k, cfg.lLog);
-            std::cout << "[HLL ] mean=" << stats.mean
+                csvPath, runs, sampleSize, params, rseHll(cfg.k), cfg.k, cfg.lLog);
+            std::cout << "[HLL ] csv=" << csvPath.string()
+                      << "  mean=" << stats.mean
                       << "  f0_hat=" << stats.mean
                       << "  f0_true=" << stats.truth_mean
                       << "  var=" << stats.variance
@@ -205,12 +271,15 @@ static void runAlgorithms(const RunConfig &cfg, const std::vector<std::string> &
     };
 
     auto runLl = [&]() {
+        const std::string algoName = "LogLog";
         const std::string params = "k=" + std::to_string(cfg.k) + ",L=" + std::to_string(cfg.lLog);
+        const fs::path csvPath = buildResultCsvPath(repoRoot, algoName, params, streamingMode);
+        fs::create_directories(csvPath.parent_path());
         if (streamingMode) {
             const auto series = bench.evaluateStreamingToCsv<alg::LogLog>(
-                cfg.csvPath, runs, sampleSize, params, rseLogLog(cfg.k), cfg.k, cfg.lLog);
+                csvPath, runs, sampleSize, params, rseLogLog(cfg.k), cfg.k, cfg.lLog);
             const auto &last = series.back();
-            std::cout << "[LL  ][stream] t=" << last.element_index
+            std::cout << "[LL  ][stream] csv=" << csvPath.string() << "  t=" << last.element_index
                       << "  mean=" << last.mean
                       << "  f0_hat=" << last.mean
                       << "  f0_true=" << last.truth_mean
@@ -222,8 +291,9 @@ static void runAlgorithms(const RunConfig &cfg, const std::vector<std::string> &
                       << "  mae=" << last.mae << '\n';
         } else {
             const auto stats = bench.evaluateToCsv<alg::LogLog>(
-                cfg.csvPath, runs, sampleSize, params, rseLogLog(cfg.k), cfg.k, cfg.lLog);
-            std::cout << "[LL  ] mean=" << stats.mean
+                csvPath, runs, sampleSize, params, rseLogLog(cfg.k), cfg.k, cfg.lLog);
+            std::cout << "[LL  ] csv=" << csvPath.string()
+                      << "  mean=" << stats.mean
                       << "  f0_hat=" << stats.mean
                       << "  f0_true=" << stats.truth_mean
                       << "  var=" << stats.variance
@@ -236,12 +306,15 @@ static void runAlgorithms(const RunConfig &cfg, const std::vector<std::string> &
     };
 
     auto runPc = [&]() {
+        const std::string algoName = "ProbabilisticCounting";
         const std::string params = "L=" + std::to_string(cfg.l);
+        const fs::path csvPath = buildResultCsvPath(repoRoot, algoName, params, streamingMode);
+        fs::create_directories(csvPath.parent_path());
         if (streamingMode) {
             const auto series = bench.evaluateStreamingToCsv<alg::ProbabilisticCounting>(
-                cfg.csvPath, runs, sampleSize, params, rseUnknown(), cfg.l);
+                csvPath, runs, sampleSize, params, rseUnknown(), cfg.l);
             const auto &last = series.back();
-            std::cout << "[PC  ][stream] t=" << last.element_index
+            std::cout << "[PC  ][stream] csv=" << csvPath.string() << "  t=" << last.element_index
                       << "  mean=" << last.mean
                       << "  f0_hat=" << last.mean
                       << "  f0_true=" << last.truth_mean
@@ -253,8 +326,9 @@ static void runAlgorithms(const RunConfig &cfg, const std::vector<std::string> &
                       << "  mae=" << last.mae << '\n';
         } else {
             const auto stats = bench.evaluateToCsv<alg::ProbabilisticCounting>(
-                cfg.csvPath, runs, sampleSize, params, rseUnknown(), cfg.l);
-            std::cout << "[PC  ] mean=" << stats.mean
+                csvPath, runs, sampleSize, params, rseUnknown(), cfg.l);
+            std::cout << "[PC  ] csv=" << csvPath.string()
+                      << "  mean=" << stats.mean
                       << "  f0_hat=" << stats.mean
                       << "  f0_true=" << stats.truth_mean
                       << "  var=" << stats.variance

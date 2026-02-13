@@ -117,3 +117,5 @@ dataset_*.bin
 
 # ----------------- Results ----------------------
 results.csv
+results/
+datasets/
