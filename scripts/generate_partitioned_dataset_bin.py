@@ -21,14 +21,20 @@ DEFAULT_PROGRESS_UPDATES = 200
 UINT32_MAX = (1 << 32) - 1
 
 # Binary format:
-# - Header: magic/version/global params.
-# - Partition table: (offset, byte_size, n, d, encoding, reserved) repeated p times.
-# - Data blocks: zlib-compressed uint32 little-endian IDs.
-MAGIC = b"SATPDBN1"
-VERSION = 1
+# - Header: magic/version/global params (v2 only).
+# - Partition table v2:
+#   (values_offset, values_byte_size,
+#    truth_offset, truth_byte_size,
+#    n, d, values_encoding, truth_encoding, reserved) repeated p times.
+# - Data blocks:
+#   - values: zlib-compressed uint32 little-endian IDs.
+#   - truth: zlib-compressed bitset where bit t=1 iff value at position t is a new distinct.
+MAGIC = b"SATPDBN2"
+VERSION = 2
 ENCODING_ZLIB_U32_LE = 1
+ENCODING_ZLIB_BITSET_LE = 2
 HEADER_FMT = "<8sIQQQQ"
-PARTITION_ENTRY_FMT = "<QQQQII"
+PARTITION_ENTRY_FMT = "<QQQQQQIII"
 
 
 def _validate_params(n: int, d: int, p: int) -> None:
@@ -99,10 +105,11 @@ def _u32_chunk_bytes(buffer_u32: array.array) -> bytes:
     return buffer_u32.tobytes()
 
 
-def _write_partition_fragment(task: Tuple[int, int, int, int, str, Any, int]) -> Tuple[int, str]:
+def _write_partition_fragment(task: Tuple[int, int, int, int, str, Any, int]) -> Tuple[int, str, str]:
     part_idx, n_per_partition, d_per_partition, part_seed, tmp_dir, progress_queue, progress_batch = task
     rng = random.Random(part_seed)
-    out_path = pathlib.Path(tmp_dir) / f"part_{part_idx}.binfrag"
+    values_path = pathlib.Path(tmp_dir) / f"part_{part_idx}.values.binfrag"
+    truth_path = pathlib.Path(tmp_dir) / f"part_{part_idx}.truth.binfrag"
 
     distinct_ids = rng.sample(range(n_per_partition), d_per_partition) if d_per_partition > 0 else []
     forced_by_pos: Dict[int, int] = {}
@@ -115,42 +122,80 @@ def _write_partition_fragment(task: Tuple[int, int, int, int, str, Any, int]) ->
     pending_progress = 0
     chunk = array.array("I")
     chunk_capacity = 1 << 20  # values per flush (~4 MiB)
+    truth_byte = 0
+    truth_bit_pos = 0
+    truth_chunk = bytearray()
+    truth_chunk_capacity = 1 << 20  # raw truth bytes per flush (~1 MiB)
+    seen_ids: set[int] = set()
 
-    with out_path.open("wb", buffering=1024 * 1024) as out:
-        compressor = zlib.compressobj(level=6)
-        for i in range(n_per_partition):
-            forced = forced_by_pos.get(i)
-            if forced is not None:
-                value = forced
-            else:
-                value = distinct_ids[rng.randrange(d_per_partition)]
+    with values_path.open("wb", buffering=1024 * 1024) as out_values:
+        with truth_path.open("wb", buffering=512 * 1024) as out_truth:
+            values_compressor = zlib.compressobj(level=6)
+            truth_compressor = zlib.compressobj(level=6)
+            for i in range(n_per_partition):
+                forced = forced_by_pos.get(i)
+                if forced is not None:
+                    value = forced
+                else:
+                    value = distinct_ids[rng.randrange(d_per_partition)]
 
-            chunk.append(value)
-            if len(chunk) >= chunk_capacity:
+                is_new = value not in seen_ids
+                if is_new:
+                    seen_ids.add(value)
+
+                chunk.append(value)
+                if len(chunk) >= chunk_capacity:
+                    raw_chunk = _u32_chunk_bytes(chunk)
+                    compressed_chunk = values_compressor.compress(raw_chunk)
+                    if compressed_chunk:
+                        out_values.write(compressed_chunk)
+                    del chunk[:]
+
+                if is_new:
+                    truth_byte |= (1 << truth_bit_pos)
+                truth_bit_pos += 1
+                if truth_bit_pos == 8:
+                    truth_chunk.append(truth_byte)
+                    truth_byte = 0
+                    truth_bit_pos = 0
+                    if len(truth_chunk) >= truth_chunk_capacity:
+                        compressed_truth = truth_compressor.compress(bytes(truth_chunk))
+                        if compressed_truth:
+                            out_truth.write(compressed_truth)
+                        truth_chunk.clear()
+
+                if progress_queue is not None:
+                    pending_progress += 1
+                    if pending_progress >= progress_batch:
+                        progress_queue.put(pending_progress)
+                        pending_progress = 0
+
+            if chunk:
                 raw_chunk = _u32_chunk_bytes(chunk)
-                compressed_chunk = compressor.compress(raw_chunk)
+                compressed_chunk = values_compressor.compress(raw_chunk)
                 if compressed_chunk:
-                    out.write(compressed_chunk)
+                    out_values.write(compressed_chunk)
                 del chunk[:]
+            out_values.write(values_compressor.flush())
 
-            if progress_queue is not None:
-                pending_progress += 1
-                if pending_progress >= progress_batch:
-                    progress_queue.put(pending_progress)
-                    pending_progress = 0
+            if truth_bit_pos != 0:
+                truth_chunk.append(truth_byte)
+            if truth_chunk:
+                compressed_truth = truth_compressor.compress(bytes(truth_chunk))
+                if compressed_truth:
+                    out_truth.write(compressed_truth)
+                truth_chunk.clear()
+            out_truth.write(truth_compressor.flush())
 
-        if chunk:
-            raw_chunk = _u32_chunk_bytes(chunk)
-            compressed_chunk = compressor.compress(raw_chunk)
-            if compressed_chunk:
-                out.write(compressed_chunk)
-            del chunk[:]
-        out.write(compressor.flush())
+    if d_per_partition > 0 and len(seen_ids) != d_per_partition:
+        raise RuntimeError(
+            f"Partition {part_idx}: generated distinct={len(seen_ids)} expected={d_per_partition}"
+        )
 
     if progress_queue is not None and pending_progress > 0:
         progress_queue.put(pending_progress)
 
-    return part_idx, str(out_path)
+    return part_idx, str(values_path), str(truth_path)
 
 
 def generate_partitioned_dataset_bin(output_dir: pathlib.Path,
@@ -181,7 +226,8 @@ def generate_partitioned_dataset_bin(output_dir: pathlib.Path,
 
     produced = 0
     start = time.time()
-    part_paths: Dict[int, str] = {}
+    values_part_paths: Dict[int, str] = {}
+    truth_part_paths: Dict[int, str] = {}
 
     with tempfile.TemporaryDirectory(prefix="satp_parts_bin_", dir=str(output_dir)) as tmp_dir:
         tasks: List[Tuple[int, int, int, int, str, Any, int]] = []
@@ -198,8 +244,9 @@ def generate_partitioned_dataset_bin(output_dir: pathlib.Path,
 
         if workers_eff == 1:
             for task in tasks:
-                part_idx, part_path = _write_partition_fragment(task)
-                part_paths[part_idx] = part_path
+                part_idx, values_part_path, truth_part_path = _write_partition_fragment(task)
+                values_part_paths[part_idx] = values_part_path
+                truth_part_paths[part_idx] = truth_part_path
                 produced += n
                 if show_progress and total_elements > 0:
                     _print_progress(produced, total_elements, start)
@@ -223,26 +270,46 @@ def generate_partitioned_dataset_bin(output_dir: pathlib.Path,
                         time.sleep(0.05)
 
                     for async_result in async_results:
-                        part_idx, part_path = async_result.get()
-                        part_paths[part_idx] = part_path
+                        part_idx, values_part_path, truth_part_path = async_result.get()
+                        values_part_paths[part_idx] = values_part_path
+                        truth_part_paths[part_idx] = truth_part_path
 
                     produced = _drain_progress_queue(progress_queue, produced, total_elements, start, show_progress)
 
-        part_sizes: List[int] = []
+        values_part_sizes: List[int] = []
+        truth_part_sizes: List[int] = []
         for part_idx in range(p):
-            size = pathlib.Path(part_paths[part_idx]).stat().st_size
-            part_sizes.append(size)
+            values_size = pathlib.Path(values_part_paths[part_idx]).stat().st_size
+            truth_size = pathlib.Path(truth_part_paths[part_idx]).stat().st_size
+            values_part_sizes.append(values_size)
+            truth_part_sizes.append(truth_size)
 
         header_size = struct.calcsize(HEADER_FMT)
         entry_size = struct.calcsize(PARTITION_ENTRY_FMT)
         first_data_offset = header_size + p * entry_size
 
-        entries: List[Tuple[int, int, int, int, int, int]] = []
+        entries: List[Tuple[int, int, int, int, int, int, int, int, int]] = []
         current_offset = first_data_offset
         for part_idx in range(p):
-            byte_size = part_sizes[part_idx]
-            entries.append((current_offset, byte_size, n, d, ENCODING_ZLIB_U32_LE, 0))
-            current_offset += byte_size
+            values_size = values_part_sizes[part_idx]
+            values_offset = current_offset
+            current_offset += values_size
+
+            truth_size = truth_part_sizes[part_idx]
+            truth_offset = current_offset
+            current_offset += truth_size
+
+            entries.append((
+                values_offset,
+                values_size,
+                truth_offset,
+                truth_size,
+                n,
+                d,
+                ENCODING_ZLIB_U32_LE,
+                ENCODING_ZLIB_BITSET_LE,
+                0,
+            ))
 
         seed_u64 = seed & ((1 << 64) - 1)
         with out_path.open("wb", buffering=8 * 1024 * 1024) as out:
@@ -251,7 +318,9 @@ def generate_partitioned_dataset_bin(output_dir: pathlib.Path,
                 out.write(struct.pack(PARTITION_ENTRY_FMT, *entry))
 
             for part_idx in range(p):
-                with pathlib.Path(part_paths[part_idx]).open("rb") as part_file:
+                with pathlib.Path(values_part_paths[part_idx]).open("rb") as part_file:
+                    shutil.copyfileobj(part_file, out, length=8 * 1024 * 1024)
+                with pathlib.Path(truth_part_paths[part_idx]).open("rb") as part_file:
                     shutil.copyfileobj(part_file, out, length=8 * 1024 * 1024)
 
     if show_progress and total_elements > 0:
@@ -265,7 +334,7 @@ def generate_partitioned_dataset_bin(output_dir: pathlib.Path,
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        description="Generate one compressed binary dataset with precomputed partitions (n,d,p,seed)."
+        description="Generate one compressed binary dataset with partitions and prefix truth F0(t) metadata (n,d,p,seed)."
     )
     parser.add_argument("--output-dir", type=pathlib.Path, default=pathlib.Path("."),
                         help="Directory where compressed_dataset_n_{n}_d_{d}_p_{p}.bin is written")
