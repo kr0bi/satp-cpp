@@ -28,6 +28,7 @@ namespace satp::algorithms {
         uint32_t numberOfBuckets;
         uint32_t lengthOfBitMap;
         vector<uint32_t> bitmap;
+        double sumRegisters; // \sum_j M[j]
 
         static constexpr double ALPHA_INF = 0.39701;
     };

@@ -14,7 +14,9 @@ namespace satp::algorithms {
         : k(K),
           numberOfBuckets(0),
           bitmap(),
-          alphaM(0.0) {
+          alphaM(0.0),
+          sumInversePowers(0.0),
+          zeroRegisters(0) {
         if (k == 0) throw invalid_argument("k must be > 0");
         if (k >= 64) throw invalid_argument("k must be < 64");
         constexpr uint32_t sizeTBits = std::numeric_limits<size_t>::digits;
@@ -27,6 +29,8 @@ namespace satp::algorithms {
         numberOfBuckets = static_cast<size_t>(m64);
         bitmap.assign(numberOfBuckets, 0u);
         alphaM = 0.7213 / (1 + 1.079 / static_cast<double>(numberOfBuckets));
+        sumInversePowers = static_cast<double>(numberOfBuckets);
+        zeroRegisters = numberOfBuckets;
     }
 
     void HyperLogLogPlusPlus::process(uint32_t id) {
@@ -36,16 +40,21 @@ namespace satp::algorithms {
 
         uint64_t rem = (hash << k); // restanti length - k bit
         uint8_t b = (rem == 0)
-                        ? (64 - k) + 1 // caso: tutti zeri =>  L+1 stando al paper
+                        ? static_cast<uint8_t>((64 - k) + 1) // caso: tutti zeri =>  L+1 stando al paper
                         : static_cast<uint8_t>(countl_zero(rem) + 1); // zeri - k + 1
 
-        bitmap[firstKBits] = max(bitmap[firstKBits], b);
+        const uint8_t old = bitmap[firstKBits];
+        if (b > old) {
+            sumInversePowers += ldexp(1.0, -static_cast<int>(b)) - ldexp(1.0, -static_cast<int>(old));
+            if (old == 0u) {
+                --zeroRegisters;
+            }
+            bitmap[firstKBits] = b;
+        }
     }
 
     uint64_t HyperLogLogPlusPlus::count() {
-        double Z = 0.0;
-        for (auto r: bitmap) Z += ldexp(1.0, -static_cast<int>(r));
-        Z /= numberOfBuckets;
+        double Z = sumInversePowers / static_cast<double>(numberOfBuckets);
         Z = 1.0 / Z;
 
         double E = 0.0;
@@ -68,7 +77,7 @@ namespace satp::algorithms {
             const double biasThreshold = 3.723 * m; //  ≈ 61 000 / 16 384
             /* ---- 1)  Linear-Counting range ---------------------------- */
             if (E < lcThreshold) {
-                size_t V = std::count(bitmap.begin(), bitmap.end(), 0);
+                size_t V = zeroRegisters;
                 return static_cast<uint64_t>(m * log(m / static_cast<double>(V)));
             }
             /* ---- 2)  Bias-corrected range ----------------------------- */
@@ -82,12 +91,7 @@ namespace satp::algorithms {
         }
 
         if (E <= ((5.0 / 2.0) * numberOfBuckets)) {
-            size_t V = 0;
-            for (auto r: bitmap) {
-                if (r == 0) {
-                    ++V;
-                }
-            }
+            const size_t V = zeroRegisters;
             if (V != 0) {
                 return static_cast<uint64_t>(numberOfBuckets * log(static_cast<double>(numberOfBuckets) / V));
             }
@@ -96,9 +100,9 @@ namespace satp::algorithms {
     }
 
     void HyperLogLogPlusPlus::reset() {
-        for (uint32_t i = 0; i < numberOfBuckets; ++i) {
-            bitmap[i] = 0;
-        }
+        std::fill(bitmap.begin(), bitmap.end(), 0u);
+        sumInversePowers = static_cast<double>(numberOfBuckets);
+        zeroRegisters = numberOfBuckets;
     }
 
     string HyperLogLogPlusPlus::getName() {

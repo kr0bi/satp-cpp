@@ -1,4 +1,5 @@
 #include "HyperLogLog.h"
+#include <algorithm>
 #include <cmath>
 #include <stdexcept>
 
@@ -12,7 +13,9 @@ namespace satp::algorithms {
           numberOfBuckets(1u << k),
           lengthOfBitMap(L),
           bitmap(1u << k, 0u),
-          alphaM(0.7213 / (1 + 1.079 / pow(2.0, (double) k))) {
+          alphaM(0.7213 / (1 + 1.079 / pow(2.0, (double) k))),
+          sumInversePowers(static_cast<double>(1u << k)),
+          zeroRegisters(1u << k) {
         if (k == 0) throw invalid_argument("k must be > 0");
         if (k >= 32) throw invalid_argument("k must be < 32");
         if (lengthOfBitMap <= k) throw invalid_argument("L must be > k");
@@ -34,14 +37,19 @@ namespace satp::algorithms {
                                ? (wbits + 1) // caso: tutti zeri =>  L+1 stando al paper
                                : (static_cast<uint32_t>(countl_zero(rem)) - (32u - wbits) + 1); // rho su wbits
 
-        bitmap[firstKBits] = max(bitmap[firstKBits], b);
+        const uint32_t old = bitmap[firstKBits];
+        if (b > old) {
+            sumInversePowers += ldexp(1.0, -static_cast<int>(b)) - ldexp(1.0, -static_cast<int>(old));
+            if (old == 0u) {
+                --zeroRegisters;
+            }
+            bitmap[firstKBits] = b;
+        }
     }
 
     uint64_t HyperLogLog::count() {
-        double Z = 0.0;
-        for (auto r: bitmap) Z += ldexp(1.0, -static_cast<int>(r)); // 1u << r
-        Z /= numberOfBuckets;
-        Z = pow(Z, -1.0);
+        double Z = sumInversePowers / static_cast<double>(numberOfBuckets);
+        Z = 1.0 / Z;
         double E = 0.0;
         switch (k) {
             case 4: E = ALPHA_16 * numberOfBuckets * Z;
@@ -57,12 +65,7 @@ namespace satp::algorithms {
         }
 
         if (E <= (2.5 * numberOfBuckets)) { // 5.0/2.0
-            int V = 0;
-            for (auto r: bitmap) {
-                if (r == 0) {
-                    V++;
-                }
-            }
+            const int V = static_cast<int>(zeroRegisters);
             if (V != 0) {
                 return static_cast<uint64_t>(numberOfBuckets * log(static_cast<double>(numberOfBuckets) / V));
             }
@@ -76,9 +79,9 @@ namespace satp::algorithms {
     }
 
     void HyperLogLog::reset() {
-        for (uint32_t i = 0; i < numberOfBuckets; ++i) {
-            bitmap[i] = 0;
-        }
+        std::fill(bitmap.begin(), bitmap.end(), 0u);
+        sumInversePowers = static_cast<double>(numberOfBuckets);
+        zeroRegisters = numberOfBuckets;
     }
 
     string HyperLogLog::getName() {

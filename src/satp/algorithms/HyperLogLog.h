@@ -29,6 +29,8 @@ namespace satp::algorithms {
         uint32_t lengthOfBitMap; // lunghezza della bitmap, valore inutile, perché il paper assume che
         vector<uint32_t> bitmap; // bitmap
         double alphaM;
+        double sumInversePowers; // \sum_j 2^{-M[j]}
+        uint32_t zeroRegisters;
 
         static constexpr double ALPHA_16 = 0.673;
         static constexpr double ALPHA_32 = 0.697;

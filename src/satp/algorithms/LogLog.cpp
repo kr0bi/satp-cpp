@@ -1,4 +1,5 @@
 #include "LogLog.h"
+#include <algorithm>
 #include <cmath>
 #include <stdexcept>
 
@@ -11,7 +12,8 @@ namespace satp::algorithms {
         : k(K),
           numberOfBuckets(1u << k),
           lengthOfBitMap(L),
-          bitmap(1u << k, 0u) {
+          bitmap(1u << k, 0u),
+          sumRegisters(0.0) {
         if (k == 0) throw invalid_argument("k must be > 0");
         if (k >= 32) throw invalid_argument("k must be < 32");
         if (lengthOfBitMap <= k) throw invalid_argument("L must be > k");
@@ -33,20 +35,21 @@ namespace satp::algorithms {
                                ? (wbits + 1) // caso: tutti zeri =>  L+1 stando al paper
                                : (static_cast<uint32_t>(countl_zero(rem)) - (32u - wbits) + 1); // rho su wbits
 
-        bitmap[firstKBits] = max(bitmap[firstKBits], b);
+        const uint32_t old = bitmap[firstKBits];
+        if (b > old) {
+            bitmap[firstKBits] = b;
+            sumRegisters += static_cast<double>(b - old);
+        }
     }
 
     uint64_t LogLog::count() {
-        double Z = 0.0;
-        for (auto r: bitmap) Z += r;
-        Z /= numberOfBuckets;
+        const double Z = sumRegisters / static_cast<double>(numberOfBuckets);
         return static_cast<uint64_t>(ALPHA_INF * numberOfBuckets * exp2(Z));
     }
 
     void LogLog::reset() {
-        for (uint32_t i = 0; i < numberOfBuckets; ++i) {
-            bitmap[i] = 0;
-        }
+        std::fill(bitmap.begin(), bitmap.end(), 0u);
+        sumRegisters = 0.0;
     }
 
     string LogLog::getName() {

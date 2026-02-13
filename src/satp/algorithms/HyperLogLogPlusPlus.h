@@ -30,6 +30,8 @@ namespace satp::algorithms {
         size_t numberOfBuckets; // nel paper coincide con m
         vector<uint8_t> bitmap; // bitmap
         double alphaM;
+        double sumInversePowers; // \sum_j 2^{-M[j]}
+        size_t zeroRegisters;
 
         static constexpr double ALPHA_16 = 0.673;
         static constexpr double ALPHA_32 = 0.697;
