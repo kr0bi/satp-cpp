@@ -114,3 +114,6 @@ dataset_*.bin
 /thesis/**/*.synctex.gz
 /thesis/**/*.toc
 /thesis/**/*.xmpi
+
+# ----------------- Results ----------------------
+results.csv
