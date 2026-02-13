@@ -26,7 +26,7 @@ python3 scripts/generate_partitioned_dataset_bin.py --output-dir . --n 1000000 -
 ```
 Then point the benchmark CLI to the dataset:
 ```
-set datasetPath compressed_dataset_n_1000000_d_100000_p_10.bin
+set datasetPath dataset_n_1000000_d_100000_p_10_s_123.bin
 ```
 
 The generator writes values deterministically when a seed is provided and prints a progress bar on stderr by default.
@@ -52,7 +52,7 @@ mean_relative_error,rmse,mae
 ```
 
 ## Reproducibility
-- Tests use the fixed dataset at `tests/data/compressed_dataset_n_2000_d_1000_p_3.bin`.
+- Tests use the fixed dataset at `tests/data/dataset_n_2000_d_1000_p_3_s_5489.bin`.
 - HLL/LogLog constructors validate parameter ranges (k/L) and have tests for invalid values.
 - In binary mode, the evaluation framework reads `runs`, `sampleSize`, and `seed` directly from the dataset metadata.
 
@@ -62,7 +62,7 @@ Current hashing is deterministic (splitmix64), so results are reproducible for a
 ## TODO
 1. Refactor della generazione dataset:
    - Dati `n` (numero totale di elementi), `d` (numero di elementi distinti), `p` (numero di partizioni) e `seed`.
-   - Generare un unico file con nomenclatura `dataset_n_{n}_d_{d}_p_{p}`.
+   - Generare un unico file con nomenclatura `dataset_n_{n}_d_{d}_p_{p}_s_{seed}`.
    - Il file deve essere in formato JSON con lo schema seguente.
    - A differenza del metodo precedente, creare gia' tutte le partizioni dentro lo stesso file.
    - Obiettivo: eseguire tutti gli algoritmi su un singolo file pre-costruito.

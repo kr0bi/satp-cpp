@@ -16,7 +16,7 @@ namespace satp::testdata {
     };
 
     inline std::filesystem::path datasetPath() {
-        return std::filesystem::path(__FILE__).parent_path() / "data" / "compressed_dataset_n_2000_d_1000_p_3.bin";
+        return std::filesystem::path(__FILE__).parent_path() / "data" / "dataset_n_2000_d_1000_p_3_s_5489.bin";
     }
 
     inline LoadedDataset loadDataset() {

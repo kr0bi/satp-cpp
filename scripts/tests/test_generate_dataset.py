@@ -116,7 +116,7 @@ class GenerateDatasetTests(unittest.TestCase):
                 show_progress=False,
             )
 
-            self.assertEqual(out_path.name, "compressed_dataset_n_30_d_7_p_4.bin")
+            self.assertEqual(out_path.name, "dataset_n_30_d_7_p_4_s_123.bin")
             self.assertTrue(out_path.exists())
 
             header, entries, partitions, truth_flags_per_partition = read_binary_dataset(out_path)

@@ -209,7 +209,7 @@ def generate_partitioned_dataset_bin(output_dir: pathlib.Path,
     _validate_params(n, d, p)
 
     output_dir.mkdir(parents=True, exist_ok=True)
-    out_name = f"compressed_dataset_n_{n}_d_{d}_p_{p}.bin"
+    out_name = f"dataset_n_{n}_d_{d}_p_{p}_s_{seed}.bin"
     out_path = output_dir / out_name
 
     max_workers = os.cpu_count() or 1
@@ -337,7 +337,7 @@ def parse_args() -> argparse.Namespace:
         description="Generate one compressed binary dataset with partitions and prefix truth F0(t) metadata (n,d,p,seed)."
     )
     parser.add_argument("--output-dir", type=pathlib.Path, default=pathlib.Path("."),
-                        help="Directory where compressed_dataset_n_{n}_d_{d}_p_{p}.bin is written")
+                        help="Directory where dataset_n_{n}_d_{d}_p_{p}_s_{seed}.bin is written")
     parser.add_argument("--n", required=True, type=int, help="Number of elements per partition")
     parser.add_argument("--d", required=True, type=int, help="Number of distinct elements per partition")
     parser.add_argument("--p", required=True, type=int, help="Number of partitions")
