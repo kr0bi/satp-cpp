@@ -59,6 +59,7 @@ namespace satp::evaluation {
     class EvaluationFramework {
     public:
         static constexpr uint32_t DEFAULT_SEED = 5489u;
+        static constexpr size_t DEFAULT_STREAMING_CHECKPOINTS = 200u;
 
         explicit EvaluationFramework(const filesystem::path &filePath)
             : seed(DEFAULT_SEED),
@@ -327,10 +328,19 @@ namespace satp::evaluation {
             const size_t sampleSize = info.elements_per_partition;
             if (runs == 0 || sampleSize == 0) return {};
 
+            // Keep only a fixed number of checkpoints (200 by default) so streaming output stays compact.
+            const size_t checkpointCount = std::min(sampleSize, DEFAULT_STREAMING_CHECKPOINTS);
+            vector<size_t> checkpointPositions;
+            checkpointPositions.reserve(checkpointCount);
+            for (size_t i = 1; i <= checkpointCount; ++i) {
+                const size_t pos = (i * sampleSize + checkpointCount - 1) / checkpointCount; // ceil(i*n/k), 1-based
+                checkpointPositions.push_back(pos);
+            }
+
             using satp::util::ProgressBar;
             ProgressBar bar{runs * sampleSize, cout, 50, 10'000};
 
-            vector<StreamingAccumulator> accumulators(sampleSize);
+            vector<StreamingAccumulator> accumulators(checkpointCount);
 
             satp::io::BinaryDatasetPartitionReader reader(*binaryDataset);
             vector<uint32_t> partitionValues;
@@ -347,6 +357,7 @@ namespace satp::evaluation {
 
                 Algo algo(std::forward<Args>(ctorArgs)...);
                 std::uint64_t truthPrefix = 0;
+                size_t checkpointIndex = 0;
 
                 for (size_t t = 0; t < sampleSize; ++t) {
                     const std::uint32_t value = partitionValues[t];
@@ -358,22 +369,26 @@ namespace satp::evaluation {
                         ++truthPrefix;
                     }
 
-                    const double estimate = static_cast<double>(algo.count());
-                    const double truth = static_cast<double>(truthPrefix);
-                    const double err = estimate - truth;
+                    const size_t elementIndex = t + 1u;
+                    if (checkpointIndex < checkpointCount && elementIndex == checkpointPositions[checkpointIndex]) {
+                        const double estimate = static_cast<double>(algo.count());
+                        const double truth = static_cast<double>(truthPrefix);
+                        const double err = estimate - truth;
 
-                    auto &acc = accumulators[t];
-                    ++acc.count;
-                    const double delta = estimate - acc.estimateMean;
-                    acc.estimateMean += delta / static_cast<double>(acc.count);
-                    const double delta2 = estimate - acc.estimateMean;
-                    acc.estimateM2 += delta * delta2;
+                        auto &acc = accumulators[checkpointIndex];
+                        ++acc.count;
+                        const double delta = estimate - acc.estimateMean;
+                        acc.estimateMean += delta / static_cast<double>(acc.count);
+                        const double delta2 = estimate - acc.estimateMean;
+                        acc.estimateM2 += delta * delta2;
 
-                    acc.truthSum += truth;
-                    acc.absErrSum += std::abs(err);
-                    acc.sqErrSum += err * err;
-                    if (truth > 0.0) {
-                        acc.absRelErrSum += std::abs(err) / truth;
+                        acc.truthSum += truth;
+                        acc.absErrSum += std::abs(err);
+                        acc.sqErrSum += err * err;
+                        if (truth > 0.0) {
+                            acc.absRelErrSum += std::abs(err) / truth;
+                        }
+                        ++checkpointIndex;
                     }
 
                     bar.tick();
@@ -384,9 +399,9 @@ namespace satp::evaluation {
             cout.flush();
 
             vector<StreamingPointStats> out;
-            out.reserve(sampleSize);
-            for (size_t t = 0; t < sampleSize; ++t) {
-                const auto &acc = accumulators[t];
+            out.reserve(checkpointCount);
+            for (size_t i = 0; i < checkpointCount; ++i) {
+                const auto &acc = accumulators[i];
                 const double runCount = static_cast<double>(acc.count);
                 const double mean = acc.estimateMean;
                 const double gtMean = acc.truthSum / runCount;
@@ -401,7 +416,7 @@ namespace satp::evaluation {
                 const double rseObserved = (gtMean != 0.0) ? (stddev / gtMean) : 0.0;
 
                 out.push_back({
-                    t + 1,
+                    checkpointPositions[i],
                     difference,
                     mean,
                     variance,

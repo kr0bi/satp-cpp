@@ -80,10 +80,14 @@ TEST_CASE("Evaluation Framework streaming usa F0(t) del dataset", "[eval-framewo
     const auto runs = dataset.partition_count;
 
     const auto series = bench.evaluateStreaming<alg::NaiveCounting>(runs, sampleSize);
-    REQUIRE(series.size() == sampleSize);
+    const auto expectedPoints = std::min(sampleSize, eval::EvaluationFramework::DEFAULT_STREAMING_CHECKPOINTS);
+    REQUIRE(series.size() == expectedPoints);
     REQUIRE_FALSE(series.empty());
 
-    for (const auto &point : series) {
+    for (size_t i = 0; i < series.size(); ++i) {
+        const auto &point = series[i];
+        const size_t expectedIndex = ((i + 1) * sampleSize + expectedPoints - 1) / expectedPoints;
+
         REQUIRE(std::isfinite(point.mean));
         REQUIRE(std::isfinite(point.truth_mean));
         REQUIRE(std::isfinite(point.variance));
@@ -94,6 +98,10 @@ TEST_CASE("Evaluation Framework streaming usa F0(t) del dataset", "[eval-framewo
         REQUIRE(std::isfinite(point.mean_relative_error));
         REQUIRE(point.element_index >= 1);
         REQUIRE(point.element_index <= sampleSize);
+        REQUIRE(point.element_index == expectedIndex);
+        if (i > 0) {
+            REQUIRE(point.element_index > series[i - 1].element_index);
+        }
 
         // NaiveCounting e' esatto: a ogni prefisso stima == F0(t) run-per-run.
         REQUIRE(point.bias == Approx(0.0).margin(1e-12));

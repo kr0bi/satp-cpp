@@ -838,6 +838,12 @@ namespace {
 
     };
 
+    static constexpr std::uint32_t THRESHOLDS[] = {
+        10u, 20u, 40u, 80u, 220u,
+        400u, 900u, 1800u, 3100u, 6500u,
+        11500u, 20000u, 50000u, 120000u, 350000u
+    };
+
     static std::once_flag init_flag;
     static std::vector<std::vector<std::pair<double, double> > > TABLES;
 
@@ -866,4 +872,10 @@ satp::algorithms::hllpp_tables::table_for_k(std::size_t k) {
         throw std::out_of_range{"bias table: K out of range"};
 
     return TABLES[k - MIN_K];
+}
+
+std::uint32_t satp::algorithms::hllpp_tables::threshold_for_k(std::size_t k) {
+    if (k < MIN_K || k > MAX_K)
+        throw std::out_of_range{"threshold table: K out of range"};
+    return THRESHOLDS[k - MIN_K];
 }

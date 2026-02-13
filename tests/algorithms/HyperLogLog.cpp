@@ -59,6 +59,20 @@ TEST_CASE("HyperLogLog valida parametri", "[hyperloglog-params]") {
 
 TEST_CASE("HyperLogLog++ valida parametri", "[hyperloglogpp-params]") {
     REQUIRE_THROWS_AS(satp::algorithms::HyperLogLogPlusPlus(0), std::invalid_argument);
-    REQUIRE_THROWS_AS(satp::algorithms::HyperLogLogPlusPlus(64), std::invalid_argument);
-    REQUIRE_THROWS_AS(satp::algorithms::HyperLogLogPlusPlus(63), std::invalid_argument);
+    REQUIRE_THROWS_AS(satp::algorithms::HyperLogLogPlusPlus(3), std::invalid_argument);
+    REQUIRE_THROWS_AS(satp::algorithms::HyperLogLogPlusPlus(19), std::invalid_argument);
+}
+
+TEST_CASE("HyperLogLog++ supporta i limiti p=4 e p=18", "[hyperloglogpp-params]") {
+    auto dataset = satp::testdata::loadDataset();
+
+    satp::algorithms::HyperLogLogPlusPlus hllppMin(4);
+    satp::simulation::Loop loopMin(std::move(hllppMin), dataset.values);
+    const auto estimateMin = loopMin.process();
+    REQUIRE(estimateMin > 0);
+
+    satp::algorithms::HyperLogLogPlusPlus hllppMax(18);
+    satp::simulation::Loop loopMax(std::move(hllppMax), dataset.values);
+    const auto estimateMax = loopMax.process();
+    REQUIRE(estimateMax > 0);
 }
