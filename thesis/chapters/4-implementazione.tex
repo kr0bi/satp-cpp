@@ -1,68 +1,376 @@
 \chapter{Implementazione}
 \label{chp:implementazione}
-In questo capitolo viene definito come gli algoritmi definiti nel capitolo \ref{chp:stato-arte} 
-sono stati implementati all'interno di un framework in \texttt{C++}.
-Il framework ha come scopo quello di permettere allo sviluppatore/ricercatore di implementare dei nuovi algoritmi
-di sketching, inizialmente per il problema del \textit{count distinct}, poi eventualmente generalizzato e ottenere
-in automatico dei test robusti sulla valutazione degli algoritmi, potendoli comparare empiricamente.
 
-\section{Architettura del framework}
-\subsection{Panoramica dei componenti}
-Algoritmi in C++
-Pipeline di sperimentazione: generazione/preprocessing → partizionamento → input al runner C++ → loop algoritmi → metriche → output CSV.
-Scrittura dei dataset tramite script python ed eventuale partizionamento pre-fatto
+In questo capitolo si descrive l'implementazione del sistema sperimentale
+sviluppato per valutare algoritmi di stima del numero di distinti su flussi di dati.
+L'obiettivo progettuale è separare in modo netto:
+\begin{itemize}
+    \item la logica algoritmica (sketch e stimatori),
+    \item la gestione dei dataset,
+    \item il protocollo di valutazione e l'esportazione delle metriche.
+\end{itemize}
 
-\subsection{Flusso end-to-end di un esperimento}
-Il framework scritto in c++ prende direttamente il file di input con le sue partizioni ed esegue tutti gli algoritmi
-identificati in loop prendendo le eventuali misurazioni del caso.
-\subsection{Scelte progettuali}
+L'implementazione è realizzata principalmente in \texttt{C++} (algoritmi,
+framework, CLI), con supporto \texttt{Python} per generazione dataset,
+orchestrazione esperimenti e analisi.
 
+\section{Architettura del sistema}
 
-\section{Dataset}
-Qua verra' discussa come i dati vengono generati e gestiti.
-\subsection{Origine dei dati, formati e parsing}
-\subsection{Generazione e partizionamento}
+La struttura del progetto è organizzata nei seguenti moduli principali:
+\begin{itemize}
+    \item \texttt{src/satp/algorithms}: implementazioni degli algoritmi;
+    \item \texttt{src/satp/io}: caricamento dataset binari compressi;
+    \item \texttt{src/satp/simulation}: framework di valutazione e ciclo di esecuzione;
+    \item \texttt{main.cpp}: CLI interattiva per benchmark in modalità \emph{normale} e \emph{streaming};
+    \item \texttt{scripts}: generazione dataset, orchestrazione campagne sperimentali, analisi.
+\end{itemize}
 
-\section{Componenti comuni}
-Qua verra' descritti gli elementi comuni di ogni algoritmo implementato
-\subsection{Interfaccia Algorithm}
-Operazioni supportate all'interno di un algoritmo
-\subsection{Hashing}
-Algoritmo / algoritmi di hashing supportati
-\subsection{Misure di memoria e serializzazione}
+Il processo completo di un esperimento è:
+\begin{enumerate}
+    \item generazione del dataset partizionato con script Python;
+    \item indicizzazione dei metadati e caricamento di una partizione alla volta;
+    \item esecuzione dell'algoritmo sulle partizioni (esecuzioni indipendenti);
+    \item aggregazione metriche statistiche nel framework;
+    \item esportazione CSV in cartelle standardizzate sotto \texttt{results/}.
+\end{enumerate}
 
-\section{Algoritmi}
-Qua verra' descritto come e' stato implementato ogni singolo algoritmo
-Parametri esposti
-Stato interno e layout memoria (footprint)
-Update (costo e operazioni chiave)
-Query (formula usata, correzioni applicate)
-Merge (se supportato) + prerequisiti (seed/parametri)
-Note pratiche (range, saturazioni, edge-case)
+\section{Dataset binario compresso}
 
-\subsection{Naive Counting}
-\subsection{Probabilistic Counting}
-Parametri e come e' stato implementato e core del codice importante
+\subsection{Motivazione del formato}
+
+Per gestire flussi di grandi dimensioni e numerose esecuzioni, è stato adottato
+un formato binario compresso per partizione in luogo dei formati testuali.
+Questa scelta riduce l'occupazione su disco e consente una lettura sequenziale
+efficiente.
+
+Il formato è implementato in \texttt{scripts/generate\_partitioned\_dataset\_bin.py}
+(generazione) e \texttt{src/satp/io/BinaryDatasetIO.h} (parsing e I/O).
+
+\subsection{Struttura del file}
+
+Il file inizia con un'intestazione globale (magic, versione, parametri), seguito da
+tabella partizioni e payload compressi.
+
+\begin{table}[htbp]
+    \centering
+    \small
+    \begin{tabular}{|l|l|}
+        \hline
+        Campo header & Significato \\
+        \hline
+        \texttt{MAGIC=SATPDBN2} & Identificatore formato \\
+        \texttt{VERSION=2} & Versione schema \\
+        \texttt{n} & Elementi per partizione \\
+        \texttt{d} & Distinti per partizione \\
+        \texttt{p} & Numero di partizioni (esecuzioni) \\
+        \texttt{seed} & Seed globale del dataset \\
+        \hline
+    \end{tabular}
+    \caption{Campi principali dell'header del dataset binario.}
+    \label{tab:binary-header}
+\end{table}
+
+Ogni voce della tabella delle partizioni contiene:
+\begin{itemize}
+    \item offset e dimensione in byte dei valori compressi (\texttt{uint64} little-endian);
+    \item offset e dimensione in byte dei bit di verità compressi (\texttt{uint64} little-endian);
+    \item metadati locali \texttt{n}, \texttt{d} (\texttt{uint64});
+    \item codifiche payload: \texttt{ENCODING\_ZLIB\_U32\_LE} per i valori e
+    \texttt{ENCODING\_ZLIB\_BITSET\_LE} per il bitset.
+\end{itemize}
+
+\subsection{Bitset di verità per \texorpdfstring{$F_0(t)$}{F0(t)}}
+
+Per ogni partizione, oltre ai valori del flusso, viene salvata una sequenza
+binaria \(b_t\) dove:
+\[
+ b_t =
+ \begin{cases}
+ 1 & \text{se l'elemento in posizione } t \text{ è una nuova chiave},\\
+ 0 & \text{altrimenti.}
+ \end{cases}
+\]
+
+Il numero esatto di distinti sul prefisso è quindi:
+\[
+F_0(t)=\sum_{i=1}^{t} b_i.
+\]
+
+Questa informazione viene usata dal framework in modalità \emph{streaming} per confrontare in modo
+esatto \(\hat{F}_0(t)\) e \(F_0(t)\) senza ricostruire insiemi globali durante la
+valutazione.
+
+\subsection{Caricamento ``una partizione alla volta''}
+
+La classe \texttt{BinaryDatasetPartitionReader} in
+\texttt{src/satp/io/BinaryDatasetIO.h} mantiene aperto il descrittore del file
+e carica solo la partizione richiesta, decomprimendo esclusivamente il blocco
+necessario. In questo
+modo la memoria RAM rimane proporzionale alla singola partizione corrente,
+non all'intero dataset.
+
+\section{Generazione dataset}
+
+Lo script \texttt{scripts/generate\_partitioned\_dataset\_bin.py} genera file con
+nome:
+\[
+\texttt{dataset\_n\_\{n\}\_d\_\{d\}\_p\_\{p\}\_s\_\{seed\}.bin}.
+\]
+
+Per ogni partizione:
+\begin{enumerate}
+    \item si fissano \(d\) chiavi distinte;
+    \item si forzano posizioni casuali per garantire che tutte appaiano almeno una volta;
+    \item si riempiono le altre posizioni campionando uniformemente tra le \(d\) chiavi;
+    \item si aggiorna il bitset \(b_t\) delle prime occorrenze;
+    \item si comprime con zlib.
+\end{enumerate}
+
+La generazione supporta parallelismo multiprocesso (parametro
+\texttt{--workers}) e barra di avanzamento su \texttt{stderr}. La correttezza
+strutturale è verificata nei test Python in
+\texttt{scripts/tests/test\_generate\_dataset.py}.
+
+\section{Interfacce comuni e hashing}
+
+\subsection{Interfaccia base degli algoritmi}
+
+Il contratto comune è definito in \texttt{src/satp/algorithms/Algorithm.h}:
+\begin{itemize}
+    \item \texttt{process(uint32\_t id)}: aggiorna lo sketch;
+    \item \texttt{count()}: restituisce la stima corrente di \(F_0\);
+    \item \texttt{reset()}: azzeramento stato;
+    \item \texttt{getName()}: nome algoritmo.
+\end{itemize}
+
+Questa interfaccia permette al framework di istanziare in modo uniforme
+algoritmi diversi, mantenendo invariato il protocollo sperimentale.
+
+\subsection{Hashing uniforme nel codice}
+
+La randomizzazione è centralizzata in \texttt{src/satp/hashing.h}:
+\begin{itemize}
+    \item \texttt{splitmix64(uint64\_t)} come hash a 64 bit;
+    \item \texttt{hash32\_from\_64(uint64\_t)} per derivare una versione 32 bit.
+\end{itemize}
+
+La scelta implementativa usa \texttt{splitmix64} come sorgente unica, con
+troncamento quando gli algoritmi richiedono dominio a 32 bit (LogLog/HLL in
+modalità paper-strict).
+
+\section{Implementazione degli algoritmi}
+
+\subsection{NaiveCounting}
+
+\texttt{NaiveCounting} (\texttt{src/satp/algorithms/NaiveCounting.cpp}) mantiene
+un \texttt{std::set<uint32\_t>} delle chiavi osservate.
+\begin{itemize}
+    \item aggiornamento: inserimento nel set;
+    \item interrogazione: cardinalità del set.
+\end{itemize}
+
+È la baseline esatta, con spazio \(\Theta(F_0)\) e tempo di aggiornamento
+\(O(\log F_0)\).
+
+\subsection{ProbabilisticCounting}
+
+\texttt{ProbabilisticCounting} (\texttt{ProbabilisticCounting.cpp}) usa bitmap a
+32 bit e parametro \(L\in[1,31]\).
+\begin{itemize}
+    \item aggiornamento: calcolo del bit della prima posizione utile e OR sul bitmap;
+    \item interrogazione: ricerca del primo zero e stima \(\propto 2^R\) con costante \(\phi\).
+\end{itemize}
+
+È una variante compatta del paradigma FM/PC, con aggiornamento costante e spazio
+costante nel codice attuale.
+
 \subsection{LogLog}
-Parametri e come e' stato implementato e core del codice importante
+
+\texttt{LogLog} (\texttt{LogLog.cpp}) è implementato in modalità
+\emph{paper-strict}:
+\begin{itemize}
+    \item \(k\in[4,16]\), \(m=2^k\);
+    \item dominio hash 32 bit (\(L=32\)).
+\end{itemize}
+
+Ogni aggiornamento:
+\begin{enumerate}
+    \item seleziona registro dal prefisso hash;
+    \item calcola \(\rho\) sul suffisso;
+    \item applica l'aggiornamento di massimo sul registro.
+\end{enumerate}
+
+L'implementazione mantiene \(\sum_j M[j]\) incrementale
+(variabile \texttt{sumRegisters}), quindi \texttt{count()} è \(O(1)\) senza
+scansione completa dei registri.
+
 \subsection{HyperLogLog}
-Parametri e come e' stato implementato e core del codice importante
+
+\texttt{HyperLogLog} (\texttt{HyperLogLog.cpp}) segue anch'esso modalità
+\emph{paper-strict} (\(k\in[4,16], L=32\)).
+
+Lo stato mantiene:
+\begin{itemize}
+    \item registri \(M[j]\),
+    \item \(\sum_j 2^{-M[j]}\) incrementale (\texttt{sumInversePowers}),
+    \item numero di registri nulli \(V_0\) (\texttt{zeroRegisters}).
+\end{itemize}
+
+Questo consente interrogazioni in \(O(1)\) e applica le tre correzioni standard:
+\begin{itemize}
+    \item regime di piccola cardinalità (linear counting);
+    \item regime intermedio (stima grezza);
+    \item regime di grande cardinalità (correzione logaritmica su \(2^{32}\)).
+\end{itemize}
+
 \subsection{HyperLogLog++}
-Parametri e come e' stato implementato e core del codice importante
 
-\subsection{CountMin Sketch}
-Parametri e come e' stato implementato e core del codice importante
+\texttt{HyperLogLogPlusPlus} (\texttt{HyperLogLogPlusPlus.cpp}) implementa
+la variante con:
+\begin{itemize}
+    \item parametro di precisione \(p\in[4,18]\), \(m=2^p\)
+    (nei risultati del Capitolo~\ref{chp:risultati} lo stesso parametro è indicato con \(k\));
+    \item hash a 64 bit;
+    \item doppia rappresentazione \emph{sparse}/\emph{normale};
+    \item soglia di passaggio sparse\(\to\)normal basata su costo in bit;
+    \item correzione del bias tabulata (\texttt{hllpp\_tables});
+    \item soglie \texttt{threshold\_for\_k(p)} per selezione tra linear counting e stima corretta.
+\end{itemize}
 
-\subsection{Bloom Filter}
-Parametri e come e' stato implementato e core del codice importante
+La rappresentazione sparsa usa una lista codificata e ordinata per indice; la
+fusione dei contributi avviene mantenendo il \(\rho\) massimo per indice. In
+modalità normale, l'aggiornamento è analogo a HLL classico con registri e massimo.
+Dal punto di vista computazionale, in modalità \emph{normale} aggiornamento e
+interrogazione hanno costo costante; in modalità \emph{sparse}, invece,
+l'aggiornamento include flush/merge periodici (costo ammortizzato costante nel
+regime operativo considerato). Lo spazio è adattivo: compatto in
+\emph{sparse} e proporzionale a \(m=2^p\) in \emph{normale}.
 
-\section{Framework di benchmark}
-Descrizione del framework di benchmark, come funziona, quale e' il flusso
-\subsection{CLI e configurazione parametri}
-Operazioni da CLI che si possono fare all'interno del framework
-\subsection{Protocollo sperimentale}
-\subsection{Metriche misurate}
-Come sono state implementate le statistiche che sono state descritte all'interno del capitolo \ref{chp:stato-arte}
-\subsection{Formato output e organizzazione dei risultati}
-Come vengono visualizzati i risultati per ogni run degli algoritmi, dove vengono salvati?
-Come vengono visti?
+\section{Framework di valutazione}
+
+\subsection{Doppia modalità: normale e streaming}
+
+La classe \texttt{EvaluationFramework}
+(\texttt{src/satp/simulation/EvaluationFramework.h}) espone:
+\begin{itemize}
+    \item \texttt{evaluate(...)} per analisi all'endpoint (una stima per esecuzione);
+    \item \texttt{evaluateStreaming(...)} per analisi prefisso \(t\mapsto \hat{F}_0(t)\).
+\end{itemize}
+
+In modalità dataset binario, \texttt{runs}, \texttt{sample\_size} e \texttt{seed}
+vengono letti dai metadati del file.
+
+\subsection{Metriche implementate}
+
+Per entrambe le modalità, il framework calcola le metriche definite nel
+Capitolo~\ref{chp:background}: media, varianza campionaria, deviazione
+standard, bias, errore relativo medio, RMSE, MAE, RSE osservata, oltre a
+\(\bar{F}_0\) e \(\bar{\hat{F}}_0\).
+
+In streaming, le metriche sono aggregate sulle esecuzioni per checkpoint comuni.
+I checkpoint sono fissati a:
+\[
+K_{\text{chk}}=\min\{n,200\},
+\]
+con posizione
+\[
+t_i = \left\lceil \frac{i\,n}{K_{\text{chk}}}\right\rceil, \quad i=1,\dots,K_{\text{chk}}.
+\]
+
+\subsection{Output CSV}
+
+Le funzioni \texttt{evaluateToCsv} e \texttt{evaluateStreamingToCsv} scrivono le
+colonne:
+\begin{center}
+\small
+\texttt{algorithm, params, mode, runs, sample\_size, element\_index, distinct\_count, seed,}\
+\texttt{f0\_mean, f0\_hat\_mean, mean, variance, stddev, rse\_theoretical, rse\_observed,}\
+\texttt{bias, difference, bias\_relative, mean\_relative\_error, rmse, mae}
+\end{center}
+
+In modalità streaming, la colonna \texttt{distinct\_count} riporta il valore
+globale \(d\) del dataset, mentre la verità al checkpoint \(t\) è
+\texttt{f0\_mean}.
+Nel formato corrente del framework, \texttt{mean} e \texttt{f0\_hat\_mean}
+coincidono (ridondanza mantenuta per compatibilità con analisi pregresse).
+
+\section{CLI e orchestrazione sperimentale}
+
+\subsection{CLI interattiva}
+
+Il file \texttt{main.cpp} implementa una CLI con comandi:
+\texttt{set}, \texttt{show}, \texttt{run}, \texttt{runstream}, \texttt{list},
+\texttt{help}, \texttt{quit}.
+
+I risultati sono salvati automaticamente in
+\texttt{results/<Algorithm>/<params>/results\_oneshot.csv} (comando
+\texttt{run}) oppure
+\texttt{results/<Algorithm>/<params>/results\_streaming.csv} (comando
+\texttt{runstream}), senza richiedere l'inserimento manuale del percorso.
+
+\subsection{Orchestrazione batch}
+
+Lo script \texttt{scripts/orchestrate\_benchmarks.py} automatizza:
+\begin{itemize}
+    \item generazione matrice dataset \((n,d,seed)\);
+    \item invocazione CLI in modalità \emph{oneshot} e/o \emph{streaming};
+    \item popolamento strutturato della cartella \texttt{results/}.
+\end{itemize}
+
+\section{Validazione e testing}
+
+La validazione include test C++ e Python.
+
+\subsection{Test algoritmici C++}
+
+In \texttt{tests/algorithms} sono presenti test per:
+\begin{itemize}
+    \item accuratezza con intervalli basati su RSE teorica per HLL, HLL++ e LogLog;
+    \item validazione parametri per HLL, HLL++ e LogLog;
+    \item baseline esatta \texttt{NaiveCounting};
+    \item controllo di consistenza per \texttt{ProbabilisticCounting} con bound conservativi.
+\end{itemize}
+
+\subsection{Test framework}
+
+\texttt{tests/simulation/EvaluationFrameworkTest.cpp} verifica che:
+\begin{itemize}
+    \item le statistiche siano finite e che le metriche di errore/dispersione
+    (\texttt{variance}, \texttt{stddev}, \texttt{rmse}, \texttt{mae},
+    \texttt{mean\_relative\_error}, \texttt{difference}) siano non negative;
+    \item in modalità streaming con \texttt{NaiveCounting} valga
+    \(\hat{F}_0(t)=F_0(t)\) a ogni checkpoint;
+    \item l'ultimo checkpoint coincida con il numero di distinti noto del dataset.
+\end{itemize}
+
+\subsection{Test generazione dataset}
+
+\texttt{scripts/tests/test\_generate\_dataset.py} valida:
+\begin{itemize}
+    \item conformità binaria dello schema;
+    \item correttezza di \(n,d,p,seed\);
+    \item coerenza del bitset di verità prefisso;
+    \item è presente un controllo di determinismo con seed fisso (anche con
+    worker diversi), ma nello stato attuale non costituisce ancora una
+    validazione forte della ripetibilità su output indipendenti.
+\end{itemize}
+
+\section{Scelte progettuali e limiti attuali}
+
+Le scelte implementative principali sono:
+\begin{itemize}
+    \item separazione netta tra algoritmi e framework di misura;
+    \item dataset compresso con caricamento per partizione;
+    \item metriche allineate alla formalizzazione statistica del Capitolo~\ref{chp:background};
+    \item pipeline riproducibile tramite seed e naming deterministico dei file.
+\end{itemize}
+
+I limiti correnti sono:
+\begin{itemize}
+    \item assenza di fusione/serializzazione nel contratto \texttt{Algorithm};
+    \item assenza di implementazioni Count-Min Sketch e Bloom Filter nel codice C++;
+    \item campagne complete multi-seed più onerose per HLL/HLL++ ai parametri più grandi.
+\end{itemize}
+
+Nel capitolo successivo si analizzano i risultati sperimentali ottenuti con il
+framework descritto.
