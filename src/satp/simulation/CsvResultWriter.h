@@ -1,0 +1,138 @@
+#pragma once
+
+#include <cstdint>
+#include <filesystem>
+#include <fstream>
+#include <iomanip>
+#include <stdexcept>
+#include <string>
+#include <vector>
+
+#include "satp/simulation/Stats.h"
+
+namespace satp::evaluation {
+    class CsvResultWriter {
+    public:
+        static void appendNormal(const std::filesystem::path &csvPath,
+                                 const std::string &algorithmName,
+                                 const std::string &algorithmParams,
+                                 std::size_t runs,
+                                 std::size_t sampleSize,
+                                 std::size_t distinctCount,
+                                 std::uint32_t seed,
+                                 double rseTheoretical,
+                                 const Stats &stats) {
+            std::ofstream out = openAppend(csvPath);
+            writeRecord(out, algorithmName, algorithmParams, "normal", runs, sampleSize,
+                        sampleSize, distinctCount, seed, stats.truth_mean, stats.mean,
+                        stats.variance, stats.stddev, rseTheoretical, stats.rse_observed,
+                        stats.bias, stats.difference, stats.bias_relative,
+                        stats.mean_relative_error, stats.rmse, stats.mae);
+        }
+
+        static void appendStreaming(const std::filesystem::path &csvPath,
+                                    const std::string &algorithmName,
+                                    const std::string &algorithmParams,
+                                    std::size_t runs,
+                                    std::size_t sampleSize,
+                                    std::size_t distinctCount,
+                                    std::uint32_t seed,
+                                    double rseTheoretical,
+                                    const std::vector<StreamingPointStats> &series) {
+            std::ofstream out = openAppend(csvPath);
+            for (const auto &point : series) {
+                writeRecord(out, algorithmName, algorithmParams, "streaming", runs, sampleSize,
+                            point.element_index, distinctCount, seed, point.truth_mean,
+                            point.mean, point.variance, point.stddev, rseTheoretical,
+                            point.rse_observed, point.bias, point.difference,
+                            point.bias_relative, point.mean_relative_error,
+                            point.rmse, point.mae);
+            }
+        }
+
+    private:
+        static std::string escapeCsvField(const std::string &value) {
+            const bool needsQuotes = value.find_first_of(",\"\n\r") != std::string::npos;
+            if (!needsQuotes) return value;
+
+            std::string out;
+            out.reserve(value.size() + 2);
+            out.push_back('"');
+            for (const char c : value) {
+                if (c == '"') {
+                    out.push_back('"');
+                    out.push_back('"');
+                } else {
+                    out.push_back(c);
+                }
+            }
+            out.push_back('"');
+            return out;
+        }
+
+        static void writeHeaderIfNeeded(const std::filesystem::path &csvPath,
+                                        std::ofstream &out) {
+            const bool writeHeader =
+                !std::filesystem::exists(csvPath) || std::filesystem::file_size(csvPath) == 0;
+            if (!writeHeader) return;
+
+            out << "algorithm,params,mode,runs,sample_size,element_index,distinct_count,seed,"
+                   "f0_mean,f0_hat_mean,"
+                   "mean,variance,stddev,rse_theoretical,rse_observed,bias,difference,bias_relative,"
+                   "mean_relative_error,rmse,mae\n";
+        }
+
+        static std::ofstream openAppend(const std::filesystem::path &csvPath) {
+            std::ofstream out(csvPath, std::ios::app);
+            if (!out) throw std::runtime_error("Impossibile aprire il file CSV");
+            out << std::setprecision(10);
+            writeHeaderIfNeeded(csvPath, out);
+            return out;
+        }
+
+        static void writeRecord(std::ofstream &out,
+                                const std::string &algorithmName,
+                                const std::string &algorithmParams,
+                                const char *mode,
+                                std::size_t runs,
+                                std::size_t sampleSize,
+                                std::size_t elementIndex,
+                                std::size_t distinctCount,
+                                std::uint32_t seed,
+                                double truthMean,
+                                double estimateMean,
+                                double variance,
+                                double stddev,
+                                double rseTheoretical,
+                                double rseObserved,
+                                double bias,
+                                double difference,
+                                double biasRelative,
+                                double meanRelativeError,
+                                double rmse,
+                                double mae) {
+            out << escapeCsvField(algorithmName) << ','
+                << escapeCsvField(algorithmParams) << ','
+                << mode << ','
+                << runs << ','
+                << sampleSize << ','
+                << elementIndex << ','
+                << distinctCount << ','
+                << seed << ','
+                << truthMean << ','
+                << estimateMean << ','
+                // compatibility: keep 'mean' duplicated from f0_hat_mean
+                << estimateMean << ','
+                << variance << ','
+                << stddev << ','
+                << rseTheoretical << ','
+                << rseObserved << ','
+                << bias << ','
+                << difference << ','
+                << biasRelative << ','
+                << meanRelativeError << ','
+                << rmse << ','
+                << mae << '\n';
+        }
+    };
+} // namespace satp::evaluation
