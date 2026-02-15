@@ -7,9 +7,7 @@
 #include <fstream>
 #include <iomanip>
 #include <numeric>      // accumulate
-#include <random>
 #include <string>
-#include <unordered_set>
 #include <utility>      // forward
 #include <cmath>
 #include <optional>
@@ -22,11 +20,6 @@
 using namespace std;
 
 namespace satp::evaluation {
-    struct Dataset {
-        vector<uint32_t> values;
-        size_t distinct_count = 0;
-    };
-
     struct Stats {
         double difference = 0.0;
         double mean = 0.0;
@@ -58,25 +51,20 @@ namespace satp::evaluation {
 
     class EvaluationFramework {
     public:
-        static constexpr uint32_t DEFAULT_SEED = 5489u;
         static constexpr size_t DEFAULT_STREAMING_CHECKPOINTS = 200u;
 
         explicit EvaluationFramework(const filesystem::path &filePath)
-            : seed(DEFAULT_SEED),
-              rng(seed) {
+            : seed(0) {
             binaryDataset = satp::io::indexBinaryDataset(filePath);
             numElementiDistintiEffettivi = binaryDataset->info.distinct_per_partition;
             seed = binaryDataset->info.seed;
-            rng.seed(seed);
         }
 
         explicit EvaluationFramework(satp::io::BinaryDatasetIndex datasetIndex)
-            : seed(DEFAULT_SEED),
-              rng(seed) {
+            : seed(0) {
             binaryDataset = std::move(datasetIndex);
             numElementiDistintiEffettivi = binaryDataset->info.distinct_per_partition;
             seed = binaryDataset->info.seed;
-            rng.seed(seed);
         }
 
         /**
@@ -88,83 +76,15 @@ namespace satp::evaluation {
                                      size_t sampleSize,
                                      Args &&... ctorArgs) const {
             if (runs == 0 || sampleSize == 0) return {};
-
-            if (binaryDataset.has_value()) {
-                (void) runs;
-                (void) sampleSize;
-                return evaluateFromBinary<Algo>(std::forward<Args>(ctorArgs)...);
+            if (!binaryDataset.has_value()) {
+                throw runtime_error("Internal error: binary dataset is not loaded");
             }
-
-            cout << "Creazione dei sottoinsiemi\n";
-            ensureSubsets(runs, sampleSize);
-
-            using satp::util::ProgressBar;
-            ProgressBar bar{runs * sampleSize, cout, 50, 10'000};
-
-            vector<double> estimates;
-            estimates.reserve(runs);
-
-            vector<double> truths;
-            truths.reserve(runs);
-
-            double absErrSum = 0.0;
-            double sqErrSum = 0.0;
-            double absRelErrSum = 0.0;
-
-            for (size_t r = 0; r < runs; ++r) {
-                const auto &sottoInsieme = sottoInsiemi[r];
-                Algo algo(std::forward<Args>(ctorArgs)...);
-
-                for (auto v: sottoInsieme) {
-                    algo.process(v);
-                    bar.tick();
-                }
-                const double estimate = static_cast<double>(algo.count());
-                const double truth = static_cast<double>(exactDistinctCount(sottoInsieme));
-                estimates.push_back(estimate);
-                truths.push_back(truth);
-
-                const double err = estimate - truth;
-                absErrSum += std::abs(err);
-                sqErrSum += err * err;
-                if (truth > 0.0) {
-                    absRelErrSum += std::abs(err) / truth;
-                }
-            }
-
-            bar.finish();
-            cout.flush();
-
-            // ---- statistiche ---------------------------------------------
-            const auto mean = reduce(estimates.begin(), estimates.end()) / runs;
-            const auto gtMean = reduce(truths.begin(), truths.end()) / runs;
-
-            double varAcc = 0.0;
-            for (double e: estimates) varAcc += (e - mean) * (e - mean);
-            const double variance = (runs > 1) ? (varAcc / (runs - 1)) : 0.0;
-            const double stddev = std::sqrt(variance);
-
-            const double bias = mean - gtMean;
-            const double difference = abs(bias);
-            const double biasRelative = (gtMean != 0.0) ? (bias / gtMean) : 0.0;
-
-            const double meanRelativeError = absRelErrSum / runs;
-            const double rmse = std::sqrt(sqErrSum / runs);
-            const double mae = absErrSum / runs;
-            const double rseObserved = (gtMean != 0.0) ? (stddev / gtMean) : 0.0;
-
-            return {difference, mean, variance, bias, meanRelativeError, biasRelative, rmse, mae, stddev, rseObserved, gtMean};
+            (void) runs;
+            (void) sampleSize;
+            return evaluateFromBinary<Algo>(std::forward<Args>(ctorArgs)...);
         }
 
         [[nodiscard]] size_t getNumElementiDistintiEffettivi() const noexcept { return numElementiDistintiEffettivi; }
-        [[nodiscard]] const vector<uint32_t> &data() const noexcept { return valori; }
-        [[nodiscard]] uint32_t getSeed() const noexcept { return seed; }
-        [[nodiscard]] size_t getDatasetRuns() const noexcept {
-            return binaryDataset.has_value() ? binaryDataset->info.partition_count : 0;
-        }
-        [[nodiscard]] size_t getDatasetSampleSize() const noexcept {
-            return binaryDataset.has_value() ? binaryDataset->info.elements_per_partition : 0;
-        }
 
         template<typename Algo, typename... Args>
         [[nodiscard]] Stats evaluateToCsv(const filesystem::path &csvPath,
@@ -206,34 +126,6 @@ namespace satp::evaluation {
             auto series = evaluateStreaming<Algo>(effectiveRuns, effectiveSampleSize, std::forward<Args>(ctorArgs)...);
             appendStreamingCsv(csvPath, algo.getName(), algorithmParams, effectiveRuns, effectiveSampleSize, rseTheoretical, series);
             return series;
-        }
-
-        /**
-         * Viene chiamato al primo evaluate() e riutilizza i sotto-insiemi per le chiamate successive dello stesso EvaluationFramework
-         * @param runs
-         * @param sampleSize
-         */
-        void ensureSubsets(size_t runs, size_t sampleSize) const {
-            // Cache: reuse only when runs and sampleSize match the cached values.
-            if (!sottoInsiemi.empty()
-                && cachedRuns == runs
-                && cachedSampleSize == sampleSize) {
-                return;
-            }
-
-            sottoInsiemi.clear();
-            cachedRuns = runs;
-            cachedSampleSize = sampleSize;
-
-            sottoInsiemi.reserve(runs);
-            for (size_t r = 0; r < runs; ++r) {
-                vector<std::uint32_t> subset;
-                subset.reserve(sampleSize);
-                std::sample(valori.begin(), valori.end(),
-                            std::back_inserter(subset),
-                            sampleSize, rng);
-                sottoInsiemi.push_back(std::move(subset));
-            }
         }
 
     private:
@@ -434,11 +326,6 @@ namespace satp::evaluation {
             return out;
         }
 
-        static size_t exactDistinctCount(const vector<uint32_t> &values) {
-            unordered_set<uint32_t> distinct(values.begin(), values.end());
-            return distinct.size();
-        }
-
         static string escapeCsvField(const string &value) {
             const bool needsQuotes = value.find_first_of(",\"\n\r") != string::npos;
             if (!needsQuotes) return value;
@@ -542,15 +429,8 @@ namespace satp::evaluation {
             }
         }
 
-        vector<uint32_t> valori;
         size_t numElementiDistintiEffettivi;
         uint32_t seed;
-        mutable mt19937 rng;
-
-        mutable vector<vector<uint32_t> > sottoInsiemi;
-        // Cache key for generated subsets.
-        mutable size_t cachedRuns = 0;
-        mutable size_t cachedSampleSize = 0;
 
         std::optional<satp::io::BinaryDatasetIndex> binaryDataset;
     };

@@ -41,11 +41,6 @@ namespace satp::simulation {
             return algorithm_.count();
         }
 
-        void reset() {
-            algorithm_.reset();
-            ids_.clear();
-        }
-
     private:
         A algorithm_;
         std::vector<std::uint32_t> ids_;
