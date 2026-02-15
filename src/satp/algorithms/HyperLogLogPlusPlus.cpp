@@ -16,12 +16,9 @@ namespace satp::algorithms {
           m(0),
           mSparse(1u << SPARSE_P),
           format(Format::Sparse),
-          registers(),
           alphaM(0.0),
           sumInversePowers(0.0),
           zeroRegisters(0),
-          tmpSet(),
-          sparseList(),
           sparseBits(0) {
         if (p < MIN_P || p > MAX_P) {
             throw invalid_argument("HLL++ requires p in [4, 18]");
@@ -63,8 +60,8 @@ namespace satp::algorithms {
     uint64_t HyperLogLogPlusPlus::count() {
         if (format == Format::Sparse) {
             flushTmpSetToSparseList();
-            const double zeros = static_cast<double>(mSparse - sparseList.size());
-            return static_cast<uint64_t>(linearCounting(static_cast<double>(mSparse), zeros));
+            const auto zeros = static_cast<double>(mSparse - sparseList.size());
+            return static_cast<uint64_t>(linearCounting(mSparse, zeros));
         }
 
         const double raw = rawEstimateNormal();
@@ -78,10 +75,10 @@ namespace satp::algorithms {
 
         double linear = corrected;
         if (zeroRegisters != 0u) {
-            linear = linearCounting(static_cast<double>(m), static_cast<double>(zeroRegisters));
+            linear = linearCounting(m, zeroRegisters);
         }
 
-        const double threshold = static_cast<double>(hllpp_tables::threshold_for_k(p));
+        const double threshold = hllpp_tables::threshold_for_k(p);
         const double estimate = (linear <= threshold) ? linear : corrected;
         return static_cast<uint64_t>(estimate);
     }
@@ -101,7 +98,7 @@ namespace satp::algorithms {
     }
 
     uint32_t HyperLogLogPlusPlus::encodeHash(uint64_t hash) const {
-        const uint32_t sparseIdx = static_cast<uint32_t>(hash >> (64u - SPARSE_P));
+        const auto sparseIdx = static_cast<uint32_t>(hash >> (64u - SPARSE_P));
         const uint32_t idxTailBits = SPARSE_P - p;
         const uint32_t idxTailMask = (1u << idxTailBits) - 1u;
 
@@ -120,7 +117,7 @@ namespace satp::algorithms {
     uint8_t HyperLogLogPlusPlus::rhoFromEncoded(uint32_t encoded) const {
         const uint32_t idxTailBits = SPARSE_P - p;
         if (encoded & 1u) {
-            const uint8_t rhoPrime = static_cast<uint8_t>((encoded >> 1u) & 0x3Fu);
+            const auto rhoPrime = static_cast<uint8_t>((encoded >> 1u) & 0x3Fu);
             return static_cast<uint8_t>(rhoPrime + idxTailBits);
         }
 
@@ -165,7 +162,7 @@ namespace satp::algorithms {
             return a < b;
         };
 
-        sort(incoming.begin(), incoming.end(), cmpBySparseIndex);
+        ranges::sort(incoming, cmpBySparseIndex);
 
         vector<uint32_t> incomingUnique;
         incomingUnique.reserve(incoming.size());
@@ -211,10 +208,6 @@ namespace satp::algorithms {
     }
 
     void HyperLogLogPlusPlus::convertSparseToNormal() {
-        if (format == Format::Normal) {
-            return;
-        }
-
         flushTmpSetToSparseList();
 
         registers.assign(m, 0u);
@@ -233,7 +226,7 @@ namespace satp::algorithms {
     }
 
     void HyperLogLogPlusPlus::addNormalHash(uint64_t hash) {
-        const uint32_t idx = static_cast<uint32_t>(hash >> (64u - p));
+        const auto idx = static_cast<uint32_t>(hash >> (64u - p));
         const uint64_t w = hash << p;
         const uint8_t r = (w == 0u)
                               ? static_cast<uint8_t>((64u - p) + 1u)

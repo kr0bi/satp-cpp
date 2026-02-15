@@ -55,7 +55,7 @@ namespace satp::algorithms {
     }
 
     void LogLog::reset() {
-        std::fill(bitmap.begin(), bitmap.end(), 0u);
+        ranges::fill(bitmap, 0u);
         sumRegisters = 0.0;
     }
 
