@@ -25,6 +25,10 @@ namespace satp::algorithms {
 
         string getName() override;
 
+        void merge(const Algorithm &other) override;
+
+        void merge(const LogLog &other);
+
     private:
         uint32_t k;
         uint32_t numberOfBuckets;

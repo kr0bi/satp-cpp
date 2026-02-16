@@ -13,8 +13,10 @@ sys.path.insert(0, str(SCRIPT_DIR))
 
 from generate_partitioned_dataset_bin import (  # noqa: E402
     generate_partitioned_dataset_bin,
+    _validate_params,
     MAGIC,
     VERSION,
+    UINT32_DOMAIN_SIZE,
     ENCODING_ZLIB_U32_LE,
     ENCODING_ZLIB_BITSET_LE,
     HEADER_FMT,
@@ -189,6 +191,22 @@ class GenerateDatasetTests(unittest.TestCase):
                     seed=1,
                     show_progress=False,
                 )
+
+    def test_validate_params_allows_large_n_with_u32_domain(self) -> None:
+        # n can exceed 2^32 as long as d fits in uint32 domain.
+        _validate_params(
+            n=10_000_000_000,
+            d=1_000_000,
+            p=1,
+        )
+
+    def test_validate_params_rejects_d_above_u32_domain(self) -> None:
+        with self.assertRaises(ValueError):
+            _validate_params(
+                n=10_000_000_000,
+                d=UINT32_DOMAIN_SIZE + 1,
+                p=1,
+            )
 
     def test_partitioned_binary_deterministic_across_workers(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:

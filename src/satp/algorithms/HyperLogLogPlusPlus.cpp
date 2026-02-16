@@ -97,6 +97,56 @@ namespace satp::algorithms {
         return "HyperLogLog++";
     }
 
+    void HyperLogLogPlusPlus::merge(const Algorithm &other) {
+        const auto *typed = dynamic_cast<const HyperLogLogPlusPlus *>(&other);
+        if (typed == nullptr) {
+            throw invalid_argument("HLL++ merge requires HyperLogLogPlusPlus");
+        }
+        merge(*typed);
+    }
+
+    void HyperLogLogPlusPlus::merge(const HyperLogLogPlusPlus &other) {
+        if (p != other.p) {
+            throw invalid_argument("HLL++ merge requires same p");
+        }
+        if (this == &other) {
+            return;
+        }
+
+        if (format == Format::Sparse && other.format == Format::Sparse) {
+            flushTmpSetToSparseList();
+
+            HyperLogLogPlusPlus rhs = other;
+            rhs.flushTmpSetToSparseList();
+
+            for (const auto encoded : rhs.sparseList) {
+                tmpSet.insert(encoded);
+            }
+            flushTmpSetToSparseList();
+            if (sparseBits > denseBits()) {
+                convertSparseToNormal();
+            }
+            return;
+        }
+
+        if (format == Format::Sparse) {
+            convertSparseToNormal();
+        }
+
+        HyperLogLogPlusPlus rhs = other;
+        if (rhs.format == Format::Sparse) {
+            rhs.convertSparseToNormal();
+        }
+
+        if (registers.size() != rhs.registers.size()) {
+            throw runtime_error("HLL++ merge internal error: register size mismatch");
+        }
+
+        for (std::size_t i = 0; i < registers.size(); ++i) {
+            addNormalRegister(static_cast<uint32_t>(i), rhs.registers[i]);
+        }
+    }
+
     uint32_t HyperLogLogPlusPlus::encodeHash(uint64_t hash) const {
         const auto sparseIdx = static_cast<uint32_t>(hash >> (64u - SPARSE_P));
         const uint32_t idxTailBits = SPARSE_P - p;

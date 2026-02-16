@@ -31,4 +31,22 @@ namespace satp::evaluation {
         double rse_observed = 0.0;
         double truth_mean = 0.0; // \bar{F_0(t)}
     };
+
+    struct MergePairPoint {
+        std::size_t pair_index = 0;
+        double estimate_merge = 0.0;
+        double estimate_serial = 0.0;
+        double delta_merge_serial_abs = 0.0;
+        double delta_merge_serial_rel = 0.0;
+    };
+
+    struct MergePairStats {
+        std::size_t pair_count = 0;
+        double estimate_merge_mean = 0.0;
+        double estimate_serial_mean = 0.0;
+        double delta_merge_serial_abs_mean = 0.0;
+        double delta_merge_serial_abs_max = 0.0;
+        double delta_merge_serial_rel_mean = 0.0;
+        double delta_merge_serial_rmse = 0.0;
+    };
 } // namespace satp::evaluation

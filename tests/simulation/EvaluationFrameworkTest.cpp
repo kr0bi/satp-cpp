@@ -1,4 +1,6 @@
 #include <cmath>
+#include <filesystem>
+#include <fstream>
 #include <iostream>
 
 #include "catch2/catch_approx.hpp"
@@ -114,4 +116,57 @@ TEST_CASE("Evaluation Framework streaming usa F0(t) del dataset", "[eval-framewo
     const auto &last = series.back();
     REQUIRE(last.truth_mean == Approx(static_cast<double>(dataset.distinct)).margin(1e-12));
     REQUIRE(last.mean == Approx(static_cast<double>(dataset.distinct)).margin(1e-12));
+}
+
+TEST_CASE("Evaluation Framework merge pairs: Naive merge equivale al seriale", "[eval-framework][merge]") {
+    eval::EvaluationFramework bench(satp::testdata::datasetPath());
+    const auto dataset = satp::testdata::loadDataset();
+
+    const auto points = bench.evaluateMergePairs<alg::NaiveCounting>(
+        dataset.partition_count,
+        dataset.elements_per_partition);
+    REQUIRE(points.size() == dataset.partition_count / 2u);
+    REQUIRE_FALSE(points.empty());
+
+    for (const auto &point : points) {
+        REQUIRE(std::isfinite(point.estimate_merge));
+        REQUIRE(std::isfinite(point.estimate_serial));
+        REQUIRE(std::isfinite(point.delta_merge_serial_abs));
+        REQUIRE(std::isfinite(point.delta_merge_serial_rel));
+        REQUIRE(point.delta_merge_serial_abs == Approx(0.0).margin(1e-12));
+        REQUIRE(point.delta_merge_serial_rel == Approx(0.0).margin(1e-12));
+    }
+}
+
+TEST_CASE("Evaluation Framework merge pairs CSV", "[eval-framework][merge][csv]") {
+    namespace fs = std::filesystem;
+
+    eval::EvaluationFramework bench(satp::testdata::datasetPath());
+    const auto dataset = satp::testdata::loadDataset();
+
+    const fs::path csvPath = fs::temp_directory_path() / "satp_merge_pairs_test.csv";
+    if (fs::exists(csvPath)) {
+        fs::remove(csvPath);
+    }
+
+    const auto stats = bench.evaluateMergePairsToCsv<alg::NaiveCounting>(
+        csvPath,
+        dataset.partition_count,
+        dataset.elements_per_partition,
+        "naive");
+
+    REQUIRE(stats.pair_count == dataset.partition_count / 2u);
+    REQUIRE(stats.delta_merge_serial_abs_mean == Approx(0.0).margin(1e-12));
+    REQUIRE(stats.delta_merge_serial_abs_max == Approx(0.0).margin(1e-12));
+    REQUIRE(stats.delta_merge_serial_rmse == Approx(0.0).margin(1e-12));
+
+    REQUIRE(fs::exists(csvPath));
+    std::ifstream in(csvPath);
+    REQUIRE(in.good());
+    std::string header;
+    std::getline(in, header);
+    REQUIRE(header.find("estimate_merge") != std::string::npos);
+    REQUIRE(header.find("estimate_serial") != std::string::npos);
+
+    fs::remove(csvPath);
 }

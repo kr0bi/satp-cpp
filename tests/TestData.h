@@ -29,4 +29,11 @@ namespace satp::testdata {
         out.seed = index.info.seed;
         return out;
     }
+
+    inline std::vector<std::uint32_t> loadPartition(const std::size_t partitionIndex) {
+        const auto index = satp::io::indexBinaryDataset(datasetPath());
+        std::vector<std::uint32_t> out;
+        satp::io::loadBinaryPartition(index, partitionIndex, out);
+        return out;
+    }
 } // namespace satp::testdata

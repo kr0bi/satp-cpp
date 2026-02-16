@@ -24,8 +24,14 @@ namespace satp::cli {
             return mode == RunMode::Streaming;
         }
 
+        [[nodiscard]] bool isMerge(const RunMode mode) {
+            return mode == RunMode::Merge;
+        }
+
         [[nodiscard]] const char *modeLabel(const RunMode mode) {
-            return isStreaming(mode) ? "streaming" : "normal";
+            if (isStreaming(mode)) return "streaming";
+            if (isMerge(mode)) return "merge";
+            return "normal";
         }
 
         [[nodiscard]] double rseHll(const std::uint32_t k) {
@@ -96,6 +102,20 @@ namespace satp::cli {
                       << "  mae=" << lastPoint.mae << '\n';
         }
 
+        void printMergeSummary(const AlgorithmRunSpec &spec,
+                               const std::filesystem::path &csvPath,
+                               const eval::MergePairStats &stats) {
+            std::cout << '[' << spec.displayTag << "][merge] csv=" << csvPath.string()
+                      << "  pairs=" << stats.pair_count
+                      << "  merge_mean=" << stats.estimate_merge_mean
+                      << "  serial_mean=" << stats.estimate_serial_mean
+                      << "  delta_abs_mean=" << stats.delta_merge_serial_abs_mean
+                      << "  delta_abs_max=" << stats.delta_merge_serial_abs_max
+                      << "  delta_rel_mean=" << stats.delta_merge_serial_rel_mean
+                      << "  delta_rmse=" << stats.delta_merge_serial_rmse
+                      << '\n';
+        }
+
         template<typename Algo, typename... CtorArgs>
         void runSingleAlgorithm(eval::EvaluationFramework &bench,
                                 const DatasetRuntimeContext &ctx,
@@ -125,6 +145,17 @@ namespace satp::cli {
                 }
 
                 printStreamingSummary(spec, csvPath, series.back());
+                return;
+            }
+
+            if (isMerge(mode)) {
+                const auto stats = bench.evaluateMergePairsToCsv<Algo>(
+                    csvPath,
+                    ctx.runs,
+                    ctx.sampleSize,
+                    spec.params,
+                    std::forward<CtorArgs>(ctorArgs)...);
+                printMergeSummary(spec, csvPath, stats);
                 return;
             }
 

@@ -40,4 +40,19 @@ namespace satp::algorithms {
     string ProbabilisticCounting::getName() {
         return "Probabilistic Counting";
     }
+
+    void ProbabilisticCounting::merge(const Algorithm &other) {
+        const auto *typed = dynamic_cast<const ProbabilisticCounting *>(&other);
+        if (typed == nullptr) {
+            throw invalid_argument("ProbabilisticCounting merge requires ProbabilisticCounting");
+        }
+        merge(*typed);
+    }
+
+    void ProbabilisticCounting::merge(const ProbabilisticCounting &other) {
+        if (lengthBitMap != other.lengthBitMap) {
+            throw invalid_argument("ProbabilisticCounting merge requires same L");
+        }
+        bitmap |= other.bitmap;
+    }
 } // namespace satp::algorithms

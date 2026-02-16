@@ -94,4 +94,31 @@ namespace satp::algorithms {
     string HyperLogLog::getName() {
         return "HyperLogLog";
     }
+
+    void HyperLogLog::merge(const Algorithm &other) {
+        const auto *typed = dynamic_cast<const HyperLogLog *>(&other);
+        if (typed == nullptr) {
+            throw invalid_argument("HyperLogLog merge requires HyperLogLog");
+        }
+        merge(*typed);
+    }
+
+    void HyperLogLog::merge(const HyperLogLog &other) {
+        if (k != other.k || lengthOfBitMap != other.lengthOfBitMap || numberOfBuckets != other.numberOfBuckets) {
+            throw invalid_argument("HyperLogLog merge requires same k and L");
+        }
+
+        for (uint32_t i = 0; i < numberOfBuckets; ++i) {
+            bitmap[i] = std::max(bitmap[i], other.bitmap[i]);
+        }
+
+        sumInversePowers = 0.0;
+        zeroRegisters = 0u;
+        for (const auto reg : bitmap) {
+            sumInversePowers += ldexp(1.0, -static_cast<int>(reg));
+            if (reg == 0u) {
+                ++zeroRegisters;
+            }
+        }
+    }
 } // namespace satp::algorithms

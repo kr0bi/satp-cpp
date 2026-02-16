@@ -22,6 +22,10 @@ namespace satp::algorithms {
 
         string getName() override;
 
+        void merge(const Algorithm &other) override;
+
+        void merge(const ProbabilisticCounting &other);
+
     private:
         uint32_t lengthBitMap;
         uint32_t bitmap;

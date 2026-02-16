@@ -19,6 +19,7 @@ from typing import Any, Dict, List, Tuple
 
 DEFAULT_PROGRESS_UPDATES = 200
 UINT32_MAX = (1 << 32) - 1
+UINT32_DOMAIN_SIZE = UINT32_MAX + 1
 
 # Binary format:
 # - Header: magic/version/global params (v2 only).
@@ -46,8 +47,14 @@ def _validate_params(n: int, d: int, p: int) -> None:
         raise ValueError("d must be <= n")
     if n > 0 and d == 0:
         raise ValueError("d=0 requires n=0")
-    if n > (UINT32_MAX + 1):
-        raise ValueError("n must be <= 2^32")
+    # Values are stored as uint32 in the current binary format.
+    # n can be arbitrarily large (per-partition stream length), but the distinct
+    # domain cannot exceed the uint32 key space.
+    id_domain_size = min(n, UINT32_DOMAIN_SIZE)
+    if d > id_domain_size:
+        raise ValueError(
+            f"d must be <= min(n, 2^32) because values are uint32 (got d={d}, domain={id_domain_size})"
+        )
 
 
 def _derive_partition_seed(seed: int, partition_index: int) -> int:
@@ -105,13 +112,22 @@ def _u32_chunk_bytes(buffer_u32: array.array) -> bytes:
     return buffer_u32.tobytes()
 
 
-def _write_partition_fragment(task: Tuple[int, int, int, int, str, Any, int]) -> Tuple[int, str, str]:
-    part_idx, n_per_partition, d_per_partition, part_seed, tmp_dir, progress_queue, progress_batch = task
+def _write_partition_fragment(task: Tuple[int, int, int, int, int, str, Any, int]) -> Tuple[int, str, str]:
+    (
+        part_idx,
+        n_per_partition,
+        d_per_partition,
+        id_domain_size,
+        part_seed,
+        tmp_dir,
+        progress_queue,
+        progress_batch,
+    ) = task
     rng = random.Random(part_seed)
     values_path = pathlib.Path(tmp_dir) / f"part_{part_idx}.values.binfrag"
     truth_path = pathlib.Path(tmp_dir) / f"part_{part_idx}.truth.binfrag"
 
-    distinct_ids = rng.sample(range(n_per_partition), d_per_partition) if d_per_partition > 0 else []
+    distinct_ids = rng.sample(range(id_domain_size), d_per_partition) if d_per_partition > 0 else []
     forced_by_pos: Dict[int, int] = {}
     if d_per_partition > 0:
         mandatory_positions = rng.sample(range(n_per_partition), d_per_partition)
@@ -230,12 +246,14 @@ def generate_partitioned_dataset_bin(output_dir: pathlib.Path,
     truth_part_paths: Dict[int, str] = {}
 
     with tempfile.TemporaryDirectory(prefix="satp_parts_bin_", dir=str(output_dir)) as tmp_dir:
-        tasks: List[Tuple[int, int, int, int, str, Any, int]] = []
+        id_domain_size = min(n, UINT32_DOMAIN_SIZE)
+        tasks: List[Tuple[int, int, int, int, int, str, Any, int]] = []
         for part_idx in range(p):
             tasks.append((
                 part_idx,
                 n,
                 d,
+                id_domain_size,
                 _derive_partition_seed(seed, part_idx),
                 tmp_dir,
                 None,
@@ -255,8 +273,8 @@ def generate_partitioned_dataset_bin(output_dir: pathlib.Path,
             with ctx.Manager() as manager:
                 progress_queue = manager.Queue()
                 tasks = [
-                    (part_idx, n_part, d_part, part_seed, tdir, progress_queue, pbatch)
-                    for (part_idx, n_part, d_part, part_seed, tdir, _, pbatch) in tasks
+                    (part_idx, n_part, d_part, id_dom, part_seed, tdir, progress_queue, pbatch)
+                    for (part_idx, n_part, d_part, id_dom, part_seed, tdir, _, pbatch) in tasks
                 ]
 
                 with ctx.Pool(processes=workers_eff) as pool:

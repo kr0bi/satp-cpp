@@ -62,4 +62,27 @@ namespace satp::algorithms {
     string LogLog::getName() {
         return "LogLog";
     }
+
+    void LogLog::merge(const Algorithm &other) {
+        const auto *typed = dynamic_cast<const LogLog *>(&other);
+        if (typed == nullptr) {
+            throw invalid_argument("LogLog merge requires LogLog");
+        }
+        merge(*typed);
+    }
+
+    void LogLog::merge(const LogLog &other) {
+        if (k != other.k || lengthOfBitMap != other.lengthOfBitMap || numberOfBuckets != other.numberOfBuckets) {
+            throw invalid_argument("LogLog merge requires same k and L");
+        }
+
+        for (uint32_t i = 0; i < numberOfBuckets; ++i) {
+            bitmap[i] = std::max(bitmap[i], other.bitmap[i]);
+        }
+
+        sumRegisters = 0.0;
+        for (const auto reg : bitmap) {
+            sumRegisters += static_cast<double>(reg);
+        }
+    }
 } // namespace satp::algorithms

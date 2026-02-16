@@ -51,6 +51,14 @@ namespace satp::cli {
                 executor_.run(cfg_, cmd.args, RunMode::Streaming);
                 continue;
             }
+            if (cmd.name == "runmerge") {
+                if (cmd.args.empty()) {
+                    std::cout << "Uso: runmerge <algo|all>\n";
+                    continue;
+                }
+                executor_.run(cfg_, cmd.args, RunMode::Merge);
+                continue;
+            }
             if (cmd.name == "quit") {
                 break;
             }

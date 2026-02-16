@@ -42,6 +42,7 @@ The CLI no longer takes a manual CSV output path. Results are written automatica
 ```text
 results/<AlgorithmName>/<params>/results_oneshot.csv
 results/<AlgorithmName>/<params>/results_streaming.csv
+results/<AlgorithmName>/<params>/results_merge.csv
 ```
 
 Example:
@@ -59,8 +60,17 @@ Useful options:
 ```sh
 python3 scripts/orchestrate_benchmarks.py --skip-generate
 python3 scripts/orchestrate_benchmarks.py --skip-streaming
+python3 scripts/orchestrate_benchmarks.py --skip-merge
 python3 scripts/orchestrate_benchmarks.py --clean-results
+python3 scripts/orchestrate_benchmarks.py --k 16 --l 16 --l-log 32
+python3 scripts/orchestrate_benchmarks.py --full
 ```
+
+`--full` esegue automaticamente tutti i domini validi (paper-strict) per algoritmo:
+- `HLL++`: `k` in `[4,18]`
+- `HLL`: `k` in `[4,16]`, `L=32`
+- `LogLog`: `k` in `[4,16]`, `L=32`
+- `ProbabilisticCounting`: `L` in `[1,31]`
 
 ## Run tests
 ```sh

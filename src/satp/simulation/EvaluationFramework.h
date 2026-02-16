@@ -44,6 +44,19 @@ namespace satp::evaluation {
             double rseTheoretical,
             Args &&... ctorArgs) const;
 
+        template<typename Algo, typename... Args>
+        [[nodiscard]] std::vector<MergePairPoint> evaluateMergePairs(std::size_t runs,
+                                                                     std::size_t sampleSize,
+                                                                     Args &&... ctorArgs) const;
+
+        template<typename Algo, typename... Args>
+        [[nodiscard]] MergePairStats evaluateMergePairsToCsv(
+            const std::filesystem::path &csvPath,
+            std::size_t runs,
+            std::size_t sampleSize,
+            const std::string &algorithmParams,
+            Args &&... ctorArgs) const;
+
         [[nodiscard]] std::size_t getNumElementiDistintiEffettivi() const noexcept;
 
     private:

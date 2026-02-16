@@ -25,6 +25,10 @@ namespace satp::algorithms {
 
         string getName() override;
 
+        void merge(const Algorithm &other) override;
+
+        void merge(const HyperLogLogPlusPlus &other);
+
     private:
         enum class Format {
             Sparse,

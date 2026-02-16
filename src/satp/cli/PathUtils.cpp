@@ -62,9 +62,12 @@ namespace satp::cli::path_utils {
                                              const std::string &params,
                                              const RunMode mode) {
         const std::string paramsDir = sanitizeForPath(params);
-        const std::string fileName = (mode == RunMode::Streaming)
-                                         ? "results_streaming.csv"
-                                         : "results_oneshot.csv";
+        std::string fileName = "results_oneshot.csv";
+        if (mode == RunMode::Streaming) {
+            fileName = "results_streaming.csv";
+        } else if (mode == RunMode::Merge) {
+            fileName = "results_merge.csv";
+        }
         return repoRoot / "results" / algorithmName / paramsDir / fileName;
     }
 } // namespace satp::cli::path_utils

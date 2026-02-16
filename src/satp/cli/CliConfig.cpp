@@ -56,6 +56,7 @@ namespace satp::cli::config {
             << "  set <param> <value>          Imposta un parametro\n"
             << "  run <algo|all>               Esegue uno o piu' algoritmi (modalita' normale)\n"
             << "  runstream <algo|all>         Esegue uno o piu' algoritmi (modalita' streaming)\n"
+            << "  runmerge <algo|all>          Esegue benchmark merge a coppie (0-1,2-3,...)\n"
             << "                               CSV automatico in results/<algoritmo>/<params>/\n"
             << "  quit                         Esce\n";
     }

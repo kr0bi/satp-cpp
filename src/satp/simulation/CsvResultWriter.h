@@ -50,6 +50,29 @@ namespace satp::evaluation {
             }
         }
 
+        static void appendMergePairs(const std::filesystem::path &csvPath,
+                                     const std::string &algorithmName,
+                                     const std::string &algorithmParams,
+                                     std::size_t pairs,
+                                     std::size_t sampleSize,
+                                     std::uint32_t seed,
+                                     const std::vector<MergePairPoint> &points) {
+            std::ofstream out = openAppendMerge(csvPath);
+            for (const auto &point : points) {
+                out << escapeCsvField(algorithmName) << ','
+                    << escapeCsvField(algorithmParams) << ','
+                    << "merge,"
+                    << pairs << ','
+                    << sampleSize << ','
+                    << point.pair_index << ','
+                    << seed << ','
+                    << point.estimate_merge << ','
+                    << point.estimate_serial << ','
+                    << point.delta_merge_serial_abs << ','
+                    << point.delta_merge_serial_rel << '\n';
+            }
+        }
+
     private:
         static std::string escapeCsvField(const std::string &value) {
             const bool needsQuotes = value.find_first_of(",\"\n\r") != std::string::npos;
@@ -87,6 +110,24 @@ namespace satp::evaluation {
             if (!out) throw std::runtime_error("Impossibile aprire il file CSV");
             out << std::setprecision(10);
             writeHeaderIfNeeded(csvPath, out);
+            return out;
+        }
+
+        static void writeMergeHeaderIfNeeded(const std::filesystem::path &csvPath,
+                                             std::ofstream &out) {
+            const bool writeHeader =
+                !std::filesystem::exists(csvPath) || std::filesystem::file_size(csvPath) == 0;
+            if (!writeHeader) return;
+
+            out << "algorithm,params,mode,pairs,sample_size,pair_index,seed,"
+                   "estimate_merge,estimate_serial,delta_merge_serial_abs,delta_merge_serial_rel\n";
+        }
+
+        static std::ofstream openAppendMerge(const std::filesystem::path &csvPath) {
+            std::ofstream out(csvPath, std::ios::app);
+            if (!out) throw std::runtime_error("Impossibile aprire il file CSV merge");
+            out << std::setprecision(10);
+            writeMergeHeaderIfNeeded(csvPath, out);
             return out;
         }
 

@@ -28,6 +28,10 @@ namespace satp::algorithms {
 
         string getName() override;
 
+        void merge(const Algorithm &other) override;
+
+        void merge(const NaiveCounting &other);
+
     private:
         set<uint32_t> ids;
     };

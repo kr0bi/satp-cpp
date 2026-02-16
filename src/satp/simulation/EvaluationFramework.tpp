@@ -1,5 +1,8 @@
 #pragma once
 
+#include <algorithm>
+#include <cmath>
+#include <concepts>
 #include <cstdint>
 #include <iostream>
 #include <stdexcept>
@@ -12,6 +15,44 @@
 #include "satp/simulation/StreamingCheckpointBuilder.h"
 
 namespace satp::evaluation {
+    namespace detail {
+        template<typename Algo>
+        concept MergeableAlgorithm = requires(Algo a, const Algo &b) {
+            { a.merge(b) } -> std::same_as<void>;
+        };
+
+        inline MergePairStats summarizeMergePairs(const std::vector<MergePairPoint> &points) {
+            if (points.empty()) return {};
+
+            MergePairStats out{};
+            out.pair_count = points.size();
+
+            double mergeSum = 0.0;
+            double serialSum = 0.0;
+            double absSum = 0.0;
+            double relSum = 0.0;
+            double sqAbsSum = 0.0;
+            double absMax = 0.0;
+            for (const auto &point : points) {
+                mergeSum += point.estimate_merge;
+                serialSum += point.estimate_serial;
+                absSum += point.delta_merge_serial_abs;
+                relSum += point.delta_merge_serial_rel;
+                sqAbsSum += point.delta_merge_serial_abs * point.delta_merge_serial_abs;
+                absMax = std::max(absMax, point.delta_merge_serial_abs);
+            }
+
+            const double n = static_cast<double>(points.size());
+            out.estimate_merge_mean = mergeSum / n;
+            out.estimate_serial_mean = serialSum / n;
+            out.delta_merge_serial_abs_mean = absSum / n;
+            out.delta_merge_serial_abs_max = absMax;
+            out.delta_merge_serial_rel_mean = relSum / n;
+            out.delta_merge_serial_rmse = std::sqrt(sqAbsSum / n);
+            return out;
+        }
+    } // namespace detail
+
     template<typename Algo, typename... Args>
     Stats EvaluationFramework::evaluate(std::size_t runs,
                                         std::size_t sampleSize,
@@ -83,6 +124,100 @@ namespace satp::evaluation {
             rseTheoretical,
             series);
         return series;
+    }
+
+    template<typename Algo, typename... Args>
+    std::vector<MergePairPoint> EvaluationFramework::evaluateMergePairs(std::size_t runs,
+                                                                        std::size_t sampleSize,
+                                                                        Args &&... ctorArgs) const {
+        static_assert(detail::MergeableAlgorithm<Algo>,
+                      "evaluateMergePairs requires Algo::merge(const Algo&)");
+
+        if (runs == 0 || sampleSize == 0) return {};
+        (void) runs;
+        (void) sampleSize;
+
+        const auto scope = datasetScope();
+        if (scope.runs < 2 || scope.sampleSize == 0) return {};
+
+        const std::size_t pairCount = scope.runs / 2u;
+        satp::util::ProgressBar bar{pairCount * scope.sampleSize * 4u, std::cout, 50, 10'000};
+        satp::io::BinaryDatasetPartitionReader reader(binaryDataset);
+
+        std::vector<std::uint32_t> partA;
+        std::vector<std::uint32_t> partB;
+        std::vector<MergePairPoint> points;
+        points.reserve(pairCount);
+
+        for (std::size_t pairIndex = 0; pairIndex < pairCount; ++pairIndex) {
+            const std::size_t idxA = 2u * pairIndex;
+            const std::size_t idxB = idxA + 1u;
+            reader.load(idxA, partA);
+            reader.load(idxB, partB);
+
+            Algo sketchA(std::forward<Args>(ctorArgs)...);
+            for (const auto value : partA) {
+                sketchA.process(value);
+                bar.tick();
+            }
+
+            Algo sketchB(std::forward<Args>(ctorArgs)...);
+            for (const auto value : partB) {
+                sketchB.process(value);
+                bar.tick();
+            }
+
+            Algo merged = sketchA;
+            merged.merge(sketchB);
+
+            Algo serial(std::forward<Args>(ctorArgs)...);
+            for (const auto value : partA) {
+                serial.process(value);
+                bar.tick();
+            }
+            for (const auto value : partB) {
+                serial.process(value);
+                bar.tick();
+            }
+
+            const double estimateMerge = static_cast<double>(merged.count());
+            const double estimateSerial = static_cast<double>(serial.count());
+            const double deltaAbs = std::abs(estimateMerge - estimateSerial);
+            const double deltaRel = (estimateSerial != 0.0) ? (deltaAbs / estimateSerial) : 0.0;
+
+            points.push_back({
+                pairIndex,
+                estimateMerge,
+                estimateSerial,
+                deltaAbs,
+                deltaRel
+            });
+        }
+
+        bar.finish();
+        std::cout.flush();
+        return points;
+    }
+
+    template<typename Algo, typename... Args>
+    MergePairStats EvaluationFramework::evaluateMergePairsToCsv(
+        const std::filesystem::path &csvPath,
+        std::size_t runs,
+        std::size_t sampleSize,
+        const std::string &algorithmParams,
+        Args &&... ctorArgs) const {
+        Algo algo(ctorArgs...);
+        const auto scope = datasetScope();
+        const auto points = evaluateMergePairs<Algo>(runs, sampleSize, std::forward<Args>(ctorArgs)...);
+        CsvResultWriter::appendMergePairs(
+            csvPath,
+            algo.getName(),
+            algorithmParams,
+            points.size(),
+            scope.sampleSize,
+            seed,
+            points);
+        return detail::summarizeMergePairs(points);
     }
 
     template<typename Algo, typename... Args>
