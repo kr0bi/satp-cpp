@@ -18,15 +18,15 @@ namespace satp::evaluation {
                                  const std::string &algorithmParams,
                                  std::size_t runs,
                                  std::size_t sampleSize,
-                                 std::size_t distinctCount,
+                                 std::size_t f0,
                                  std::uint32_t seed,
                                  double rseTheoretical,
                                  const Stats &stats) {
             std::ofstream out = openAppend(csvPath);
             writeRecord(out, algorithmName, algorithmParams, "normal", runs, sampleSize,
-                        sampleSize, distinctCount, seed, stats.truth_mean, stats.mean,
+                        sampleSize, f0, seed, stats.truth_mean, stats.mean,
                         stats.variance, stats.stddev, rseTheoretical, stats.rse_observed,
-                        stats.bias, stats.difference, stats.bias_relative,
+                        stats.bias, stats.absolute_bias, stats.relative_bias,
                         stats.mean_relative_error, stats.rmse, stats.mae);
         }
 
@@ -35,17 +35,17 @@ namespace satp::evaluation {
                                     const std::string &algorithmParams,
                                     std::size_t runs,
                                     std::size_t sampleSize,
-                                    std::size_t distinctCount,
+                                    std::size_t f0,
                                     std::uint32_t seed,
                                     double rseTheoretical,
                                     const std::vector<StreamingPointStats> &series) {
             std::ofstream out = openAppend(csvPath);
             for (const auto &point : series) {
                 writeRecord(out, algorithmName, algorithmParams, "streaming", runs, sampleSize,
-                            point.element_index, distinctCount, seed, point.truth_mean,
+                            point.number_of_elements_processed, f0, seed, point.truth_mean,
                             point.mean, point.variance, point.stddev, rseTheoretical,
-                            point.rse_observed, point.bias, point.difference,
-                            point.bias_relative, point.mean_relative_error,
+                            point.rse_observed, point.bias, point.absolute_bias,
+                            point.relative_bias, point.mean_relative_error,
                             point.rmse, point.mae);
             }
         }
@@ -99,9 +99,9 @@ namespace satp::evaluation {
                 !std::filesystem::exists(csvPath) || std::filesystem::file_size(csvPath) == 0;
             if (!writeHeader) return;
 
-            out << "algorithm,params,mode,runs,sample_size,element_index,distinct_count,seed,"
-                   "f0_mean,f0_hat_mean,"
-                   "mean,variance,stddev,rse_theoretical,rse_observed,bias,difference,bias_relative,"
+            out << "algorithm,params,mode,runs,sample_size,number_of_elements_processed,f0,seed,"
+                   "f0_mean_t,f0_heat_mean_t,"
+                   "variance,stddev,rse_theoretical,rse_observed,bias,absolute_bias,relative_bias,"
                    "mean_relative_error,rmse,mae\n";
         }
 
@@ -138,7 +138,7 @@ namespace satp::evaluation {
                                 std::size_t runs,
                                 std::size_t sampleSize,
                                 std::size_t elementIndex,
-                                std::size_t distinctCount,
+                                std::size_t f0,
                                 std::uint32_t seed,
                                 double truthMean,
                                 double estimateMean,
@@ -147,8 +147,8 @@ namespace satp::evaluation {
                                 double rseTheoretical,
                                 double rseObserved,
                                 double bias,
-                                double difference,
-                                double biasRelative,
+                                double absoluteBias,
+                                double relativeBias,
                                 double meanRelativeError,
                                 double rmse,
                                 double mae) {
@@ -158,19 +158,17 @@ namespace satp::evaluation {
                 << runs << ','
                 << sampleSize << ','
                 << elementIndex << ','
-                << distinctCount << ','
+                << f0 << ','
                 << seed << ','
                 << truthMean << ','
-                << estimateMean << ','
-                // compatibility: keep 'mean' duplicated from f0_hat_mean
                 << estimateMean << ','
                 << variance << ','
                 << stddev << ','
                 << rseTheoretical << ','
                 << rseObserved << ','
                 << bias << ','
-                << difference << ','
-                << biasRelative << ','
+                << absoluteBias << ','
+                << relativeBias << ','
                 << meanRelativeError << ','
                 << rmse << ','
                 << mae << '\n';

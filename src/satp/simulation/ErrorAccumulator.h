@@ -34,44 +34,44 @@ namespace satp::evaluation {
             const double variance = (count_ > 1) ? (estimateM2_ / static_cast<double>(count_ - 1)) : 0.0;
             const double stddev = std::sqrt(variance);
             const double bias = estimateMean_ - truthMean;
-            const double difference = std::abs(bias);
-            const double biasRelative = (truthMean != 0.0) ? (bias / truthMean) : 0.0;
+            const double absoluteBias = std::abs(bias);
+            const double relativeBias = (truthMean != 0.0) ? (bias / truthMean) : 0.0;
             const double meanRelativeError = absRelErrSum_ / runs;
             const double rmse = std::sqrt(sqErrSum_ / runs);
             const double mae = absErrSum_ / runs;
             const double rseObserved = (truthMean != 0.0) ? (stddev / truthMean) : 0.0;
 
-            return {
-                difference,
-                estimateMean_,
-                variance,
-                bias,
-                meanRelativeError,
-                biasRelative,
-                rmse,
-                mae,
-                stddev,
-                rseObserved,
-                truthMean
-            };
+            Stats stats{};
+            stats.mean = estimateMean_;
+            stats.variance = variance;
+            stats.bias = bias;
+            stats.absolute_bias = absoluteBias;
+            stats.mean_relative_error = meanRelativeError;
+            stats.relative_bias = relativeBias;
+            stats.rmse = rmse;
+            stats.mae = mae;
+            stats.stddev = stddev;
+            stats.rse_observed = rseObserved;
+            stats.truth_mean = truthMean;
+            return stats;
         }
 
         [[nodiscard]] StreamingPointStats toStreamingPoint(const std::size_t elementIndex) const {
             const Stats stats = toStats();
-            return {
-                elementIndex,
-                stats.difference,
-                stats.mean,
-                stats.variance,
-                stats.bias,
-                stats.mean_relative_error,
-                stats.bias_relative,
-                stats.rmse,
-                stats.mae,
-                stats.stddev,
-                stats.rse_observed,
-                stats.truth_mean
-            };
+            StreamingPointStats point{};
+            point.number_of_elements_processed = elementIndex;
+            point.mean = stats.mean;
+            point.variance = stats.variance;
+            point.bias = stats.bias;
+            point.absolute_bias = stats.absolute_bias;
+            point.mean_relative_error = stats.mean_relative_error;
+            point.relative_bias = stats.relative_bias;
+            point.rmse = stats.rmse;
+            point.mae = stats.mae;
+            point.stddev = stats.stddev;
+            point.rse_observed = stats.rse_observed;
+            point.truth_mean = stats.truth_mean;
+            return point;
         }
 
     private:

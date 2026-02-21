@@ -13,19 +13,18 @@ import plotly.graph_objects as go
 NUMERIC_COLS = [
     "runs",
     "sample_size",
-    "element_index",
-    "distinct_count",
+    "number_of_elements_processed",
+    "f0",
     "seed",
-    "f0_mean",
-    "f0_hat_mean",
-    "mean",
+    "f0_mean_t",
+    "f0_heat_mean_t",
     "variance",
     "stddev",
     "rse_theoretical",
     "rse_observed",
     "bias",
-    "difference",
-    "bias_relative",
+    "absolute_bias",
+    "relative_bias",
     "mean_relative_error",
     "rmse",
     "mae",
@@ -34,7 +33,9 @@ NUMERIC_COLS = [
 
 def load_results(results_path: Path) -> pd.DataFrame:
     df = pd.read_csv(results_path)
-    missing = {"algorithm", "mode", "sample_size", "element_index"} - set(df.columns)
+    if "element_index" in df.columns and "number_of_elements_processed" not in df.columns:
+        df = df.rename(columns={"element_index": "number_of_elements_processed"})
+    missing = {"algorithm", "mode", "sample_size", "number_of_elements_processed"} - set(df.columns)
     if missing:
         raise ValueError(f"results.csv missing required columns: {sorted(missing)}")
 
@@ -55,15 +56,15 @@ def _write(fig: go.Figure, out_path: Path) -> None:
 def generate_normal_plots(normal: pd.DataFrame, out_dir: Path) -> list[Path]:
     generated: list[Path] = []
     metrics = [
-        "f0_hat_mean",
+        "f0_heat_mean_t",
         "bias",
-        "difference",
+        "absolute_bias",
         "variance",
         "stddev",
         "rmse",
         "mae",
         "mean_relative_error",
-        "bias_relative",
+        "relative_bias",
         "rse_observed",
         "rse_theoretical",
     ]
@@ -77,7 +78,7 @@ def generate_normal_plots(normal: pd.DataFrame, out_dir: Path) -> list[Path]:
             markers=True,
             log_x=True,
             title=f"Normal mode: {metric} vs sample_size",
-            hover_data=["f0_mean", "f0_hat_mean", "runs", "seed", "params"],
+            hover_data=["f0_mean_t", "f0_heat_mean_t", "runs", "seed", "params"],
         )
         out_path = out_dir / f"normal_{metric}.html"
         _write(fig, out_path)
@@ -119,20 +120,20 @@ def generate_normal_plots(normal: pd.DataFrame, out_dir: Path) -> list[Path]:
     _write(fig, out_path)
     generated.append(out_path)
 
-    # Calibration plot f0_hat_mean vs f0_mean
+    # Calibration plot f0_heat_mean_t vs f0_mean_t
     fig = px.scatter(
         normal,
-        x="f0_mean",
-        y="f0_hat_mean",
+        x="f0_mean_t",
+        y="f0_heat_mean_t",
         color="algorithm",
         symbol="algorithm",
         log_x=True,
         log_y=True,
-        title="Normal mode: calibration f0_hat_mean vs f0_mean",
-        hover_data=["sample_size", "bias", "rmse", "mae", "mean_relative_error", "params"],
+        title="Normal mode: calibration f0_heat_mean_t vs f0_mean_t",
+        hover_data=["sample_size", "absolute_bias", "rmse", "mae", "mean_relative_error", "params"],
     )
-    min_xy = min(normal["f0_mean"].min(), normal["f0_hat_mean"].min())
-    max_xy = max(normal["f0_mean"].max(), normal["f0_hat_mean"].max())
+    min_xy = min(normal["f0_mean_t"].min(), normal["f0_heat_mean_t"].min())
+    max_xy = max(normal["f0_mean_t"].max(), normal["f0_heat_mean_t"].max())
     fig.add_trace(
         go.Scatter(
             x=[min_xy, max_xy],
@@ -142,7 +143,7 @@ def generate_normal_plots(normal: pd.DataFrame, out_dir: Path) -> list[Path]:
             line=dict(dash="dash", color="black"),
         )
     )
-    out_path = out_dir / "normal_calibration_f0_hat_vs_f0.html"
+    out_path = out_dir / "normal_calibration_f0_heat_mean_t_vs_f0_mean_t.html"
     _write(fig, out_path)
     generated.append(out_path)
 
@@ -151,18 +152,17 @@ def generate_normal_plots(normal: pd.DataFrame, out_dir: Path) -> list[Path]:
 
 def downsample_streaming(stream: pd.DataFrame, n_bins: int = 400) -> pd.DataFrame:
     out = stream.copy()
-    out["progress"] = out["element_index"] / out["sample_size"]
+    out["progress"] = out["number_of_elements_processed"] / out["sample_size"]
     out["progress_bin"] = (out["progress"] * n_bins).round() / n_bins
     metrics = [
-        "f0_mean",
-        "f0_hat_mean",
-        "mean",
+        "f0_mean_t",
+        "f0_heat_mean_t",
         "variance",
         "stddev",
         "rse_observed",
         "bias",
-        "difference",
-        "bias_relative",
+        "absolute_bias",
+        "relative_bias",
         "mean_relative_error",
         "rmse",
         "mae",
@@ -171,7 +171,7 @@ def downsample_streaming(stream: pd.DataFrame, n_bins: int = 400) -> pd.DataFram
         out.groupby(["algorithm", "sample_size", "progress_bin"], as_index=False, observed=True)[metrics]
         .mean()
     )
-    reduced["element_index"] = (
+    reduced["number_of_elements_processed"] = (
         (reduced["progress_bin"] * reduced["sample_size"])
         .round()
         .clip(lower=1)
@@ -185,15 +185,15 @@ def generate_streaming_plots(stream: pd.DataFrame, out_dir: Path) -> list[Path]:
     reduced = downsample_streaming(stream, n_bins=400)
 
     metrics = [
-        "f0_hat_mean",
+        "f0_heat_mean_t",
         "bias",
-        "difference",
+        "absolute_bias",
         "variance",
         "stddev",
         "rmse",
         "mae",
         "mean_relative_error",
-        "bias_relative",
+        "relative_bias",
         "rse_observed",
     ]
 
@@ -206,7 +206,7 @@ def generate_streaming_plots(stream: pd.DataFrame, out_dir: Path) -> list[Path]:
             facet_col="sample_size",
             facet_col_wrap=3,
             title=f"Streaming mode: {metric} vs progress (downsampled)",
-            hover_data=["element_index", "f0_mean", "f0_hat_mean"],
+            hover_data=["number_of_elements_processed", "f0_mean_t", "f0_heat_mean_t"],
         )
         fig.for_each_xaxis(lambda ax: ax.update(title="progress (t / sample_size)"))
         out_path = out_dir / f"streaming_{metric}_vs_progress.html"
@@ -217,15 +217,15 @@ def generate_streaming_plots(stream: pd.DataFrame, out_dir: Path) -> list[Path]:
     reduced_max = reduced[reduced["sample_size"] == max_n].copy()
     for metric in metrics:
         fig = px.line(
-            reduced_max.sort_values(["algorithm", "element_index"]),
-            x="element_index",
+            reduced_max.sort_values(["algorithm", "number_of_elements_processed"]),
+            x="number_of_elements_processed",
             y=metric,
             color="algorithm",
             log_x=True,
-            title=f"Streaming mode (sample_size={max_n}): {metric} vs element_index",
-            hover_data=["progress_bin", "f0_mean", "f0_hat_mean"],
+            title=f"Streaming mode (sample_size={max_n}): {metric} vs number_of_elements_processed",
+            hover_data=["progress_bin", "f0_mean_t", "f0_heat_mean_t"],
         )
-        out_path = out_dir / f"streaming_{metric}_vs_element_index_maxN.html"
+        out_path = out_dir / f"streaming_{metric}_vs_number_of_elements_processed_maxN.html"
         _write(fig, out_path)
         generated.append(out_path)
 
@@ -234,9 +234,9 @@ def generate_streaming_plots(stream: pd.DataFrame, out_dir: Path) -> list[Path]:
 
 def generate_consistency_plots(normal: pd.DataFrame, stream: pd.DataFrame, out_dir: Path) -> list[Path]:
     generated: list[Path] = []
-    stream_last = stream[stream["element_index"] == stream["sample_size"]].copy()
-    join_cols = ["algorithm", "sample_size", "distinct_count", "seed"]
-    metrics = ["f0_hat_mean", "bias", "rmse", "mae", "mean_relative_error", "rse_observed"]
+    stream_last = stream[stream["number_of_elements_processed"] == stream["sample_size"]].copy()
+    join_cols = ["algorithm", "sample_size", "f0", "seed"]
+    metrics = ["f0_heat_mean_t", "bias", "absolute_bias", "rmse", "mae", "mean_relative_error", "rse_observed"]
     merged = normal[join_cols + metrics].merge(
         stream_last[join_cols + metrics],
         on=join_cols,

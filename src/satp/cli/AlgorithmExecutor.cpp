@@ -90,7 +90,7 @@ namespace satp::cli {
                                    const std::filesystem::path &csvPath,
                                    const eval::StreamingPointStats &lastPoint) {
             std::cout << '[' << spec.displayTag << "][stream] csv=" << csvPath.string()
-                      << "  t=" << lastPoint.element_index
+                      << "  t=" << lastPoint.number_of_elements_processed
                       << "  mean=" << lastPoint.mean
                       << "  f0_hat=" << lastPoint.mean
                       << "  f0_true=" << lastPoint.truth_mean

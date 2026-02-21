@@ -80,9 +80,9 @@ ctest --test-dir build
 ## Results CSV columns
 The benchmark CSV includes standard error metrics plus observed/theoretical RSE:
 ```
-algorithm,params,runs,sample_size,distinct_count,seed,
-mean,variance,stddev,rse_theoretical,rse_observed,bias,difference,bias_relative,
-mean_relative_error,rmse,mae
+algorithm,params,mode,runs,sample_size,number_of_elements_processed,f0,seed,
+f0_mean_t,f0_heat_mean_t,variance,stddev,rse_theoretical,rse_observed,
+bias,absolute_bias,relative_bias,mean_relative_error,rmse,mae
 ```
 
 ## Reproducibility
