@@ -1,3 +1,4 @@
+#include <algorithm>
 #include <cmath>
 #include <filesystem>
 #include <fstream>
@@ -12,6 +13,7 @@
 #include "satp/algorithms/ProbabilisticCounting.h"
 #include "satp/simulation/Loop.h"
 #include "satp/simulation/EvaluationFramework.h"
+#include "satp/simulation/StreamingCheckpointBuilder.h"
 #include "TestData.h"
 
 
@@ -82,13 +84,16 @@ TEST_CASE("Evaluation Framework streaming usa F0(t) del dataset", "[eval-framewo
     const auto runs = dataset.partition_count;
 
     const auto series = bench.evaluateStreaming<alg::NaiveCounting>(runs, sampleSize);
-    const auto expectedPoints = std::min(sampleSize, eval::EvaluationFramework::DEFAULT_STREAMING_CHECKPOINTS);
-    REQUIRE(series.size() == expectedPoints);
+    const auto expectedCheckpoints = eval::StreamingCheckpointBuilder::build(
+        sampleSize,
+        eval::EvaluationFramework::DEFAULT_STREAMING_CHECKPOINTS);
+
+    REQUIRE(series.size() == expectedCheckpoints.size());
     REQUIRE_FALSE(series.empty());
 
     for (size_t i = 0; i < series.size(); ++i) {
         const auto &point = series[i];
-        const size_t expectedIndex = ((i + 1) * sampleSize + expectedPoints - 1) / expectedPoints;
+        const size_t expectedIndex = expectedCheckpoints[i];
 
         REQUIRE(std::isfinite(point.mean));
         REQUIRE(std::isfinite(point.truth_mean));
@@ -116,6 +121,37 @@ TEST_CASE("Evaluation Framework streaming usa F0(t) del dataset", "[eval-framewo
     const auto &last = series.back();
     REQUIRE(last.truth_mean == Approx(static_cast<double>(dataset.distinct)).margin(1e-12));
     REQUIRE(last.mean == Approx(static_cast<double>(dataset.distinct)).margin(1e-12));
+}
+
+TEST_CASE("Streaming checkpoint builder usa fasi percentuali e termina a n", "[eval-framework][streaming]") {
+    constexpr std::size_t n = 10'000'000u;
+    constexpr std::size_t maxPoints = eval::EvaluationFramework::DEFAULT_STREAMING_CHECKPOINTS;
+
+    const auto checkpoints = eval::StreamingCheckpointBuilder::build(n, maxPoints);
+
+    REQUIRE_FALSE(checkpoints.empty());
+    REQUIRE(checkpoints.front() == 1u);
+    REQUIRE(checkpoints.back() == n);
+    REQUIRE(checkpoints.size() <= maxPoints);
+
+    for (std::size_t i = 1; i < checkpoints.size(); ++i) {
+        REQUIRE(checkpoints[i] > checkpoints[i - 1]);
+    }
+
+    // First phase (dense) covers 0.1% of n; there should be many early checkpoints.
+    const std::size_t phase1End = static_cast<std::size_t>(std::ceil(static_cast<double>(n) * 1e-3));
+    const std::size_t phase2End = static_cast<std::size_t>(std::ceil(static_cast<double>(n) * 1e-1));
+    const std::size_t inPhase1 = static_cast<std::size_t>(std::count_if(
+        checkpoints.begin(),
+        checkpoints.end(),
+        [phase1End](const std::size_t v) { return v <= phase1End; }));
+    const std::size_t inPhase12 = static_cast<std::size_t>(std::count_if(
+        checkpoints.begin(),
+        checkpoints.end(),
+        [phase2End](const std::size_t v) { return v <= phase2End; }));
+
+    REQUIRE(inPhase1 >= maxPoints / 4u);
+    REQUIRE(inPhase12 >= maxPoints / 2u);
 }
 
 TEST_CASE("Evaluation Framework merge pairs: Naive merge equivale al seriale", "[eval-framework][merge]") {
