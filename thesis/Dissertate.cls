@@ -86,7 +86,7 @@
     \RequirePackage[utf8]{inputenc}
     \RequirePackage{ebgaramond}
     \RequirePackage[defaultsans]{lato}
-    \RequirePackage{sourcecodepro}
+    \RequirePackage[scale=0.85]{sourcecodepro}
     \newcommand{\smallcaps}{\scshape}
 \else
     \ifXeTeX
@@ -100,7 +100,7 @@
     \setromanfont[Numbers=OldStyle, Ligatures={Common, TeX}, Scale=1.0]{EB Garamond}
     \newfontfamily{\smallcaps}[RawFeature={+c2sc,+scmp}]{EB Garamond}
     \setsansfont[Scale=MatchLowercase, BoldFont={Lato Bold}]{Lato Regular}
-    \setmonofont[Scale=MatchLowercase]{Source Code Pro}
+    \setmonofont[Scale=0.85]{Source Code Pro}
 \fi
 \widowpenalty=300
 \clubpenalty=300

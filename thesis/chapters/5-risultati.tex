@@ -3,326 +3,196 @@
 \chapter{Risultati sperimentali}
 \label{chp:risultati}
 
-Questo capitolo presenta i risultati empirici ottenuti con il framework
-implementato nel Capitolo~\ref{chp:implementazione}. L'analisi è centrata sulla
-modalità \emph{streaming}, cioè su metriche calcolate sui prefissi del flusso e
-aggregate per partizione (esecuzione indipendente).
+Questo capitolo riporta una prima analisi sperimentale mirata, in linea con la
+richiesta del relatore: partire da due grafici elementari ma informativi e
+commentarli in modo rigoroso.
 
-\section{Obiettivi sperimentali}
-
-Le domande sperimentali principali sono:
-\begin{enumerate}
-    \item come si comportano gli algoritmi implementati in termini di errore
-    relativo, bias e variabilità osservata;
-    \item dove e quanto \texttt{HyperLogLog++} migliora \texttt{HyperLogLog};
-    \item come evolve la stima lungo il flusso (non solo all'endpoint).
-\end{enumerate}
-
-\section{Protocollo sperimentale}
-
-\subsection{Dataset e configurazione}
-
-I dataset sono generati con \texttt{scripts/generate\_partitioned\_dataset\_bin.py}
-secondo il disegno sperimentale pianificato:
+L'analisi usa esclusivamente la modalità \emph{streaming} del framework:
 \begin{itemize}
-    \item \(n \in \{10^2,10^3,10^4,10^5,10^6,10^7\}\);
-    \item \(d/n \in \{0.01,0.1,0.5,1.0\}\);
-    \item seed \(\in\{21041998,42,137357,10032018,29042026\}\);
-    \item numero partizioni \(p=50\).
+    \item grafico 1: numero di campioni processati vs stima media \(\hat{F}_0(t)\), con curva reale \(F_0(t)\);
+    \item grafico 2: numero di campioni processati vs varianza della stima.
 \end{itemize}
 
-La modalità streaming usa \(\min\{n,200\}\) checkpoint per partizione
-(campionamento uniforme in indice, come definito nel Capitolo~\ref{chp:implementazione}).
+\section{Setup sperimentale del pacchetto risultati}
 
-La copertura effettivamente disponibile nei risultati analizzati non è uniforme:
+In questo primo blocco di risultati è stato fissato:
 \begin{itemize}
-    \item HLL/HLL++: 56 scenari endpoint, 1 seed, 4 valori di \(n\);
-    \item LogLog/Probabilistic Counting: 120 scenari endpoint, 5 seed, 6 valori di \(n\).
-\end{itemize}
-Per questo motivo, i confronti globali tra famiglie algoritmiche vanno letti in
-chiave descrittiva; il confronto metodologicamente più solido è quello su
-scenari comuni (HLL vs HLL++).
-
-\subsection{Parametri algoritmici usati nei risultati}
-
-Nei risultati disponibili al momento della stesura:
-\begin{itemize}
-    \item \texttt{HyperLogLog}: \(k\in\{10,12,14,16\}\), \(L=32\);
-    \item \texttt{HyperLogLog++}: \(k\in\{10,12,14,16\}\) (nel codice il
-    parametro equivalente è indicato con \(p\));
-    \item \texttt{LogLog}: \(k=16\), \(L=32\);
-    \item \texttt{Probabilistic Counting}: \(L=16\).
+    \item dimensione stream per partizione: \(n=10^7\);
+    \item numero di partizioni/esecuzioni: \(p=50\);
+    \item seed dataset: \(21041998\);
+    \item cardinalità finali: \(F_0 \in \{10^5,10^6,5\cdot10^6,10^7\}\), cioè \(d/n \in \{1\%,10\%,50\%,100\%\}\).
 \end{itemize}
 
-Le metriche analizzate sono quelle riportate nel CSV del framework:
-\(\mathrm{MRE}\), \(\mathrm{MAE}\), \(\mathrm{RMSE}\),
-\(\mathrm{RB}\) (bias relativo), \(\mathrm{RSE}_{\text{obs}}\), bias e varianza.
-Unità statistica delle sintesi endpoint: ogni riga a \(t=n\) nel CSV
-rappresenta uno scenario \((\text{algoritmo},\text{parametri},n,d,\text{seed})\)
-già aggregato sulle \(p=50\) partizioni (esecuzioni indipendenti). Nelle tabelle di sintesi,
-media e mediana sono calcolate come aggregazioni non pesate tra scenari.
-Salvo diversa indicazione, i valori tabellari sono arrotondati a quattro cifre
-decimali per leggibilità.
-
-\section{Confronto globale all'endpoint}
-
-Per confrontare scenari eterogenei, si considera anzitutto il valore all'endpoint
-\(t=n\) per ciascuna esecuzione, poi aggregato. La Tabella~\ref{tab:endpoint-globale} riassume
-le statistiche su tutti gli scenari disponibili per ciascun algoritmo, ma non
-rappresenta una graduatoria rigorosamente omogenea tra algoritmi (coperture
-diverse per seed e scala \(n\), oltre a una griglia parametri non uniforme:
-HLL/HLL++ aggregano \(k\in\{10,12,14,16\}\), mentre LogLog e Probabilistic
-Counting sono riportati in una sola configurazione).
-I dati sorgente delle tabelle endpoint provengono dai file
-\texttt{results/*/results\_streaming.csv}, mentre le curve dinamiche sono
-analizzate nei notebook citati in seguito.
-
-\begin{table}[htbp]
-    \centering
-    \small
-    \setlength{\tabcolsep}{5pt}
-    \renewcommand{\arraystretch}{1.15}
-    \begin{tabular}{|l|r|r|r|r|r|r|r|}
-        \hline
-        Algoritmo & Scenari & Seed & $|\mathcal{N}|$ & MRE media & MRE mediana & $|\mathrm{RB}|$ media & $\mathrm{RSE}_{\text{obs}}$ media \\
-        \hline
-        HyperLogLog & 56 & 1 & 4 & 0.0136 & 0.0134 & 0.0074 & 0.0112 \\
-        HyperLogLog++ & 56 & 1 & 4 & 0.0061 & 0.0002 & 0.0034 & 0.0047 \\
-        LogLog & 120 & 5 & 6 & 1360.80 & 3.4766 & 1360.80 & 0.0452 \\
-        Probabilistic Counting & 120 & 5 & 6 & 0.6420 & 0.6350 & 0.4625 & 0.5880 \\
-        \hline
-    \end{tabular}
-    \caption{Sintesi endpoint su tutti i CSV streaming disponibili. $|\mathcal{N}|$ indica il numero di valori distinti di \(n\) presenti nei risultati per algoritmo.}
-    \label{tab:endpoint-globale}
-\end{table}
-
-Dal confronto emergono tre aspetti:
+Gli algoritmi confrontati in questo pacchetto sono:
 \begin{itemize}
-    \item nel confronto su scenari comuni con HLL, \textbf{HLL++} mostra valori
-    medi più bassi di errore relativo e bias relativo assoluto; il confronto con
-    LogLog e Probabilistic Counting resta descrittivo, dato il diverso perimetro sperimentale;
-    \item \textbf{LogLog} mostra errore relativo molto alto quando la cardinalità
-    vera è piccola rispetto a \(m\), perché la stima senza correzioni per il
-    regime di piccola cardinalità
-    rimane strutturalmente sovrastimata;
-    \item \textbf{Probabilistic Counting} con \(L=16\) ha variabilità elevata sul
-    intervallo considerato, coerente con saturazione/instabilità per cardinalità grandi.
+    \item HyperLogLog++ (\(k=14\));
+    \item HyperLogLog (\(k=14, L=32\));
+    \item LogLog (\(k=14, L=32\));
+    \item Probabilistic Counting (\(L=31\)).
 \end{itemize}
 
-\section{Analisi per algoritmo e scala del problema}
+Nel CSV streaming del framework:
+\begin{itemize}
+    \item l'asse \(x\) dei grafici corrisponde a \codepath{number_of_elements_processed};
+    \item la stima media \(\hat{F}_0(t)\) corrisponde a \codepath{f0_heat_mean_t};
+    \item il valore reale \(F_0(t)\) corrisponde a \codepath{f0_mean_t};
+    \item la dispersione è in \codepath{variance}.
+\end{itemize}
 
-Per evitare che medie globali siano dominate da casi estremi, si osservano
-anche le metriche endpoint al variare di \(n\).
+I notebook usati per i grafici sono:
+\begin{itemize}
+    \item \codepath{notebooks/01_streaming_stima_vs_reale.ipynb};
+    \item \codepath{notebooks/02_streaming_varianza.ipynb}.
+\end{itemize}
 
-\subsection{LogLog}
+Per ciascun grafico sono riportate sia la versione in scala lineare, sia la
+versione in scala doppio-logaritmica, per rendere leggibile sia il regime
+iniziale (pochi campioni) sia quello finale (campioni grandi).
 
-\begin{table}[htbp]
-    \centering
-    \small
-    \setlength{\tabcolsep}{5pt}
-    \renewcommand{\arraystretch}{1.15}
-    \begin{tabular}{|r|r|r|r|r|}
-        \hline
-        $n$ & Scenari & MRE mediana & MRE media & $|\mathrm{RB}|$ media \\
-        \hline
-        $10^2$ & 20 & 1560.6268 & 7349.5813 & 7349.5813 \\
-        $10^3$ & 20 & 155.6624 & 734.5651 & 734.5651 \\
-        $10^4$ & 20 & 15.1730 & 73.0659 & 73.0659 \\
-        $10^5$ & 20 & 1.1937 & 6.9997 & 6.9997 \\
-        $10^6$ & 20 & 0.0198 & 0.5568 & 0.5567 \\
-        $10^7$ & 20 & 0.0036 & 0.0111 & 0.0098 \\
-        \hline
-    \end{tabular}
-    \caption{Endpoint LogLog per scala \(n\), con \(k=16\).}
-    \label{tab:loglog-by-n}
-\end{table}
+\section{Grafico 1: campioni vs stima (con reale)}
 
-La Tabella~\ref{tab:loglog-by-n} evidenzia un comportamento tipico: nel regime
-molto piccolo, LogLog sovrastima fortemente; quando \(n\) cresce, la stima rientra
-progressivamente nel regime centrale e l'errore si riduce.
+Il primo grafico confronta, per ogni algoritmo, la curva media \(\hat{F}_0(t)\)
+con la curva reale \(F_0(t)\). Questa vista evidenzia:
+\begin{itemize}
+    \item comportamento nel transitorio iniziale;
+    \item convergenza verso l'endpoint;
+    \item presenza di sovra/sottostima sistematica.
+\end{itemize}
 
-\subsection{Probabilistic Counting}
+\subsection{Osservazioni qualitative}
 
-\begin{table}[htbp]
-    \centering
-    \small
-    \setlength{\tabcolsep}{5pt}
-    \renewcommand{\arraystretch}{1.15}
-    \begin{tabular}{|r|r|r|r|r|}
-        \hline
-        $n$ & Scenari & MRE mediana & MRE media & $|\mathrm{RB}|$ media \\
-        \hline
-        $10^2$ & 20 & 0.4042 & 0.6072 & 0.4920 \\
-        $10^3$ & 20 & 0.5966 & 0.6256 & 0.3355 \\
-        $10^4$ & 20 & 0.7201 & 0.6106 & 0.3365 \\
-        $10^5$ & 20 & 0.5362 & 0.5679 & 0.2561 \\
-        $10^6$ & 20 & 0.7580 & 0.6531 & 0.5671 \\
-        $10^7$ & 20 & 0.9492 & 0.7876 & 0.7876 \\
-        \hline
-    \end{tabular}
-    \caption{Endpoint Probabilistic Counting per scala \(n\), con \(L=16\).}
-    \label{tab:pc-by-n}
-\end{table}
+Le osservazioni principali sono:
+\begin{itemize}
+    \item \textbf{HLL++} e \textbf{HLL} sono vicini alla curva reale lungo tutto il flusso, con scostamenti contenuti;
+    \item \textbf{LogLog} presenta una forte sovrastima nel tratto iniziale (ordine di migliaia anche quando \(F_0(t)\) è piccolo), poi rientra progressivamente;
+    \item \textbf{Probabilistic Counting} con \(L=31\) mostra overshoot marcato e persistente nei casi ad alta cardinalità;
+    \item la versione doppio-log rende chiaramente visibile che la differenza tra algoritmi nasce soprattutto ai piccoli \(t\).
+\end{itemize}
 
-Con bitmap a 16 bit, la qualità di Probabilistic Counting rimane limitata su
-cardinalità elevate: l'errore relativo resta alto e poco stabile al crescere di
-\(n\).
+\subsection{Sintesi endpoint}
 
-\section{Confronto HLL vs HLL++}
-
-Il confronto diretto tra HLL e HLL++ usa scenari comuni
-(stessi \(n\), \(d\), seed e \(k\)). Definiamo il guadagno:
+La Tabella~\ref{tab:res-endpoint-relerr} riporta l'errore relativo all'endpoint
+\(t=n\), definito come
 \[
-\mathrm{gain}_{\mathrm{MRE}} =
-\mathrm{MRE}_{\mathrm{HLL}}-\mathrm{MRE}_{\mathrm{HLL++}}.
+\mathrm{RE}_{\text{end}}=\frac{\left|\hat{F}_0(n)-F_0(n)\right|}{F_0(n)}.
 \]
 
-Valori positivi indicano vantaggio di HLL++.
-
 \begin{table}[htbp]
     \centering
     \small
-    \setlength{\tabcolsep}{5pt}
+    \setlength{\tabcolsep}{6pt}
     \renewcommand{\arraystretch}{1.15}
-    \begin{tabular}{|c|r|r|r|r|r|}
+    \begin{tabular}{|l|r|r|r|r|}
         \hline
-        $k$ & Scenari & miglioramento MRE medio & miglioramento MRE mediano & \% casi HLL++ migliore & miglioramento medio $|\mathrm{RB}|$ \\
+        Algoritmo & \(F_0=10^5\) & \(F_0=10^6\) & \(F_0=5\cdot10^6\) & \(F_0=10^7\) \\
         \hline
-        10 & 16 & 0.0131 & 0.0177 & 68.75\% & 0.0051 \\
-        12 & 16 & 0.0083 & 0.0087 & 68.75\% & 0.0054 \\
-        14 & 12 & 0.0050 & 0.0045 & 75.00\% & 0.0036 \\
-        16 & 12 & 0.0016 & 0.0020 & 75.00\% & 0.0009 \\
+        HyperLogLog++ (\(k=14\)) & 0.002862 & 0.000113 & 0.000096 & 0.002633 \\
+        HyperLogLog (\(k=14,L=32\)) & 0.002862 & 0.000113 & 0.000096 & 0.002635 \\
+        LogLog (\(k=14,L=32\)) & 0.002276 & 0.002356 & 0.002384 & 0.002709 \\
+        Probabilistic Counting (\(L=31\)) & 0.139551 & 0.565726 & 0.355608 & 1.168972 \\
         \hline
     \end{tabular}
-    \caption{Guadagno di HLL++ rispetto a HLL su scenari endpoint comuni.}
-    \label{tab:hll-vs-hllpp-k}
+    \caption{Errore relativo all'endpoint in modalità streaming (\(n=10^7\), \(p=50\), seed 21041998).}
+    \label{tab:res-endpoint-relerr}
 \end{table}
 
-In media HLL++ migliora HLL in tutti i \(k\) testati. Il trend di guadagno
-maggiore per \(k\) basso va però letto con cautela, perché per \(k=14,16\) la
-copertura scenari è più ridotta (assenza dei casi con \(n=10^7\)) e i valori
-riportati sono descrittivi, non accompagnati da inferenza statistica.
-
-\subsection{Dove la differenza è massima}
-
-\begin{table}[htbp]
-    \centering
-    \small
-    \setlength{\tabcolsep}{5pt}
-    \renewcommand{\arraystretch}{1.15}
-    \begin{tabular}{|c|r|r|r|r|r|}
-        \hline
-        $k$ & $n$ & $d$ & MRE HLL & MRE HLL++ & guadagno MRE \\
-        \hline
-        10 & $10^5$ & $10^5$ & 0.03224 & 0.00005 & 0.03219 \\
-        12 & $10^6$ & $10^4$ & 0.02853 & 0.00011 & 0.02842 \\
-        12 & $10^5$ & $10^4$ & 0.02643 & 0.00011 & 0.02632 \\
-        10 & $10^4$ & $10^3$ & 0.02604 & 0.00000 & 0.02604 \\
-        10 & $10^5$ & $10^3$ & 0.02522 & 0.00000 & 0.02522 \\
-        \hline
-    \end{tabular}
-    \caption{Scenari endpoint con maggiore vantaggio di HLL++ su HLL.}
-    \label{tab:top-gain-scenari}
-\end{table}
-
-La differenza è più netta nei regimi di piccola e media cardinalità, dove i
-meccanismi di correzione di HLL++ incidono maggiormente.
-
-\subsection{Caso grande \texorpdfstring{$n=10^7$}{n=1e7}}
-
-Per \(n=10^7\), seed 21041998 e sole configurazioni disponibili
-(\(k=10,12\)), HLL e HLL++ risultano quasi sovrapposti: i guadagni all'endpoint sono
-dell'ordine \(10^{-6}\)\,--\(10^{-7}\) in più casi. Si tratta quindi di un
-risultato locale al blocco osservato, non di una generalizzazione multi-seed.
-
-\section{Dinamica lungo il flusso}
-
-L'analisi streaming mostra come l'errore evolve con l'indice \(t\) e non solo
-all'endpoint. In particolare:
+Interpretazione:
 \begin{itemize}
-    \item per HLL/HLL++, i grafici su \(n=10^7\) mostrano curve molto vicine
-    nel tratto ad alta cardinalità;
-    \item nei casi con \(d\) più piccolo rispetto a \(n\), le differenze appaiono
-    prima e sono più visibili nei checkpoint iniziali/intermedi.
+    \item HLL++ e HLL sono praticamente coincidenti all'endpoint in questo setup;
+    \item LogLog è accurato all'endpoint, ma meno stabile nel transitorio;
+    \item PC risulta sistematicamente meno accurato, con errore molto alto soprattutto per \(F_0\) grandi.
 \end{itemize}
 
-Per rendere il confronto quantitativo nel capitolo, la
-Tabella~\ref{tab:curve-n1e7} riporta la MRE media sui checkpoint per i casi con
-\(n=10^7\) e seed 21041998.
-Per ciascuna coppia \((k,d)\), la MRE media lungo il flusso è definita come:
+\section{Grafico 2: campioni vs varianza}
+
+Il secondo grafico mostra l'evoluzione di \(\mathrm{Var}[\hat{F}_0(t)]\) al
+crescere dei campioni processati.
+
+\subsection{Osservazioni qualitative}
+
+Dal confronto emerge che:
+\begin{itemize}
+    \item HLL++ e HLL hanno varianza molto simile e contenuta rispetto a PC;
+    \item LogLog ha varianza moderata in valore assoluto, ma peggiora nel transitorio perché la stima è fortemente biased all'inizio;
+    \item PC mostra un'esplosione di varianza per cardinalità medie/alte.
+\end{itemize}
+
+La scala doppio-logaritmica è essenziale in questo grafico: in scala lineare la
+curva di PC tende a dominare e rende poco leggibili le differenze tra HLL, HLL++
+e LogLog.
+
+\subsection{Sintesi numerica}
+
+La Tabella~\ref{tab:res-endpoint-var} riporta la varianza all'endpoint \(t=n\).
+
+\begin{table}[htbp]
+    \centering
+    \small
+    \setlength{\tabcolsep}{6pt}
+    \renewcommand{\arraystretch}{1.15}
+    \begin{tabular}{|l|r|r|r|r|}
+        \hline
+        Algoritmo & \(F_0=10^5\) & \(F_0=10^6\) & \(F_0=5\cdot10^6\) & \(F_0=10^7\) \\
+        \hline
+        HyperLogLog++ (\(k=14\)) & \(5.486\cdot10^5\) & \(1.083\cdot10^8\) & \(1.327\cdot10^9\) & 0 \\
+        HyperLogLog (\(k=14,L=32\)) & \(5.486\cdot10^5\) & \(1.083\cdot10^8\) & \(1.327\cdot10^9\) & 0 \\
+        LogLog (\(k=14,L=32\)) & \(1.058\cdot10^6\) & \(1.518\cdot10^8\) & \(1.288\cdot10^9\) & 0 \\
+        Probabilistic Counting (\(L=31\)) & \(4.704\cdot10^9\) & \(1.438\cdot10^{12}\) & \(4.118\cdot10^{13}\) & 0 \\
+        \hline
+    \end{tabular}
+    \caption{Varianza all'endpoint in modalità streaming (\(n=10^7\), \(p=50\), seed 21041998).}
+    \label{tab:res-endpoint-var}
+\end{table}
+
+Il valore 0 all'endpoint per \(F_0=10^7\) indica che, in questo specifico setup,
+le 50 esecuzioni convergono allo stesso valore finale per ciascun algoritmo;
+non implica assenza generale di variabilità.
+
+\section{Confronto sintetico HLL vs HLL++ nel transitorio}
+
+Poiché all'endpoint HLL e HLL++ sono quasi indistinguibili, la differenza si
+osserva meglio sulle curve complete. La Tabella~\ref{tab:res-hll-hllpp-curve}
+riporta la media della MRE lungo i checkpoint:
 \[
 \overline{\mathrm{MRE}}_{\text{curve}}=
-\frac{1}{K_{\text{chk}}}\sum_{i=1}^{K_{\text{chk}}}\mathrm{MRE}(t_i),
-\quad K_{\text{chk}}=\min\{n,200\}.
+\frac{1}{K}\sum_{i=1}^{K}\mathrm{MRE}(t_i).
 \]
 
 \begin{table}[htbp]
     \centering
     \small
-    \setlength{\tabcolsep}{5pt}
+    \setlength{\tabcolsep}{6pt}
     \renewcommand{\arraystretch}{1.15}
-    \begin{tabular}{|c|r|r|r|r|}
+    \begin{tabular}{|r|r|r|r|}
         \hline
-        $k$ & $d$ & MRE media (HLL) & MRE media (HLL++) & guadagno medio \\
+        \(F_0\) & \(\overline{\mathrm{MRE}}_{\text{curve}}\) HLL & \(\overline{\mathrm{MRE}}_{\text{curve}}\) HLL++ & miglioramento HLL++ \\
         \hline
-        10 & $10^5$ & 0.025156 & 0.025156 & 0.0 \\
-        10 & $10^6$ & 0.027883 & 0.027883 & $1.17\cdot10^{-8}$ \\
-        10 & $5\cdot10^6$ & 0.023185 & 0.023185 & $-6.29\cdot10^{-8}$ \\
-        10 & $10^7$ & 0.020136 & 0.020136 & $2.61\cdot10^{-7}$ \\
-        12 & $10^5$ & 0.013854 & 0.013854 & 0.0 \\
-        12 & $10^6$ & 0.013293 & 0.013293 & $-1.01\cdot10^{-9}$ \\
-        12 & $5\cdot10^6$ & 0.013546 & 0.013546 & $1.27\cdot10^{-7}$ \\
-        12 & $10^7$ & 0.016646 & 0.016645 & $5.77\cdot10^{-7}$ \\
+        \(10^5\) & 0.005587 & 0.002392 & 57.18\% \\
+        \(10^6\) & 0.005900 & 0.002761 & 53.21\% \\
+        \(5\cdot10^6\) & 0.005581 & 0.002589 & 53.60\% \\
+        \(10^7\) & 0.005281 & 0.002355 & 55.41\% \\
         \hline
     \end{tabular}
-    \caption{Confronto HLL/HLL++ sulla MRE media lungo il flusso per \(n=10^7\), seed 21041998. Le colonne MRE sono arrotondate a \(10^{-6}\), mentre il miglioramento è calcolato sui valori non arrotondati.}
-    \label{tab:curve-n1e7}
+    \caption{Confronto HLL vs HLL++ sulla MRE media lungo il flusso (\(n=10^7\), \(p=50\), seed 21041998).}
+    \label{tab:res-hll-hllpp-curve}
 \end{table}
 
-I grafici interattivi usati in questa analisi sono nei notebook:
-\begin{itemize}
-    \item \texttt{notebooks/streaming\_hll\_hllpp\_paper\_analysis.ipynb};
-    \item \texttt{notebooks/streaming\_seed\_21041998\_n10000000\_by\_d.ipynb};
-    \item \texttt{notebooks/hll\_vs\_hllpp\_difference\_n10000000.ipynb}.
-\end{itemize}
+Questa tabella mostra che, pur avendo endpoint quasi identici, HLL++ mantiene
+un errore medio lungo la curva sistematicamente più basso di HLL.
 
-\section{Discussione dei risultati}
+\section{Conclusioni della prima analisi}
 
-I risultati ottenuti sono coerenti con la linea teorica discussa nei capitoli
-precedenti:
-\begin{itemize}
-    \item HLL++ tende a ridurre bias ed errore relativo rispetto a HLL nei
-    regimi in cui le correzioni pratiche sono rilevanti;
-    \item HLL classico resta competitivo e, su cardinalità molto grandi, le due
-    varianti possono diventare quasi indistinguibili;
-    \item LogLog e Probabilistic Counting, pur utili come riferimenti storici,
-    mostrano limiti pratici marcati con i parametri correnti su intervalli ampi di scala.
-\end{itemize}
+Per il pacchetto richiesto dal relatore, i due grafici base producono una prima
+evidenza chiara:
+\begin{enumerate}
+    \item HLL++ e HLL sono entrambi accurati all'endpoint nel setup considerato;
+    \item HLL++ è migliore nel transitorio (errore medio lungo il flusso circa
+    dimezzato rispetto a HLL);
+    \item LogLog è penalizzato soprattutto nei piccoli campioni;
+    \item Probabilistic Counting (\(L=31\)) mostra varianza elevata e bias marcato
+    sui regimi di cardinalità medio-alti.
+\end{enumerate}
 
-\section{Limiti sperimentali e validità}
-
-I risultati vanno letti con i seguenti vincoli:
-\begin{itemize}
-    \item per HLL/HLL++ il blocco completo disponibile usa un solo seed
-    (21041998), mentre per LogLog/PC sono disponibili 5 seed;
-    \item distribuzione testata: uniforme, flusso mescolato casualmente;
-    \item confronto centrato su accuratezza statistica, senza misure complete di
-    tempi di aggiornamento/interrogazione e occupazione empirica di RAM.
-\end{itemize}
-
-Questi limiti riducono la validità esterna del confronto e richiedono cautela
-nell'interpretazione causale. Il quadro resta comunque utile come evidenza
-preliminare e come guida per una campagna successiva più bilanciata.
-
-\section{Sintesi}
-
-In sintesi:
-\begin{itemize}
-    \item il framework implementato permette una valutazione riproducibile,
-    con verità \(F_0(t)\) integrata nel dataset e metriche coerenti con la teoria;
-    \item HLL++ risulta mediamente migliore di HLL nel blocco analizzato,
-    soprattutto in regimi di piccola e media cardinalità;
-    \item nei regimi ad alta cardinalità le due varianti convergono;
-    \item i risultati forniscono una base operativa per estensioni future su operazioni di fusione,
-    robustezza all'hash e famiglie di sketch non \emph{count-distinct}.
-\end{itemize}
+Questi risultati sono sufficienti come base per il confronto iniziale; la fase
+successiva estenderà l'analisi a più seed e a sweep più ampi dei parametri per
+valutare la robustezza statistica delle conclusioni.

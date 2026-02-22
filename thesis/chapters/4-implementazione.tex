@@ -43,8 +43,8 @@ un formato binario compresso per partizione in luogo dei formati testuali.
 Questa scelta riduce l'occupazione su disco e consente una lettura sequenziale
 efficiente.
 
-Il formato è implementato in \texttt{scripts/generate\_partitioned\_dataset\_bin.py}
-(generazione) e \texttt{src/satp/io/BinaryDatasetIO.h} (parsing e I/O).
+Il formato è implementato in \codepath{scripts/generate_partitioned_dataset_bin.py}
+(generazione) e \codepath{src/satp/io/BinaryDatasetIO.h} (parsing e I/O).
 
 \subsection{Struttura del file}
 
@@ -75,8 +75,8 @@ Ogni voce della tabella delle partizioni contiene:
     \item offset e dimensione in byte dei valori compressi (\texttt{uint64} little-endian);
     \item offset e dimensione in byte dei bit di verità compressi (\texttt{uint64} little-endian);
     \item metadati locali \texttt{n}, \texttt{d} (\texttt{uint64});
-    \item codifiche payload: \texttt{ENCODING\_ZLIB\_U32\_LE} per i valori e
-    \texttt{ENCODING\_ZLIB\_BITSET\_LE} per il bitset.
+    \item codifiche payload: \codepath{ENCODING_ZLIB_U32_LE} per i valori e
+    \codepath{ENCODING_ZLIB_BITSET_LE} per il bitset.
 \end{itemize}
 
 \subsection{Bitset di verità per \texorpdfstring{$F_0(t)$}{F0(t)}}
@@ -103,7 +103,7 @@ valutazione.
 \subsection{Caricamento ``una partizione alla volta''}
 
 La classe \texttt{BinaryDatasetPartitionReader} in
-\texttt{src/satp/io/BinaryDatasetIO.h} mantiene aperto il descrittore del file
+\codepath{src/satp/io/BinaryDatasetIO.h} mantiene aperto il descrittore del file
 e carica solo la partizione richiesta, decomprimendo esclusivamente il blocco
 necessario. In questo
 modo la memoria RAM rimane proporzionale alla singola partizione corrente,
@@ -111,11 +111,11 @@ non all'intero dataset.
 
 \section{Generazione dataset}
 
-Lo script \texttt{scripts/generate\_partitioned\_dataset\_bin.py} genera file con
+Lo script \codepath{scripts/generate_partitioned_dataset_bin.py} genera file con
 nome:
-\[
-\texttt{dataset\_n\_\{n\}\_d\_\{d\}\_p\_\{p\}\_s\_\{seed\}.bin}.
-\]
+\begin{center}
+\codepath{dataset_n_{n}_d_{d}_p_{p}_s_{seed}.bin}
+\end{center}
 
 Per ogni partizione:
 \begin{enumerate}
@@ -126,16 +126,16 @@ Per ogni partizione:
     \item si comprime con zlib.
 \end{enumerate}
 
-La generazione supporta parallelismo multiprocesso (parametro
-\texttt{--workers}) e barra di avanzamento su \texttt{stderr}. La correttezza
+La generazione supporta parallelismo multiprocesso tramite il parametro
+\texttt{--workers} e mostra la barra di avanzamento su \texttt{stderr}. La correttezza
 strutturale è verificata nei test Python in
-\texttt{scripts/tests/test\_generate\_dataset.py}.
+\codepath{scripts/tests/test_generate_dataset.py}.
 
 \section{Interfacce comuni e hashing}
 
 \subsection{Interfaccia base degli algoritmi}
 
-Il contratto comune è definito in \texttt{src/satp/algorithms/Algorithm.h}:
+Il contratto comune è definito in \codepath{src/satp/algorithms/Algorithm.h}:
 \begin{itemize}
     \item \texttt{process(uint32\_t id)}: aggiorna lo sketch;
     \item \texttt{count()}: restituisce la stima corrente di \(F_0\);
@@ -148,7 +148,7 @@ algoritmi diversi, mantenendo invariato il protocollo sperimentale.
 
 \subsection{Hashing uniforme nel codice}
 
-La randomizzazione è centralizzata in \texttt{src/satp/hashing.h}:
+La randomizzazione è centralizzata in \codepath{src/satp/hashing.h}:
 \begin{itemize}
     \item \texttt{splitmix64(uint64\_t)} come hash a 64 bit;
     \item \texttt{hash32\_from\_64(uint64\_t)} per derivare una versione 32 bit.
@@ -283,9 +283,9 @@ Le funzioni \texttt{evaluateToCsv} e \texttt{evaluateStreamingToCsv} scrivono le
 colonne:
 \begin{center}
 \small
-\texttt{algorithm, params, mode, runs, sample\_size, element\_index, distinct\_count, seed,}\
-\texttt{f0\_mean, f0\_hat\_mean, mean, variance, stddev, rse\_theoretical, rse\_observed,}\
-\texttt{bias, difference, bias\_relative, mean\_relative\_error, rmse, mae}
+\codepath{algorithm, params, mode, runs, sample_size, element_index, distinct_count, seed,}\
+\codepath{f0_mean, f0_hat_mean, mean, variance, stddev, rse_theoretical, rse_observed,}\
+\codepath{bias, difference, bias_relative, mean_relative_error, rmse, mae}
 \end{center}
 
 In modalità streaming, la colonna \texttt{distinct\_count} riporta il valore
@@ -302,15 +302,14 @@ Il file \texttt{main.cpp} implementa una CLI con comandi:
 \texttt{set}, \texttt{show}, \texttt{run}, \texttt{runstream}, \texttt{list},
 \texttt{help}, \texttt{quit}.
 
-I risultati sono salvati automaticamente in
-\texttt{results/<Algorithm>/<params>/results\_oneshot.csv} (comando
-\texttt{run}) oppure
-\texttt{results/<Algorithm>/<params>/results\_streaming.csv} (comando
-\texttt{runstream}), senza richiedere l'inserimento manuale del percorso.
+I risultati sono salvati automaticamente nella cartella \texttt{results}, in una
+sottogerarchia per algoritmo e parametri, nei file \texttt{results\_oneshot.csv}
+(comando \texttt{run}) e \texttt{results\_streaming.csv} (comando \texttt{runstream}),
+senza richiedere l'inserimento manuale del percorso.
 
 \subsection{Orchestrazione batch}
 
-Lo script \texttt{scripts/orchestrate\_benchmarks.py} automatizza:
+Lo script \codepath{scripts/orchestrate_benchmarks.py} automatizza:
 \begin{itemize}
     \item generazione matrice dataset \((n,d,seed)\);
     \item invocazione CLI in modalità \emph{oneshot} e/o \emph{streaming};
@@ -336,8 +335,8 @@ In \texttt{tests/algorithms} sono presenti test per:
 \texttt{tests/simulation/EvaluationFrameworkTest.cpp} verifica che:
 \begin{itemize}
     \item le statistiche siano finite e che le metriche di errore/dispersione
-    (\texttt{variance}, \texttt{stddev}, \texttt{rmse}, \texttt{mae},
-    \texttt{mean\_relative\_error}, \texttt{difference}) siano non negative;
+    (\codepath{variance}, \codepath{stddev}, \codepath{rmse}, \codepath{mae},
+    \codepath{mean_relative_error}, \codepath{difference}) siano non negative;
     \item in modalità streaming con \texttt{NaiveCounting} valga
     \(\hat{F}_0(t)=F_0(t)\) a ogni checkpoint;
     \item l'ultimo checkpoint coincida con il numero di distinti noto del dataset.
@@ -345,7 +344,7 @@ In \texttt{tests/algorithms} sono presenti test per:
 
 \subsection{Test generazione dataset}
 
-\texttt{scripts/tests/test\_generate\_dataset.py} valida:
+\codepath{scripts/tests/test_generate_dataset.py} valida:
 \begin{itemize}
     \item conformità binaria dello schema;
     \item correttezza di \(n,d,p,seed\);
