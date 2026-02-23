@@ -3,146 +3,43 @@
 \chapter{Risultati sperimentali}
 \label{chp:risultati}
 
-Questo capitolo riporta l'analisi dei risultati sperimentali prodotti dal framework.
-In questa fase vengono considerati esclusivamente i risultati in modalità
-\emph{streaming} e \emph{merge}; i file \emph{oneshot} non sono inclusi
-nell'analisi.
-Le metriche usate sono quelle definite nel Capitolo~\ref{chp:background}.
+Questo capitolo presenta i risultati sperimentali finali ottenuti con il
+framework descritto nel Capitolo~\ref{chp:implementazione}.
+L'analisi è limitata alle modalità \emph{streaming} e \emph{merge}, mentre i
+file \emph{oneshot} non vengonon utilizzati poiché, a differenza, della modalità streaming viene preso un solo risultato finale per esecuzione.
+Le metriche considerate sono quelle formalizzate nel
+Capitolo~\ref{chp:background}.
 
-\section{Perimetro sperimentale e artefatti}
+\section{Perimetro sperimentale}
 
-L'analisi è costruita a partire dai CSV presenti nella cartella
-\codepath{results/}, con la seguente copertura:
+I risultati sono estratti dai CSV presenti in \codepath{results/} con la
+seguente copertura:
 \begin{itemize}
-    \item 72 file \codepath{results\_streaming.csv} (totale 288000 righe);
-    \item 72 file \codepath{results\_merge.csv} (totale 36000 righe);
-    \item \(n = 10^7\) elementi per partizione;
-    \item \(F_0 \in \{10^5,10^6,5\cdot 10^6,10^7\}\);
+    \item 72 file \codepath{results\_streaming.csv} (288000 righe);
+    \item 72 file \codepath{results\_merge.csv} (36000 righe);
+    \item \(n=10^7\) elementi per partizione;
+    \item \(F_0 \in \{10^5,10^6,5\cdot10^6,10^7\}\);
     \item seed \(\{42,137357,10032018,21041998,29042026\}\);
     \item 50 run per configurazione.
 \end{itemize}
 
-I notebook usati per produrre grafici e tabelle sono:
+La produzione delle figure e delle tabelle è eseguita con
+\codepath{notebooks/12\_ch5\_best\_config\_analysis.ipynb},
+che salva i grafici in \codepath{thesis/figures/results/} e le tabelle di
+supporto in \codepath{notes/}.
+
+\section{Selezione delle configurazioni migliori}
+
+Il confronto principale è svolto fissando, per ciascun algoritmo, il parametro
+che minimizza il \emph{mean relative error} medio al checkpoint finale
+(aggregazione su seed e valori di \(F_0\)).
+Le configurazioni selezionate sono:
 \begin{itemize}
-    \item \codepath{notebooks/10\_ch5\_streaming\_analysis.ipynb};
-    \item \codepath{notebooks/11\_ch5\_merge\_analysis.ipynb}.
-\end{itemize}
-
-Entrambi i notebook salvano le figure in
-\codepath{thesis/figures/results/} e le tabelle di supporto in
-\codepath{notes/}.
-
-\section{Risultati in modalità streaming}
-
-\subsection{Stima media nel tempo: confronto con il valore reale}
-
-Per un confronto diretto tra algoritmi è stata fissata una configurazione di
-riferimento coerente con quella usata nel framework CLI:
-\begin{itemize}
-    \item HyperLogLog++: \(k=16\);
+    \item HyperLogLog++: \(k=18\);
     \item HyperLogLog: \(k=16, L=32\);
-    \item LogLog: \(k=16, L=32\);
-    \item Probabilistic Counting: \(L=16\).
+    \item LogLog: \(k=15, L=32\);
+    \item Probabilistic Counting: \(L=23\).
 \end{itemize}
-
-Le Figure~\ref{fig:stream-est-vs-real-linear} e
-\ref{fig:stream-est-vs-real-loglog} mostrano
-\(\hat{F}_0(t)\) e \(F_0(t)\) sul seed 21041998.
-La versione log-log è stata inclusa esplicitamente per evidenziare il
-transitorio iniziale, come richiesto dal relatore.
-
-\begin{figure}[htbp]
-    \centering
-    \includegraphics[width=0.96\textwidth]{figures/results/stream_estimate_vs_truth_linear_seed21041998_ref.png}
-    \caption{Modalità streaming: confronto tra stima media \(\hat{F}_0(t)\) e valore reale \(F_0(t)\) in scala lineare (seed 21041998, parametri di riferimento).}
-    \label{fig:stream-est-vs-real-linear}
-\end{figure}
-
-\begin{figure}[htbp]
-    \centering
-    \includegraphics[width=0.96\textwidth]{figures/results/stream_estimate_vs_truth_loglog_seed21041998_ref.png}
-    \caption{Stesso confronto della Figura~\ref{fig:stream-est-vs-real-linear} in scala log-log.}
-    \label{fig:stream-est-vs-real-loglog}
-\end{figure}
-
-Dalle curve si osserva che HyperLogLog e HyperLogLog++ restano vicini alla
-curva reale su tutti i valori di \(F_0\) considerati.
-LogLog mostra un errore più marcato nel caso \(F_0=10^5\), mentre
-Probabilistic Counting con \(L=16\) sottostima in modo sistematico già a metà
-stream e degrada fortemente per cardinalità elevate.
-
-\subsection{Varianza della stima nel tempo}
-
-La Figura~\ref{fig:stream-variance-loglog} riporta la varianza al variare dei
-campioni processati (scala log-log).
-
-\begin{figure}[htbp]
-    \centering
-    \includegraphics[width=0.96\textwidth]{figures/results/stream_variance_loglog_seed21041998_ref.png}
-    \caption{Varianza della stima in modalità streaming (seed 21041998, parametri di riferimento, scala log-log).}
-    \label{fig:stream-variance-loglog}
-\end{figure}
-
-Per HyperLogLog e HyperLogLog++ la dispersione rimane contenuta e con ordine di
-grandezza coerente con il comportamento atteso degli sketch a registri
-\cite{Flajolet_Fusy_Gandouet_Meunier_2007,Heule_Nunkesser_Hall_2013}.
-Nel caso \(F_0=10^7\) la varianza finale risulta nulla per tutte le
-configurazioni di riferimento: nel dataset analizzato ogni partizione contiene
-\(n=d\), quindi la stima endpoint risulta identica tra run.
-
-\subsection{Metriche finali aggregate e sensibilità ai parametri}
-
-La Tabella~\ref{tab:stream-final-reference-summary} riporta, al checkpoint
-finale \(t=n\), le metriche aggregate sui cinque seed per la configurazione di
-riferimento.
-
-\begin{table}[htbp]
-    \centering
-    \small
-    \setlength{\tabcolsep}{6pt}
-    \renewcommand{\arraystretch}{1.12}
-    \begin{tabular}{|l|l|r|r|r|}
-        \hline
-        Algoritmo & Parametri & MRE medio & RMSE medio & Varianza media \\
-        \hline
-        HyperLogLog & \(k=16, L=32\) & 0.002736 & 10711.885 & 73553991.259 \\
-        \hline
-        HyperLogLog++ & \(k=16\) & 0.002905 & 10713.932 & 73557119.220 \\
-        \hline
-        LogLog & \(k=16, L=32\) & 0.011063 & 14962.369 & 90443926.423 \\
-        \hline
-        Probabilistic Counting & \(L=16\) & 0.787552 & 3944600.703 & 98644414.550 \\
-        \hline
-    \end{tabular}
-    \caption{Riassunto endpoint in modalità streaming per i parametri di riferimento (media su seed e valori di \(F_0\)).}
-    \label{tab:stream-final-reference-summary}
-\end{table}
-
-La Figura~\ref{fig:stream-final-mre-by-f0} dettaglia il MRE endpoint per
-algoritmo e cardinalità finale.
-
-\begin{figure}[htbp]
-    \centering
-    \includegraphics[width=0.90\textwidth]{figures/results/stream_final_mre_by_algorithm_and_f0_ref.png}
-    \caption{MRE al checkpoint finale per algoritmo e valore finale di \(F_0\), media sui seed.}
-    \label{fig:stream-final-mre-by-f0}
-\end{figure}
-
-La sensibilità ai parametri (Figura~\ref{fig:stream-param-sensitivity}) mostra
-un comportamento coerente con la teoria:
-all'aumentare del numero di registri (parametro \(k\)) diminuisce l'errore
-per HLL/HLL++, mentre per PC la scelta di \(L\) riduce solo parzialmente
-l'errore nel dominio testato.
-
-\begin{figure}[htbp]
-    \centering
-    \includegraphics[width=0.94\textwidth]{figures/results/stream_parameter_sensitivity_final_mre.png}
-    \caption{Sensibilità ai parametri: MRE medio al checkpoint finale (media su seed e \(F_0\)).}
-    \label{fig:stream-param-sensitivity}
-\end{figure}
-
-Le migliori configurazioni osservate nel dominio sperimentale sono riportate in
-Tabella~\ref{tab:stream-best-params}.
 
 \begin{table}[htbp]
     \centering
@@ -162,51 +59,168 @@ Tabella~\ref{tab:stream-best-params}.
         Probabilistic Counting & \(L=23\) & 0.524951 \\
         \hline
     \end{tabular}
-    \caption{Miglior parametro per algoritmo nel dominio esplorato (criterio: MRE medio endpoint).}
-    \label{tab:stream-best-params}
+    \caption{Configurazione migliore per algoritmo nel dominio esplorato.}
+    \label{tab:best-config-selection}
 \end{table}
 
-\subsection{Confronto diretto HyperLogLog vs HyperLogLog++}
+\section{Risultati streaming con best-config}
 
-La Figura~\ref{fig:stream-hll-hllpp-diff} mostra
-\(\lvert\hat{F}_{0,\mathrm{HLL++}}(t)-\hat{F}_{0,\mathrm{HLL}}(t)\rvert\)
-per \(k=16\), seed 21041998.
+\subsection{Stima media nel tempo e transitorio iniziale}
 
-\begin{figure}[htbp]
-    \centering
-    \includegraphics[width=0.96\textwidth]{figures/results/stream_hll_vs_hllpp_absdiff_seed21041998.png}
-    \caption{Differenza assoluta tra HLL++ e HLL nel tempo (\(k=16\), seed 21041998).}
-    \label{fig:stream-hll-hllpp-diff}
-\end{figure}
-
-Sul checkpoint finale, aggregando tutti i seed e tutti i valori di \(F_0\), la
-media di \(\lvert\Delta\hat{F}_0\rvert\) tra HLL++ e HLL vale 15.714,
-con massimo 71.74.
-La differenza su MRE resta contenuta: media 0.0001694, massimo 0.0008462.
-Ne consegue che, nel dominio testato, i due algoritmi hanno andamento molto
-simile a parità di \(k\), pur non essendo identici punto per punto.
-
-\section{Risultati in modalità merge}
-
-L'analisi merge confronta, per ogni coppia di partizioni,
-la stima ottenuta con fusione di due sketch e la stima ottenuta con
-processamento seriale della stessa coppia.
+Le Figure~\ref{fig:best-stream-est-linear} e
+\ref{fig:best-stream-est-loglog} mostrano l'andamento di
+\(\hat{F}_0(t)\) rispetto a \(F_0(t)\) con seed 21041998.
+La scala log-log è usata per rendere visibile il comportamento sui primi
+checkpoint, come richiesto in fase di revisione.
 
 \begin{figure}[htbp]
     \centering
-    \includegraphics[width=0.78\textwidth]{figures/results/merge_delta_abs_by_algorithm.png}
-    \caption{Distribuzione di \codepath{delta\_merge\_serial\_abs} per algoritmo.}
-    \label{fig:merge-delta-abs-box}
+    \includegraphics[width=0.96\textwidth]{figures/results/best_stream_estimate_vs_truth_linear_seed21041998.png}
+    \caption{Best-config: confronto tra stima media \(\hat{F}_0(t)\) e valore reale \(F_0(t)\) in scala lineare (seed 21041998).}
+    \label{fig:best-stream-est-linear}
 \end{figure}
 
 \begin{figure}[htbp]
     \centering
-    \includegraphics[width=0.78\textwidth]{figures/results/merge_nonzero_delta_counts.png}
-    \caption{Conteggio dei casi con delta non nullo nel confronto merge vs seriale.}
-    \label{fig:merge-delta-nonzero}
+    \includegraphics[width=0.96\textwidth]{figures/results/best_stream_estimate_vs_truth_loglog_seed21041998.png}
+    \caption{Stesso confronto della Figura~\ref{fig:best-stream-est-linear} in scala log-log.}
+    \label{fig:best-stream-est-loglog}
 \end{figure}
 
-La Tabella~\ref{tab:merge-summary} sintetizza i risultati su tutti i file merge.
+In questa configurazione HyperLogLog++ e HyperLogLog seguono da vicino la curva
+reale su tutti i livelli di cardinalità testati.
+LogLog rimane vicino ai due algoritmi HLL per \(F_0\) medio-alti, ma mantiene
+uno scarto più evidente nel caso \(F_0=10^5\).
+Probabilistic Counting resta l'algoritmo meno stabile nella fase transitoria,
+con deviazioni significative già a metà stream.
+
+\subsection{Varianza nel tempo}
+
+La Figura~\ref{fig:best-stream-var-loglog} confronta la varianza della stima in
+scala log-log.
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=0.96\textwidth]{figures/results/best_stream_variance_loglog_seed21041998.png}
+    \caption{Best-config: varianza della stima in modalità streaming (seed 21041998, scala log-log).}
+    \label{fig:best-stream-var-loglog}
+\end{figure}
+
+La dispersione di HyperLogLog++ è inferiore a HyperLogLog e LogLog per quasi
+l'intero dominio osservato, in coerenza con la progettazione di HLL++
+\cite{Heule_Nunkesser_Hall_2013}.
+Per \(F_0=10^7\) la varianza endpoint è nulla per tutte le configurazioni
+best-config perché nel dataset usato vale \(n=d\) e l'endpoint è deterministico
+tra run.
+
+\subsection{Metriche endpoint aggregate}
+
+La Tabella~\ref{tab:best-stream-summary} riporta le metriche endpoint mediate
+sui seed per ciascun valore finale di \(F_0\).
+
+\begin{table}[htbp]
+    \centering
+    \scriptsize
+    \setlength{\tabcolsep}{4pt}
+    \renewcommand{\arraystretch}{1.1}
+    \begin{tabular}{|l|r|r|r|r|r|}
+        \hline
+        Algoritmo & \(F_0\) & MRE medio & RMSE medio & Varianza media & \(\hat{F}_0\) medio \\
+        \hline
+        HyperLogLog++ & 100000 & 0.001237 & 153.661 & 22550.603 & 99990.816 \\
+        HyperLogLog++ & 1000000 & 0.001629 & 2026.870 & 3272587.016 & 1000904.100 \\
+        HyperLogLog++ & 5000000 & 0.001287 & 8072.642 & 62887388.036 & 5001168.396 \\
+        HyperLogLog++ & 10000000 & 0.001326 & 13256.000 & 0.000 & 10013256.000 \\
+        \hline
+        HyperLogLog & 100000 & 0.002836 & 358.238 & 127585.802 & 100008.844 \\
+        HyperLogLog & 1000000 & 0.003195 & 3938.423 & 15118314.694 & 999213.888 \\
+        HyperLogLog & 5000000 & 0.002800 & 17416.878 & 278970064.540 & 4994349.692 \\
+        HyperLogLog & 10000000 & 0.002113 & 21134.000 & 0.000 & 9978866.000 \\
+        \hline
+        LogLog & 100000 & 0.005206 & 649.431 & 407725.504 & 100124.060 \\
+        LogLog & 1000000 & 0.005390 & 6789.407 & 46105629.058 & 999245.028 \\
+        LogLog & 5000000 & 0.004713 & 28669.821 & 699006423.800 & 4988366.864 \\
+        LogLog & 10000000 & 0.007150 & 71500.000 & 0.000 & 9928500.000 \\
+        \hline
+        Probabilistic Counting & 100000 & 0.579277 & 79492.780 & 6139769255.600 & 117344.080 \\
+        Probabilistic Counting & 1000000 & 0.911951 & 1321697.966 & 1418662093360.000 & 1646384.880 \\
+        Probabilistic Counting & 5000000 & 0.524089 & 3231428.510 & 10582138707400.000 & 5210955.228 \\
+        Probabilistic Counting & 10000000 & 0.084486 & 844860.000 & 0.000 & 10844860.000 \\
+        \hline
+    \end{tabular}
+    \caption{Best-config: metriche endpoint aggregate in modalità streaming (media sui seed).}
+    \label{tab:best-stream-summary}
+\end{table}
+
+La Figura~\ref{fig:best-stream-mre-by-f0} visualizza lo stesso confronto sul
+solo MRE endpoint.
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=0.90\textwidth]{figures/results/best_stream_final_mre_by_algorithm_and_f0.png}
+    \caption{Best-config: MRE endpoint per algoritmo e valore finale di \(F_0\) (media sui seed).}
+    \label{fig:best-stream-mre-by-f0}
+\end{figure}
+
+\subsection{Grafici aggiuntivi di revisione scientifica}
+
+La Figura~\ref{fig:best-stream-calibration} mostra la calibrazione endpoint,
+ossia \(\hat{F}_0\) medio contro \(F_0\) reale su scala log-log con diagonale
+ideale \(y=x\).
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=0.78\textwidth]{figures/results/best_stream_endpoint_calibration_loglog.png}
+    \caption{Best-config: calibrazione endpoint \(\hat{F}_0\) vs \(F_0\) (media sui seed, scala log-log).}
+    \label{fig:best-stream-calibration}
+\end{figure}
+
+La Figura~\ref{fig:best-stream-convergence} riporta il primo checkpoint in cui
+MRE\((t) \le 5\%\).
+HLL e HLL++ soddisfano la soglia già al primo checkpoint disponibile;
+LogLog converge più tardi, mentre Probabilistic Counting non raggiunge la soglia
+nel dominio analizzato.
+Formalmente, il tempo di convergenza è definito come
+\[
+t_{5\%} = \min\{t \mid \mathrm{MRE}(t)\le 0.05\}.
+\]
+Nel caso di HLL e HLL++, il valore \(t_{5\%}=1\) va interpretato con cautela:
+la soglia è raggiunta subito perché il prefisso iniziale contiene pochissimi
+distinti e l'errore relativo medio è ancora poco informativo sul comportamento
+asintotico.
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=0.82\textwidth]{figures/results/best_stream_convergence_t5pct_loglog.png}
+    \caption{Best-config: tempo medio di convergenza alla soglia MRE \(\le 5\%\) (scala log-log).}
+    \label{fig:best-stream-convergence}
+\end{figure}
+
+\section{Risultati merge con best-config}
+
+Per ogni algoritmo si confrontano stima da merge e stima seriale su coppie di
+partizioni.
+Le Figure~\ref{fig:best-merge-box} e \ref{fig:best-merge-nonzero} e la
+Tabella~\ref{tab:best-merge-summary} mostrano che nel dominio sperimentale
+analizzato i delta sono nulli in tutti i casi.
+Il risultato è coerente con gli operatori di merge implementati
+(massimo componente-per-componente per LogLog/HLL/HLL++ e OR bit-a-bit per
+Probabilistic Counting), discussi in
+Capitolo~\ref{chp:implementazione} e nel background sulla mergeabilità.
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=0.76\textwidth]{figures/results/best_merge_delta_abs_by_algorithm.png}
+    \caption{Best-config: distribuzione di \codepath{delta\_merge\_serial\_abs}.}
+    \label{fig:best-merge-box}
+\end{figure}
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=0.76\textwidth]{figures/results/best_merge_nonzero_delta_counts.png}
+    \caption{Best-config: conteggio dei casi con delta non nullo nel confronto merge vs seriale.}
+    \label{fig:best-merge-nonzero}
+\end{figure}
 
 \begin{table}[htbp]
     \centering
@@ -217,45 +231,44 @@ La Tabella~\ref{tab:merge-summary} sintetizza i risultati su tutti i file merge.
         \hline
         Algoritmo & Righe & Media \(\Delta_{abs}\) & Max \(\Delta_{abs}\) & Media \(\Delta_{rel}\) & Max \(\Delta_{rel}\) \\
         \hline
-        HyperLogLog & 6500 & 0 & 0 & 0 & 0 \\
+        HyperLogLog & 500 & 0 & 0 & 0 & 0 \\
         \hline
-        HyperLogLog++ & 7500 & 0 & 0 & 0 & 0 \\
+        HyperLogLog++ & 500 & 0 & 0 & 0 & 0 \\
         \hline
-        LogLog & 6500 & 0 & 0 & 0 & 0 \\
+        LogLog & 500 & 0 & 0 & 0 & 0 \\
         \hline
-        Probabilistic Counting & 15500 & 0 & 0 & 0 & 0 \\
+        Probabilistic Counting & 500 & 0 & 0 & 0 & 0 \\
         \hline
     \end{tabular}
-    \caption{Confronto merge vs seriale: tutte le metriche di delta risultano nulle nel dataset analizzato.}
-    \label{tab:merge-summary}
+    \caption{Best-config: confronto merge vs seriale. Tutti i delta risultano nulli nel dataset analizzato.}
+    \label{tab:best-merge-summary}
 \end{table}
 
-Nel dominio sperimentale corrente, la fusione di due sketch produce la stessa
-stima del processamento seriale della coppia per tutti gli algoritmi e tutte le
-configurazioni testate.
+\section{Discussione}
 
-\section{Discussione e limiti}
+Nel dominio sperimentale considerato emergono tre risultati principali.
+Primo, HyperLogLog++ risulta il metodo più accurato e stabile tra le
+configurazioni migliori, con errore medio endpoint inferiore a HyperLogLog e
+LogLog su tutti i livelli di \(F_0\) osservati.
+Secondo, LogLog resta competitivo ma con una dispersione più alta e una
+sensibilità maggiore nelle cardinalità più piccole.
+Terzo, Probabilistic Counting rimane sensibilmente più instabile, anche quando
+si seleziona il miglior parametro nel dominio testato.
 
-I dati mostrano un quadro netto:
+Per la modalità merge, i risultati sono coerenti con la proprietà di fusione
+attesa per gli sketch implementati: nel confronto a coppie non si osservano
+scarti rispetto al processamento seriale.
+
+\section{Limiti sperimentali}
+
+I limiti principali della campagna corrente sono:
 \begin{itemize}
-    \item HLL e HLL++ sono i metodi più stabili e accurati tra quelli testati;
-    \item LogLog è competitivo su cardinalità medio-alte, ma peggiora nel caso
-    \(F_0=10^5\);
-    \item Probabilistic Counting, nella forma implementata e con i parametri
-    esplorati, non mantiene un errore comparabile agli sketch a registri;
-    \item in modalità merge non emergono discrepanze rispetto al seriale.
+    \item un solo valore di \(n\) nella fase finale (\(10^7\));
+    \item un unico profilo dati (distribuzione uniforme, ordine shuffled);
+    \item assenza in questo capitolo di misure esplicite di costo temporale e
+    footprint di memoria a runtime.
 \end{itemize}
 
-Questi risultati vanno letti con i seguenti limiti:
-\begin{itemize}
-    \item un solo valore di \(n\) (\(10^7\)) nella campagna finale;
-    \item distribuzione dati uniforme e ordine shuffled, senza altri profili
-    di workload;
-    \item assenza, in questo capitolo, di misure di costo computazionale
-    (tempo update/query/merge) e footprint in memoria reale.
-\end{itemize}
-
-Nel seguito, l'estensione naturale è ripetere la stessa pipeline su dataset con
-strutture di frequenza diverse e confrontare anche i costi temporali/spaziali,
-così da affiancare alla qualità della stima una valutazione completa del costo
-operativo.
+Un'estensione naturale è replicare la stessa analisi su distribuzioni non
+uniformi e su workload con overlap controllato tra partizioni, mantenendo il
+medesimo protocollo di confronto tra endpoint, transitorio e merge.

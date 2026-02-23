@@ -1,78 +1,91 @@
 \chapter{Implementazione}
 \label{chp:implementazione}
 
-In questo capitolo si descrive l'implementazione del sistema sperimentale per la
-valutazione di algoritmi di stima di distinti su stream. L'architettura separa tre
-responsabilita' principali:
+Viene descritta l'implementazione del sistema sperimentale per la
+valutazione di algoritmi per la stima di elementi distinti su una stream. 
+L'architettura è composta da tre moduli principali:
 \begin{itemize}
-    \item logica algoritmica (\codepath{src/satp/algorithms});
-    \item I/O del dataset binario partizionato (\codepath{src/satp/io/BinaryDatasetIO.h});
-    \item valutazione, metriche ed export CSV (\codepath{src/satp/simulation}).
+    \item la logica algoritmica;
+    \item l'I/O del dataset;
+    \item la valutazione, le metriche e l'export CSV.
 \end{itemize}
 
-Il nucleo e' implementato in \texttt{C++} (CLI, framework e sketch), mentre
-\texttt{Python} copre generazione dataset e orchestrazione batch
-(\codepath{scripts/generate_partitioned_dataset_bin.py},
-\codepath{scripts/orchestrate_benchmarks.py}).
+Il nucleo dell'architettura è implementato in \texttt{C++} 
+(CLI, framework e sketch), mentre
+in \texttt{Python} vengono generati i dataset e l'orchestrazione batch dei vari script ed eseguibili.
 
 \section{Architettura del sistema}
-
-I moduli principali e le rispettive responsabilita' sono:
+I componenti principali e le rispettive responsabilità sono:
 \begin{itemize}
-    \item \codepath{main.cpp} e \codepath{src/satp/cli/BenchmarkCli.cpp}: entry point e loop
-    comandi (\texttt{set}, \texttt{show}, \texttt{list}, \texttt{run}, \texttt{runstream},
+    \item \codepath{main.cpp} e \codepath{BenchmarkCli.cpp}: entry point e loop
+    dei comandi possibili (\texttt{set}, \texttt{show}, \texttt{list}, \texttt{run}, \texttt{runstream},
     \texttt{runmerge}, \texttt{quit});
-    \item \codepath{src/satp/cli/CliConfig.cpp}: parsing comandi, gestione \texttt{RunConfig},
-    caricamento contesto runtime dal dataset (\texttt{sampleSize}, \texttt{runs}, \texttt{seed});
-    \item \codepath{src/satp/cli/AlgorithmExecutor.cpp}: dispatch sugli algoritmi richiesti e
-    instradamento verso le tre modalita' \texttt{RunMode::Normal}, \texttt{RunMode::Streaming},
+    \item \codepath{CliConfig.cpp}: parsing dei comandi, gestione di \texttt{RunConfig},
+    caricamento del contesto a runtime dal dataset (\texttt{sampleSize}, \texttt{runs}, \texttt{seed});
+    \item \codepath{AlgorithmExecutor.cpp}: dispatch sugli algoritmi richiesti e
+    gestione delle tre modalità \texttt{RunMode::Normal}, \texttt{RunMode::Streaming},
     \texttt{RunMode::Merge};
-    \item \codepath{src/satp/io/BinaryDatasetIO.h}: indicizzazione metadati binari,
-    validazione tabella partizioni e loader per valori/bitset di verita';
-    \item \codepath{src/satp/simulation/EvaluationFramework.h},
-    \codepath{src/satp/simulation/EvaluationFramework.tpp},
-    \codepath{src/satp/simulation/CsvResultWriter.h}: protocollo di valutazione e serializzazione
+    \item \codepath{BinaryDatasetIO.h}: indicizzazione dei metadati binari,
+    validazione della tabella delle partizioni e dei loader per i valori e i relativi bitset di verità;
+    \item \codepath{EvaluationFramework.h},
+    \codepath{EvaluationFramework.tpp} e 
+    \codepath{CsvResultWriter.h}: gestiscono il protocollo di valutazione e serializzazione dei
     risultati;
-    \item \codepath{src/satp/algorithms/*.cpp}: implementazioni concrete degli sketch
-    (HyperLogLog++, HyperLogLog, LogLog, ProbabilisticCounting);
-    \item \codepath{scripts/generate_partitioned_dataset_bin.py}: generazione deterministica
-    dataset partizionato compresso;
-    \item \codepath{scripts/orchestrate_benchmarks.py}: campagna batch su griglie \((n,d,seed)\)
-    e sweep parametrici standard o completi.
+    \item All'interno di \codepath{src/satp/algorithms/*.cpp} sono presenti le implementazioni concrete degli sketch
+    (HyperLogLog++, HyperLogLog, LogLog, ProbabilisticCounting, TODO: CountMin e Bloom Filter);
+    \item \codepath{generate_partitioned_dataset_bin.py}: generazione deterministica
+    dei dataset partizionati compressi;
+    \item \codepath{orchestrate_benchmarks.py}: esecuzione batch sulle configurazioni \((n,d,seed)\)
+    e selezione dei parametri per ogni algoritmo standard o custom.
 \end{itemize}
 
-La pipeline end-to-end implementata e' la seguente:
+L'esecuzione end-to-end della pipeline del framework è la seguente:
 \begin{enumerate}
-    \item generazione del file \codepath{dataset_n_{n}_d_{d}_p_{p}_s_{seed}.bin}
+    \item vengono prima generati i dataset, chiamati \codepath{dataset_n_{n}_d_{d}_p_{p}_s_{seed}.bin} tramite lo script Python di generazione 
     (\codepath{scripts/generate_partitioned_dataset_bin.py});
-    \item parsing header/tabella con \codepath{satp::io::indexBinaryDataset}
-    (\codepath{src/satp/io/BinaryDatasetIO.h});
-    \item istanziazione della CLI (\codepath{main.cpp}) e dispatch in \codepath{AlgorithmExecutor};
-    \item esecuzione \texttt{normal}/\texttt{streaming}/\texttt{merge} tramite
-    \codepath{EvaluationFramework};
-    \item scrittura CSV in \codepath{results/<algorithm>/<params>/results_*.csv}
+    \item viene eseguito poi da CLI il (\codepath{main.cpp}) e vengono configurati i parametri rimanenti per ogni algoritmo, tra cui la modalità di esecuzione;
+    \item l' \codepath{EvaluationFramework} gestisce il parsing del dataset e gli algoritmi vengono eseguiti;
+    \item infine, a seconda della modalità, avviene la scrittura CSV in \codepath{results/<algorithm>/<params>/results_*.csv}
     con \codepath{PathUtils::buildResultCsvPath} e \codepath{CsvResultWriter}.
 \end{enumerate}
 
-\section{Dataset binario compresso}
+\section{Dataset}
+I dataset generati sono sintetici significa che non c'è alcun dato reale. 
+Un dataset è composto da un'intestazione in cui sono presenti i seguenti parametri:
+\begin{itemize}
+    \item $n$: numero di elementi per ogni partizione;
+    \item $d$: numero di elementi distinti per ogni partizione;
+    \item $p$: numero di partizioni;
+    \item $seed$: il seed che ha generato questo dataset.
+\end{itemize}
+Subito dopo iniziano le partizioni, ogni partizione è composta da $n$ righe in cui sono presenti $d$ numeri unici.
+In ogni riga delle partizioni abbiamo l'elemento seguito da un bit.
+
+Questo bit vale 1 se l'elemento è la prima volta che appare nella partizione, 0 se è già apparso. Di conseguenza la somma di tutti i bit è uguale a $d$.
+
+Inoltre, il dataset è in un formato binario, il quale dopo essere stato generato viene pure compresso.
 
 \subsection{Motivazione del formato}
+Poiché gli algoritmi di sketching sono generalmente utilizzati con i big data, 
+i cui dati non vengono effettivamente memorizzati su disco, si è dovuto
+scegliere un formato che permettesse di salvare su file i vari dataset.
 
-Il formato binario partizionato evita la materializzazione in memoria
-dell'intero dataset durante la valutazione. Ogni partizione e' compressa
+Il motivo di dover salvare su disco il dataset è per motivi di riproducibilità,
+analisi e valutazione degli algoritmi.
+
+Precedentemente \`e stato definito che all'interno di un dataset sono presenti più partizioni.
+K'idea che sta dietro a questa scelta è che così facendo, si può materializzare in memoria
+un'unica partizione dell'intero dataset durante la valutazione alla volta. 
+Ogni partizione è compressa
 indipendentemente con \texttt{zlib}; il framework carica solo il blocco
 necessario alla run corrente tramite \codepath{BinaryDatasetPartitionReader}
-(\codepath{src/satp/io/BinaryDatasetIO.h}).
-
-La generazione e' implementata in \codepath{scripts/generate_partitioned_dataset_bin.py};
-parsing, validazione e lettura sono implementati in
-\codepath{src/satp/io/BinaryDatasetIO.h}.
+in (\codepath{BinaryDatasetIO.h}).
 
 \subsection{Struttura del file}
 
-Il file contiene: header globale, tabella partizioni, payload compressi.
+Il file contiene: un header globale, la tabella delle partizioni e dei payload compressi.
 I parametri di formato sono codificati in
-\codepath{src/satp/io/BinaryDatasetIO.h} e nello script generatore.
+\codepath{BinaryDatasetIO.h} e nello script generatore.
 
 \begin{table}[htbp]
     \centering
@@ -93,7 +106,7 @@ I parametri di formato sono codificati in
     \label{tab:binary-header}
 \end{table}
 
-Ogni entry della tabella partizioni (\texttt{ENTRY\_SIZE=60}) contiene:
+Ogni entry della tabella partizioni (\texttt{ENTRY\_SIZE=60\footnote{La dimensione \texttt{60} deriva dal layout binario \texttt{<QQQQQQIII}. Nel formato \texttt{struct} di Python, \texttt{Q} indica un intero unsigned a 64 bit (\texttt{uint64\_t}, 8 byte) e \texttt{I} indica un intero unsigned a 32 bit (\texttt{uint32\_t}, 4 byte). Quindi: sei campi \texttt{Q} (\(6\times 8=48\)) più tre campi \texttt{I} (\(3\times 4=12\)), per un totale di \(48+12=60\) byte. Il prefisso \texttt{<} impone little-endian standard senza padding.}}) contiene:
 \begin{itemize}
     \item \texttt{values\_offset}, \texttt{values\_byte\_size};
     \item \texttt{truth\_offset}, \texttt{truth\_byte\_size};
@@ -103,38 +116,85 @@ Ogni entry della tabella partizioni (\texttt{ENTRY\_SIZE=60}) contiene:
     \texttt{ENCODING\_ZLIB\_BITSET\_LE}.
 \end{itemize}
 
-\subsection{Bitset di verita' per \texorpdfstring{$F_0(t)$}{F0(t)}}
+\subsection{Bitset di verità per \texorpdfstring{$F_0(t)$}{F0(t)}}
 
-Per ogni partizione, oltre ai valori \texttt{uint32} compressi, viene salvato
-un bitset compresso in cui il bit \(t\) (indice base zero) vale \(1\) se
-l'elemento in posizione \(t\) e' una prima occorrenza nella partizione.
-Nel framework streaming (\codepath{src/satp/simulation/EvaluationFramework.tpp})
-la verita' prefissata e' ricostruita con accumulo:
+Come accennato poc'anzi, per ogni partizione, oltre ai valori \texttt{uint32} compressi, viene salvato
+un bitset compresso in cui il bit \(t\) vale \(1\) se
+l'elemento in posizione \(t\) è una prima occorrenza nella partizione.
+Nel framework di streaming il numero di elementi distinti prefissato è ricostruito con l'accumulo:
 \[
 F_0(t)=\sum_{i=1}^{t} b_i.
 \]
 Questa scelta evita la ricostruzione di insiemi espliciti durante
-la valutazione prefisso-per-prefisso.
+la valutazione prefisso per prefisso.
 
 \subsection{Indicizzazione e caricamento per partizione}
 
-\codepath{indexBinaryDataset} valida magic, versione, consistenza dei metadati,
-range degli offset e codifiche supportate; inoltre forza \texttt{d <= n}
-(\codepath{src/satp/io/BinaryDatasetIO.h}).
-\codepath{BinaryDatasetPartitionReader} mantiene un file handle aperto e fornisce:
+Il metodo \codepath{indexBinaryDataset} valida magic, versione, consistenza dei metadati,
+range degli offset e codifiche supportate; inoltre verifica che \texttt{d <= n}.
+
+La classe \codepath{BinaryDatasetPartitionReader} mantiene un file handle aperto e fornisce:
 \texttt{load(partitionIndex, outValues)} e
 \texttt{loadWithTruthBits(partitionIndex, outValues, outTruthBits)}.
-Il costo di memoria e' quindi proporzionale alla sola partizione corrente.
+
+Il costo in memoria è quindi proporzionale alla sola partizione corrente.
+
+\subsection{Esempio}
+
+Per rendere esplicito il formato, consideriamo un dataset con:
+\[
+n=8,\quad d=4,\quad p=2,\quad seed=42.
+\]
+Supponiamo che, prima della compressione nella partizione 0, la stream sia:
+
+\begin{table}[htbp]
+    \centering
+    \small
+    \begin{tabular}{|c|c|c|c|}
+        \hline
+        \(t\) & valore \(x_t\) & bit \(b_t\) (prima occorrenza) & \(F_0(t)=\sum_{i=1}^{t} b_i\) \\
+        \hline
+        1 & 7  & 1 & 1 \\
+        2 & 12 & 1 & 2 \\
+        3 & 3  & 1 & 3 \\
+        4 & 7  & 0 & 3 \\
+        5 & 12 & 0 & 3 \\
+        6 & 9  & 1 & 4 \\
+        7 & 7  & 0 & 4 \\
+        8 & 9  & 0 & 4 \\
+        \hline
+    \end{tabular}
+    \caption{Esempio logico di una partizione: valori e bit di verità.}
+    \label{tab:dataset-example-logical}
+\end{table}
+
+In questo esempio gli elementi distinti della partizione sono \(\{7,12,3,9\}\), quindi
+\(\sum_{t=1}^{8} b_t = 4 = d\).
+
+Il file contiene:
+\begin{itemize}
+    \item header globale (\texttt{MAGIC}, \texttt{VERSION}, \(n\), \(d\), \(p\), \(seed\));
+    \item tabella partizioni con 2 entry da 60 byte ciascuna;
+    \item payload compressi (\texttt{values} e \texttt{truth}) per ogni partizione.
+\end{itemize}
+
+Per la partizione 0:
+\begin{itemize}
+    \item \texttt{values} = array \texttt{uint32} dei valori \([7,12,3,7,12,9,7,9]\), compresso con zlib;
+    \item \texttt{truth} = bitset \([1,1,1,0,0,1,0,0]\), compresso con zlib
+    (in un byte: \texttt{0b00100111} = \texttt{0x27}, con bit in ordine LSB-first).
+\end{itemize}
 
 \section{Generazione dataset}
 
-Lo script \codepath{scripts/generate_partitioned_dataset_bin.py} espone i
+Lo script \codepath{generate_partitioned_dataset_bin.py} permette il passagio dei seguenti
 parametri \texttt{--n}, \texttt{--d}, \texttt{--p}, \texttt{--seed},
-\texttt{--workers}, \texttt{--progress-batch}. I vincoli implementati sono:
+\texttt{--workers}, \texttt{--progress-batch}. 
+I vincoli implementati sono:
 \[
 0 \le d \le n, \qquad d \le \min(n, 2^{32}), \qquad p > 0.
 \]
-La nomenclatura del file di output e' deterministica:
+La nomenclatura del file di output è deterministica ed è stato scelto il seguente formato:
 \codepath{dataset_n_{n}_d_{d}_p_{p}_s_{seed}.bin}.
 
 Per ogni partizione, il generatore:
@@ -147,14 +207,14 @@ Per ogni partizione, il generatore:
     \item costruisce il bitset di prime occorrenze e comprime separatamente valori e bitset.
 \end{enumerate}
 
-Quando \texttt{--workers>1}, la generazione e' parallelizzata per partizione con
-\texttt{multiprocessing}; la barra di avanzamento e' emessa su \texttt{stderr}.
+Quando il numero di workers è maggiore di 1, la generazione è parallelizzata per partizione con
+\texttt{multiprocessing}; la barra di avanzamento è emessa su \texttt{stderr}.
 
 \section{Interfacce comuni e hashing}
 
 \subsection{Interfaccia base degli algoritmi}
 
-Il contratto comune è definito in \codepath{src/satp/algorithms/Algorithm.h}:
+L'interfaccia comune degli algoritmi è definita in \codepath{Algorithm.h} e contiene i seguenti metodi:
 \begin{itemize}
     \item \texttt{process(uint32\_t id)}: aggiorna lo sketch;
     \item \texttt{count()}: restituisce la stima corrente di \(F_0\);
@@ -163,82 +223,90 @@ Il contratto comune è definito in \codepath{src/satp/algorithms/Algorithm.h}:
     \item \texttt{getName()}: nome algoritmo.
 \end{itemize}
 
-La modalita' \texttt{runmerge} richiede in particolare la presenza di
-\texttt{merge}; nel framework e' applicato un controllo di concetto
+La modalità \texttt{runmerge} richiede, in particolare, la presenza di
+\texttt{merge} nell'algoritmo analizzato.
+
+Nel framework è applicato un controllo di concetto
 (\codepath{detail::MergeableAlgorithm} in
-\codepath{src/satp/simulation/EvaluationFramework.tpp}).
+\codepath{EvaluationFramework.tpp}).
 
 \subsection{Hashing uniforme nel codice}
 
-La randomizzazione è centralizzata in \codepath{src/satp/hashing.h}:
+La randomizzazione è centralizzata in \codepath{hashing.h} e contiene due metodi:
 \begin{itemize}
-    \item \texttt{splitmix64(uint64\_t)} come hash a 64 bit;
+    \item \texttt{splitmix64(uint64\_t)} come funzione di hash a 64 bit;
     \item \texttt{hash32\_from\_64(uint64\_t)} per derivare il dominio 32 bit.
 \end{itemize}
 
+La scelta dietro a questa funzione di hash a 32 bit derivata dalla funzione a 64 bit è per non avere una funzione di hash completamente diversa
+da quella già esistente per gli algoritmi con un hash più corta.
+
 HyperLogLog e LogLog applicano \texttt{hash32\_from\_64}; HyperLogLog++
-usa direttamente il valore a 64 bit
-(\codepath{src/satp/algorithms/HyperLogLog.cpp},
-\codepath{src/satp/algorithms/LogLog.cpp},
-\codepath{src/satp/algorithms/HyperLogLogPlusPlus.cpp}).
+usa direttamente il valore a 64 bit.
 
 \section{Implementazione degli algoritmi}
-
+Ogni algoritmo segue lo pseudocodice dei relativi autori in \cite{Flajolet_Martin_1985,Durand_Flajolet_2003,Flajolet_Fusy_Gandouet_Meunier_2007,Heule_Nunkesser_Hall_2013,Cormode_CountMinSketch_Encyclopedia,Bloom_1970}.
 \subsection{ProbabilisticCounting}
-
-\texttt{ProbabilisticCounting} (\codepath{src/satp/algorithms/ProbabilisticCounting.cpp})
-accetta \(\,L \in [1,31]\), altrimenti solleva \texttt{invalid\_argument}.
+Seguendo lo pseudocodice in \cite{Flajolet_Martin_1985}, \texttt{ProbabilisticCounting}
+accetta \(\,L \in [1,31]\), altrimenti solleva un eccezione: \texttt{invalid\_argument}.
 L'aggiornamento imposta il bit corrispondente alla posizione del primo 1 da
 destra (\texttt{countr\_zero}) su hash troncato a \(L\) bit; la stima usa
 l'indice del primo zero (\texttt{countr\_one}) e la costante \(\phi\) nel termine
 \(\propto 2^R\) \cite{Flajolet_Martin_1985}.
-L'operazione di merge e' un OR bit-a-bit con vincolo di compatibilita' su \(L\).
+
+L'operazione di merge è un OR bit per bit con vincolo di compatibilita' su \(L\).
 
 \subsection{LogLog}
 
-\texttt{LogLog} (\codepath{src/satp/algorithms/LogLog.cpp}) implementa il
-regime \emph{paper-strict} \cite{Durand_Flajolet_2003}:
+L'algoritmo \texttt{LogLog} segue lo pseudocodice in \cite{Durand_Flajolet_2003}:
 \begin{itemize}
     \item \(k \in [4,16]\);
     \item \(L = 32\) obbligatorio.
 \end{itemize}
-Il merge richiede stesso \((k,L)\) e applica massimo componente per componente
+Il merge richiede gli stessi \((k,L)\) e applica la funzione del massimo componente per componente
 sui registri.
 
 \subsection{HyperLogLog}
 
-\texttt{HyperLogLog} (\codepath{src/satp/algorithms/HyperLogLog.cpp}) impone
-\(k \in [4,16]\) e \(L=32\). Il merge richiede uguaglianza di
+In \cite{Flajolet_Fusy_Gandouet_Meunier_2007} \texttt{HyperLogLog} impone che
+\(k \in [4,16]\) e \(L=32\). 
+
+Il merge richiede, come per i precedenti algoritmi, uguaglianza di
 \((k,L)\) e combina i registri con il massimo componente per componente.
-La funzione \texttt{count()} applica tre regimi:
+
+La funzione \texttt{count()} varia a seconda di tre regimi di dimensionalità quando è in:
 \begin{itemize}
-    \item \emph{small-range} con linear counting;
-    \item \emph{raw-range} con stima armonica;
-    \item \emph{large-range} con correzione logaritmica su \(2^{32}\).
+    \item \emph{small-range} con il linear counting;
+    \item \emph{raw-range} con la stima armonica;
+    \item \emph{large-range} con la correzione logaritmica su \(2^{32}\).
 \end{itemize}
 In accordo con \cite{Flajolet_Fusy_Gandouet_Meunier_2007}.
 
 \subsection{HyperLogLog++}
-
-\texttt{HyperLogLogPlusPlus}
-(\codepath{src/satp/algorithms/HyperLogLogPlusPlus.cpp}) impone
-\(p \in [4,18]\) e usa hash a 64 bit.
-Lo stato alterna due formati:
+Per quanto riguarda \texttt{HyperLogLogPlusPlus}, sempre seguendo \cite{Heule_Nunkesser_Hall_2013},
+impone \(p \in [4,18]\) e l'uso di una funzione di hash a 64 bit.
+L'algoritmo utilizza uno stato interno che viene alternato in due formati:
 \begin{itemize}
     \item \emph{sparse}: lista compressa di coppie codificate indice/\(\rho\);
     \item \emph{normal}: vettore registri denso.
 \end{itemize}
-Il passaggio \emph{sparse} \(\rightarrow\) \emph{normal} e' guidato dal confronto
-tra costo della codifica sparsa (\texttt{sparseBits}) e costo denso
-(\texttt{denseBits()}). La stima finale usa tabella di bias
-(\codepath{hllpp_tables}) e soglia
+Il passaggio da \emph{sparse} a \emph{normal} segue il costo del confronto della 
+codifica sparsa (\texttt{sparseBits}) e 
+il costo della codifica densa (\texttt{denseBits()}). 
+
+La stima finale usa una tabella di bias
+(\codepath{hllpp_tables}) e di soglia
 \codepath{threshold_for_k(p)} per scelta tra linear counting e stima corretta.
-Il merge richiede stesso \(p\).
-Questa scelta segue l'impianto di \cite{Heule_Nunkesser_Hall_2013}.
 
-\subsection{Domini parametrici enforced}
+La tabella è stata presa dalla documentazione ufficiale da \cite{Heule_Nunkesser_Hall_2013}.
 
-I domini accettati sono verificati in costruttore. I test in
+Il merge richiede di avere lo stesso \(p\).
+Questa scelta segue sempre \cite{Heule_Nunkesser_Hall_2013}.
+
+\subsection{Verifica dei domini parametrici}
+
+I domini accettati sono verificati durante la costruzione dell'oggetto. 
+I test in
 \codepath{tests/algorithms/*.cpp} coprono esplicitamente i bound di HyperLogLog++,
 HyperLogLog e LogLog; per ProbabilisticCounting coprono il comportamento di merge
 e la compatibilita' dei parametri:
@@ -248,70 +316,191 @@ e la compatibilita' dei parametri:
     \item LogLog: \(k \in [4,16]\), \(L=32\);
     \item ProbabilisticCounting: \(L \in [1,31]\).
 \end{itemize}
-Lo script \codepath{scripts/orchestrate_benchmarks.py} replica gli stessi domini
-nelle modalita' \texttt{--full} e \texttt{single-params}.
+Lo script \codepath{orchestrate_benchmarks.py} replica gli stessi domini
+nelle modalità \texttt{--full} e \texttt{single-params}.
 
 \section{Framework di valutazione}
+Nel framework di valutazione esistono 3 modalità di valutazione dei risultati.
+Questo per consentire l'utilizzo degli algoritmi in maniere differenti, in seguito vengono spiegate in maniera dettagliata.
 
-\subsection{Modalita' \texttt{normal}, \texttt{streaming}, \texttt{merge}}
+Il framework permette di monitorare determinate metriche che sono aperte ad essere aggiunte.
+In maniera consona le metriche di output sono le stesse che vengono monitorate.
 
-La classe \texttt{EvaluationFramework}
-(\codepath{src/satp/simulation/EvaluationFramework.h}) espone tre percorsi:
+
+\subsection{Modalità \texttt{normal}, \texttt{streaming}, \texttt{merge}}
+
+Le tre modalità operative del framework sono:
+
 \begin{itemize}
-    \item \texttt{evaluateToCsv(...)} per endpoint per-partizione (\texttt{mode=normal});
+    \item \texttt{normal}: per ogni partizione si esegue una run completa
+    dell'algoritmo, si calcola la stima finale \(\hat{F}_0\) e si aggregano le
+    metriche su tutte le run (una run per partizione). È la modalità di test.
+
+    \item \texttt{streaming}: per ogni partizione si processa la stream elemento
+    per elemento. A checkpoint prefissati \(t\), si salvano stima e verità di
+    prefisso, poi si aggregano le metriche tra run per ciascun checkpoint.
+    La verità \(F_0(t)\) è ricostruita dal bitset di prime occorrenze:
+    \[
+    F_0(t)=\sum_{i=1}^{t} b_i.
+    \]
+
+    \item \texttt{merge}: le partizioni sono accoppiate a due a due
+    \((0,1),(2,3),\dots\).
+    Per ogni coppia si costruiscono due sketch separati (\(S_A, S_B\)),
+    si calcola lo sketch mergiato \(S_M = S_A \oplus S_B\), e si confronta con
+    uno sketch seriale \(S_{serial}\) ottenuto processando in sequenza le due
+    partizioni. Le metriche di confronto sono:
+    \[
+    \Delta_{abs} = \left| \hat{F}_{0,\text{merge}} - \hat{F}_{0,\text{serial}} \right|,
+    \qquad
+    \Delta_{rel} = \frac{\Delta_{abs}}{\hat{F}_{0,\text{serial}}}
+    \]
+    (se \(\hat{F}_{0,\text{serial}}=0\), nel codice \(\Delta_{rel}=0\)).
+\end{itemize}
+
+La classe \texttt{EvaluationFramework} espone tre flussi:
+\begin{itemize}
+    \item \texttt{evaluateToCsv(...)} per endpoint per partizione (\texttt{mode=normal});
     \item \texttt{evaluateStreamingToCsv(...)} per checkpoint prefissati
     (\texttt{mode=streaming});
     \item \texttt{evaluateMergePairsToCsv(...)} per confronto merge vs seriale su coppie
-    \((0,1), (2,3), \ldots\) (\texttt{mode=merge}).
+    (\texttt{mode=merge}).
 \end{itemize}
-Nel backend binario, \texttt{runs} e \texttt{sample\_size} sono sempre derivati da
-\codepath{datasetScope()} (metadati del dataset).
+
+Nel backend binario, \texttt{runs} e \texttt{sample\_size} sono derivati dai
+metadati del dataset tramite \codepath{datasetScope()}.
+In modalità \texttt{merge}, il numero effettivo di coppie è
+\(\lfloor \texttt{runs}/2 \rfloor\).
+
 
 \subsection{Metriche implementate}
 
-Le metriche sono aggregate da \codepath{ErrorAccumulator}
-(\codepath{src/satp/simulation/ErrorAccumulator.h}) e includono:
+Le metriche sono aggregate da \codepath{ErrorAccumulator} 
+in coerenza con le
+definizioni statistiche introdotte nel Capitolo 2 (stimatori e metriche
+d'errore).  
+Indicando con \(R\) il numero di run, con \(\hat{F}_0^{(r)}(t)\) la stima alla
+run \(r\) e checkpoint \(t\), e con \(F_0^{(r)}(t)\).
+
+Nel CSV, i nomi delle colonne corrispondono a:
+
+\begin{itemize}
+    \item \texttt{mean} = \(\bar{\hat{F}}_0(t)\)
+    \item \texttt{truth\_mean} = \(\bar{F}_0(t)\)
+    \item \texttt{variance} = \(\widehat{\mathrm{Var}}(t)\)
+    \item \texttt{stddev} = \(\widehat{\sigma}(t)\)
+    \item \texttt{bias} = \(\mathrm{Bias}(t)\)
+    \item \texttt{absolute\_bias} = \(\lvert \mathrm{Bias}(t) \rvert\)
+    \item \texttt{relative\_bias} = \(\mathrm{RelBias}(t)\)
+    \item \texttt{mean\_relative\_error} = \(\mathrm{MRE}(t)\)
+    \item \texttt{mae} = \(\mathrm{MAE}(t)\)
+    \item \texttt{rmse} = \(\mathrm{RMSE}(t)\)
+    \item \texttt{rse\_observed} = \(\mathrm{RSE}_{\mathrm{obs}}(t)\)
+\end{itemize}
+
+
+In \codepath{AlgorithmExecutor.cpp} il valore teorico è impostato come:
 \[
-\text{mean},\ \text{variance},\ \text{stddev},\ \text{bias},\
-\text{absolute\_bias},\ \text{relative\_bias},\
-\text{mean\_relative\_error},\ \text{rmse},\ \text{mae},\
-\text{rse\_observed},\ \text{truth\_mean}.
+\mathrm{RSE}_{theo}= \frac{1.04}{\sqrt{m}} \ \text{(HyperLogLog, HyperLogLog++)},
+\qquad
+\mathrm{RSE}_{theo}= \frac{1.30}{\sqrt{m}} \ \text{(LogLog)},
 \]
-In \codepath{AlgorithmExecutor.cpp} il valore teorico e' calcolato con
-\(\mathrm{RSE}=1.04/\sqrt{m}\) (HyperLogLog e HyperLogLog++) e
-\(\mathrm{RSE}=1.30/\sqrt{m}\) (LogLog); per
-ProbabilisticCounting viene scritto \texttt{NaN}, in coerenza con
-\cite{Flajolet_Fusy_Gandouet_Meunier_2007,Durand_Flajolet_2003}.
+con \(m=2^k\).  
+Per Probabilistic Counting viene scritto \texttt{NaN}.
 
-In streaming, i checkpoint sono generati da
-\codepath{StreamingCheckpointBuilder::build} con strategia ibrida:
-fase densa fino allo \(0.1\%\), fase logaritmica fino al \(10\%\), fase
-logaritmica fino al \(100\%\), con massimo \(200\) checkpoint e ultimo punto
-sempre \(t=n\)
-(\codepath{src/satp/simulation/StreamingCheckpointBuilder.h}).
+\subsection{Checkpoint in modalità streaming}
 
+I checkpoint sono costruiti da
+\codepath{StreamingCheckpointBuilder::build(n, K)} con \(n=\) \texttt{sample\_size}
+e \(K=\) numero massimo target di checkpoint (default \(K=200\)).
+
+Se \(n \le K\), si usano tutti i prefissi:
+\[
+\mathcal{T}=\{1,2,\dots,n\}.
+\]
+
+Se \(n>K\), si usa una strategia ibrida su tre fasi:
+\[
+[0,0.1\%]\ \text{(lineare)},\qquad (0.1\%,10\%]\ \text{(log)},\qquad (10\%,100\%]\ \text{(log)}.
+\]
+
+Sia
+\[
+n_1=\left\lceil 10^{-3}n\right\rceil,\quad
+p_1=10^{-3},\quad p_2=10^{-1}.
+\]
+Dopo avere fissato il checkpoint \(t=1\), i checkpoint rimanenti sono
+ripartiti circa \(50\%\), \(30\%\), \(20\%\) tra le tre fasi.
+
+\paragraph{Fase 1 (lineare)}
+Per \(i=1,\dots,k_1\):
+\[
+t_i^{(1)} = \left\lceil \frac{i\,n_1}{k_1}\right\rceil.
+\]
+
+\paragraph{Fase 2 (logaritmica in percentuale)}
+Per \(i=1,\dots,k_2\):
+\[
+\pi_i^{(2)} = p_1\left(\frac{p_2}{p_1}\right)^{i/k_2},
+\qquad
+t_i^{(2)}=\left\lceil \pi_i^{(2)}\,n\right\rceil.
+\]
+
+\paragraph{Fase 3 (logaritmica in percentuale)}
+Per \(i=1,\dots,k_3\):
+\[
+\pi_i^{(3)} = p_2\left(\frac{1}{p_2}\right)^{i/k_3},
+\qquad
+t_i^{(3)}=\left\lceil \pi_i^{(3)}\,n\right\rceil.
+\]
+
+Infine i checkpoint vengono ordinati, deduplicati e si forza sempre il punto
+finale \(t=n\).
+
+
+Perfetto, puoi usare questo testo:
+
+```latex
 \subsection{Output CSV}
 
-Le modalita' \texttt{normal} e \texttt{streaming} condividono lo schema:
+Le modalità \texttt{normal} e \texttt{streaming} condividono lo stesso schema CSV dove ogni colonna è:
+
+\begin{itemize}
+    \item \texttt{algorithm}: nome dell'algoritmo (es. HyperLogLog++, HyperLogLog, LogLog, Probabilistic Counting).
+    \item \texttt{params}: parametri effettivi della configurazione (es. \texttt{k=16,L=32}, \texttt{L=23}).
+    \item \texttt{mode}: modalità di esecuzione (\texttt{normal} o \texttt{streaming}).
+    \item \texttt{runs}: numero di run aggregate (nel backend corrente coincide con il numero di partizioni del dataset).
+    \item \texttt{sample\_size}: numero di elementi per partizione (\(n\)).
+    \item \texttt{number\_of\_elements\_processed}: numero di elementi già processati nella run corrente; in \texttt{normal} vale \(n\), in \texttt{streaming} coincide con il checkpoint \(t\).
+    \item \texttt{f0}: cardinalità distinta nominale del dataset (\(d\), uguale per partizione).
+    \item \texttt{seed}: seed del dataset letto dal file binario.
+    \item \texttt{f0\_mean\_t}: verità media aggregata al tempo \(t\), cioè \(\bar{F}_0(t)\).
+    \item \texttt{f0\_heat\_mean\_t}: stima media aggregata al tempo \(t\), cioè \(\bar{\hat{F}}_0(t)\).
+    \item \texttt{variance}: varianza campionaria della stima al tempo \(t\), \(\widehat{\mathrm{Var}}(t)\).
+    \item \texttt{stddev}: deviazione standard campionaria, \(\widehat{\sigma}(t)\).
+    \item \texttt{rse\_theoretical}: RSE teorica assegnata alla famiglia algoritmica (se disponibile).
+    \item \texttt{rse\_observed}: RSE osservata, \(\widehat{\sigma}(t)/\bar{F}_0(t)\).
+    \item \texttt{bias}: bias osservato, \(\bar{\hat{F}}_0(t)-\bar{F}_0(t)\).
+    \item \texttt{absolute\_bias}: valore assoluto del bias, \(|\mathrm{Bias}(t)|\).
+    \item \texttt{relative\_bias}: bias relativo, \(\mathrm{Bias}(t)/\bar{F}_0(t)\).
+    \item \texttt{mean\_relative\_error}: errore relativo medio, \(\mathrm{MRE}(t)\).
+    \item \texttt{rmse}: root mean squared error al tempo \(t\), \(\mathrm{RMSE}(t)\).
+    \item \texttt{mae}: mean absolute error al tempo \(t\), \(\mathrm{MAE}(t)\).
+\end{itemize}
+
+La modalità \texttt{merge} mantiene lo stesso blocco descrittivo iniziale
+(\texttt{algorithm}, \texttt{params}, \texttt{mode}, \texttt{sample\_size}, \texttt{seed}),
+ma sostituisce il blocco delle metriche di stima con colonne specifiche del confronto
+\emph{merge vs seriale}:
 \begin{center}
 \small
-\codepath{algorithm,params,mode,runs,sample_size,number_of_elements_processed,}\
-\codepath{f0,seed,f0_mean_t,f0_heat_mean_t,variance,stddev,rse_theoretical,}\
-\codepath{rse_observed,bias,absolute_bias,relative_bias,mean_relative_error,rmse,mae}
+\codepath{pairs,pair_index,estimate_merge,estimate_serial,}\
+\codepath{delta_merge_serial_abs,delta_merge_serial_rel}
 \end{center}
-(\codepath{src/satp/simulation/CsvResultWriter.h}).
-
-In \texttt{streaming}, \texttt{number\_of\_elements\_processed} coincide con il
-checkpoint \(t\). La colonna \texttt{f0} contiene \(d\) globale del dataset,
-mentre \texttt{f0\_mean\_t} contiene la verita' media al prefisso \(t\).
-
-La modalita' \texttt{merge} usa invece:
-\begin{center}
-\small
-\codepath{algorithm,params,mode,pairs,sample_size,pair_index,seed,estimate_merge,}\
-\codepath{estimate_serial,delta_merge_serial_abs,delta_merge_serial_rel}
-\end{center}
-(\codepath{src/satp/simulation/CsvResultWriter.h}).
+dove \texttt{estimate\_merge} è la stima dopo fusione dei due sketch,
+\texttt{estimate\_serial} è la stima ottenuta processando serialmente la stessa coppia,
+e i due \texttt{delta} misurano lo scostamento assoluto e relativo tra i due risultati.
+```
 
 \section{CLI e orchestrazione sperimentale}
 
@@ -348,6 +537,10 @@ Lo script \codepath{scripts/orchestrate_benchmarks.py} automatizza:
     \item invio di payload CLI con sequenze \texttt{set} + \texttt{run}/\texttt{runstream}/\texttt{runmerge};
     \item sweep standard (parametri fissi) o completo (\texttt{--full}) su domini validi.
 \end{itemize}
+
+Per l'analisi finale di Capitolo~\ref{chp:risultati}, i grafici e le tabelle
+sono prodotti in modo riproducibile da
+\codepath{notebooks/12\_ch5\_best\_config\_analysis.ipynb}.
 
 \section{Seed e riproducibilita'}
 
@@ -412,22 +605,11 @@ Le scelte implementative consolidate sono:
 Limiti correnti osservabili nel codice e nella documentazione:
 \begin{itemize}
     \item assenza nel repository di implementazioni Count-Min Sketch, Bloom Filter e Ring Bloom Filter
-    (cfr. TODO in \codepath{README.md});
+    (cfr. piano di lavoro in \codepath{README.md});
     \item assenza di un test dedicato ai limiti di costruzione di ProbabilisticCounting (\(L \in [1,31]\));
-    \item analisi empirica robusta multi-seed non ancora sistematizzata nel framework
-    di reportistica.
+    \item i report CSV includono metriche aggregate ma non esportano ancora
+    serie per-run complete per tutte le modalita' di analisi avanzata.
 \end{itemize}
-
-\textbf{TODO (evidenza mancante).} Non e' ancora presente una valutazione
-sistematica della sensibilita' al seed dell'hash su campagne multi-seed con
-report dedicato.
-
-\textbf{TODO (evidenza mancante).} Non e' ancora presente una campagna estesa
-di degradazione dell'errore al crescere del numero di merge in catena
-(oltre il confronto a coppie \((0,1),(2,3),\ldots\)).
-
-\textbf{TODO (evidenza mancante).} Non e' ancora presente una misura empirica
-strumentata della memoria reale per algoritmo durante run streaming/merge.
 
 Nel Capitolo~\ref{chp:risultati} si analizzano i risultati sperimentali prodotti
 dal framework descritto.

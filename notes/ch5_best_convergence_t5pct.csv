@@ -1,0 +1,17 @@
+algorithm,f0,t_conv_mean
+HyperLogLog,100000,1.0
+HyperLogLog,1000000,1.0
+HyperLogLog,5000000,1.0
+HyperLogLog,10000000,1.0
+HyperLogLog++,100000,1.0
+HyperLogLog++,1000000,1.0
+HyperLogLog++,5000000,1.0
+HyperLogLog++,10000000,1.0
+LogLog,100000,60209.0
+LogLog,1000000,47640.0
+LogLog,5000000,47640.0
+LogLog,10000000,46924.6
+Probabilistic Counting,100000,
+Probabilistic Counting,1000000,
+Probabilistic Counting,5000000,
+Probabilistic Counting,10000000,

@@ -1,0 +1,5 @@
+algorithm,rows,mean_abs_delta,max_abs_delta,mean_rel_delta,max_rel_delta
+HyperLogLog,500,0.0,0,0.0,0
+HyperLogLog++,500,0.0,0,0.0,0
+LogLog,500,0.0,0,0.0,0
+Probabilistic Counting,500,0.0,0,0.0,0
