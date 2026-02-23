@@ -3,43 +3,49 @@
 \chapter{Risultati sperimentali}
 \label{chp:risultati}
 
-Questo capitolo presenta i risultati sperimentali finali ottenuti con il
+In questo capitolo presenta i risultati sperimentali finali ottenuti con il
 framework descritto nel Capitolo~\ref{chp:implementazione}.
-L'analisi è limitata alle modalità \emph{streaming} e \emph{merge}, mentre i
-file \emph{oneshot} non vengonon utilizzati poiché, a differenza, della modalità streaming viene preso un solo risultato finale per esecuzione.
+L'analisi è limitata alle modalità di \emph{streaming} e di \emph{merge}, mentre i
+file \emph{oneshot} non vengono utilizzati poiché, a differenza, della modalità streaming viene preso un solo risultato finale per esecuzione.
 Le metriche considerate sono quelle formalizzate nel
 Capitolo~\ref{chp:background}.
 
-\section{Perimetro sperimentale}
+\section{Ambiente di test}
+I risultati sperimentali sono stati ottenuti su un notebook Apple MacBook Pro 13'' (2020) con processore Apple M1
+(Apple Silicon) con 16 GB di memoria RAM, un SSD NVMe da 512 GB e macOS Sequoia 15.7.2.
 
-I risultati sono estratti dai CSV presenti in \codepath{results/} con la
-seguente copertura:
+L'esecuzione è avvenuta localmente su singola macchina, senza distribuzione su più nodi.
+
+La build e l'esecuzione dei test sono state effettuate con la seguente toolchain:
 \begin{itemize}
-    \item 72 file \codepath{results\_streaming.csv} (288000 righe);
-    \item 72 file \codepath{results\_merge.csv} (36000 righe);
+    \item CMake 4.2.3;
+    \item Apple Clang 17.0.0 (\texttt{clang-1700.0.13.5});
+    \item target compilazione: \texttt{arm64-apple-darwin24.6.0}.
+\end{itemize}
+
+\subsection{Configurazione sperimentale}
+I risultati sono stati estratti dai CSV presenti in \codepath{results/} con la
+seguente configurazione:
+\begin{itemize}
     \item \(n=10^7\) elementi per partizione;
     \item \(F_0 \in \{10^5,10^6,5\cdot10^6,10^7\}\);
-    \item seed \(\{42,137357,10032018,21041998,29042026\}\);
-    \item 50 run per configurazione.
+    \item seed \(\in \{42,137357,10032018,21041998,29042026\}\);
+    \item 50 run per ogni dataset.
 \end{itemize}
 
-La produzione delle figure e delle tabelle è eseguita con
-\codepath{notebooks/12\_ch5\_best\_config\_analysis.ipynb},
-che salva i grafici in \codepath{thesis/figures/results/} e le tabelle di
-supporto in \codepath{notes/}.
+Ottenendo un totale di 72 file di \codepath{results\_streaming.csv} e \codepath{results\_merge.csv}.
+
+La produzione delle figure e delle tabelle è stata ottenuta tramite l'utilizzo di notebook Jupyter per
+riproducibilità all'interno della cartella \texttt{notebooks}.
 
 \section{Selezione delle configurazioni migliori}
+Uno dei principali problemi di tutte queste possibili configurazioni dei parametri per ogni algoritmo è stato di
+individuare quali fossero i parametri ottimali.
 
-Il confronto principale è svolto fissando, per ciascun algoritmo, il parametro
+Il confronto principale è avvenuto fissando, per ciascun algoritmo, il parametro
 che minimizza il \emph{mean relative error} medio al checkpoint finale
 (aggregazione su seed e valori di \(F_0\)).
-Le configurazioni selezionate sono:
-\begin{itemize}
-    \item HyperLogLog++: \(k=18\);
-    \item HyperLogLog: \(k=16, L=32\);
-    \item LogLog: \(k=15, L=32\);
-    \item Probabilistic Counting: \(L=23\).
-\end{itemize}
+I parametri individuati sono riportati nella tabella \ref{tab:best-config-selection}.
 
 \begin{table}[htbp]
     \centering
@@ -63,8 +69,15 @@ Le configurazioni selezionate sono:
     \label{tab:best-config-selection}
 \end{table}
 
-\section{Risultati streaming con best-config}
+\section{Confronto tra i vari seed}
+Per poter fare le analisi successive si è fatta prima un'analisi sperimentale per verificare
+che scegliere un seed rispetto ad un altro non cambi le valutazioni degli algoritmi in maniera gravosa.
 
+Segue che ...
+
+\section{Risultati streaming con le configurazioni ottimali}
+Una volta individuati i parametri che minimizzassero il \emph{mean relative error} si è fatta un'analisi
+sulla stima media di \texttt{F\_0} tra i vari algoritmi.
 \subsection{Stima media nel tempo e transitorio iniziale}
 
 Le Figure~\ref{fig:best-stream-est-linear} e
