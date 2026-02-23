@@ -324,7 +324,7 @@ sketch costruiti su porzioni diverse della stream. Come possibile esempio, si pe
 indipendente il loro sketch dei dati e che si voglia unire queste informazioni. Intuitivamente, ciò è
 possibile solo se gli sketch condividono gli stessi parametri strutturali e la stessa funzione di hash
 (o lo stesso seed), altrimenti la fusione può degradare le garanzie.
-\begin{definition}[Sketch mergeable]
+\begin{definition}[Mergeable Sketch]
 Sia $\mathcal{K}(\cdot)$ la procedura che costruisce uno sketch e sia $\oplus$ un
 operatore sullo stato. Lo sketch è \emph{mergeable} se, per due stream
 $S_1, S_2$ costruite con la stessa parametrizzazione e la stessa funzione di hash,
@@ -353,7 +353,7 @@ $\oplus$ è \emph{chiuso} se
 \[
 \oplus:\mathcal{S}\times\mathcal{S}\to\mathcal{S},
 \]
-cioè se la combinazione di due stati produce ancora uno stato valido dello
+ovvero se la combinazione di due stati produce ancora uno stato valido dello
 stesso tipo.
 \end{definition}
 

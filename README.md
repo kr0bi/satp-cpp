@@ -94,86 +94,28 @@ bias,absolute_bias,relative_bias,mean_relative_error,rmse,mae
 Current hashing is deterministic (splitmix64), so results are reproducible for a fixed dataset. If you want to study robustness to different hash functions/seeds, introduce a configurable hash seed (e.g., `splitmix64(id ^ seed)`), log it in the CSV, and optionally centralize hashing in the framework.
 
 ## TODO
-1. Refactor della generazione dataset:
-   - Dati `n` (numero totale di elementi), `d` (numero di elementi distinti), `p` (numero di partizioni) e `seed`.
-   - Generare un unico file con nomenclatura `dataset_n_{n}_d_{d}_p_{p}_s_{seed}`.
-   - Il file deve essere in formato JSON con lo schema seguente.
-   - A differenza del metodo precedente, creare gia' tutte le partizioni dentro lo stesso file.
-   - Obiettivo: eseguire tutti gli algoritmi su un singolo file pre-costruito.
+### Completato
+- [x] Refactor del dataset su file unico per configurazione (`dataset_n_{n}_d_{d}_p_{p}_s_{seed}.bin`).
+- [x] Formato binario compresso per partizione (`zlib`) con caricamento di una sola partizione alla volta.
+- [x] Modalita' `normal`, `streaming` e `merge` integrate nel framework.
+- [x] Operazione di merge implementata e valutata in CSV dedicato (`results_merge.csv`).
+- [x] Output CSV standardizzati e salvati automaticamente in `results/<AlgorithmName>/<params>/`.
+- [x] Orchestrazione batch con sweep completo dei parametri (`scripts/orchestrate_benchmarks.py --full`).
+- [x] Pipeline notebook per grafici e analisi sperimentale (streaming + merge).
 
-   Schema JSON:
-   ```json
-   {
-     "nOfElements": 5,
-     "distinct": 4,
-     "partizioni": [
-       {
-         "stream": [
-           {
-             "id": 1,
-             "freq": 1
-           },
-           {
-             "id": 2,
-             "freq": 1
-           },
-           {
-             "id": 100,
-             "freq": 1
-           },
-           {
-             "id": 4,
-             "freq": 1
-           },
-           {
-             "id": 1,
-             "freq": 2
-           }
-         ]
-       },
-       {
-         "stream": [
-           {
-             "id": 4,
-             "freq": 1
-           },
-           {
-             "id": 2,
-             "freq": 1
-           },
-           {
-             "id": 25,
-             "freq": 1
-           },
-           {
-             "id": 4,
-             "freq": 2
-           },
-           {
-             "id": 8,
-             "freq": 1
-           }
-         ]
-       }
-     ]
-   }
-   ```
+### Da fare (priorita')
+1. Implementare Count-Min Sketch (frequenze).
+2. Implementare Bloom Filter (membership).
+3. Implementare Ring Bloom Filter.
+4. Estendere il merge da coppie a topologie con `k` nodi/cluster (catena/albero) e misurarne il degrado.
+5. Aggiungere misure empiriche di costo:
+   - tempo di `update`, `query`, `merge`;
+   - memoria residente effettiva per algoritmo.
+6. Introdurre robustezza all'hash sperimentale:
+   - piu' funzioni di hash e/o seed di hash configurabile;
+   - confronto dei grafici al variare dell'hash.
+7. Aggiungere serializzazione/deserializzazione degli sketch per scenari distribuiti.
 
-2. Aggiungere l'operazione di merge.
-3. Estendere il framework con i seguenti workflow:
-   - a) Dato un file dataset nel formato sopra, leggerlo e caricare una partizione alla volta in memoria; fissati `n`, `d` e `p`, misurare bias, varianza, media e altre metriche.
-   - b) Abilitare una modalita' streaming: input da file intero, lettura elemento per elemento, calcolo progressivo delle metriche per osservare lo scostamento della stima nel tempo.
-   - c) Abilitare una prima modalita' merge: merge di soli due sketch (inizialmente), confronto tra stima di `F_0` via merge e lettura seriale delle partizioni, sia con parametri fissi sia in modalita' streaming elemento per elemento.
-4. Correggere la dicitura `Sketch Mergeable` in `Mergeable Sketch`.
-5. Correggere la definizione dell'operatore di chiusura per il merge (attualmente errata).
-6. Fare grafici teorici dello spazio consumato dagli sketch all'aumentare degli elementi.
-7. Fare grafici variando numero di ID, parametri e merge, misurando precisione e varianza.
-8. Implementare Count-Min Sketch e Bloom Filter.
-9. Implementare Ring Bloom Filter.
-10. Iniziare a produrre tutti i grafici sensati per l'analisi sperimentale.
-11. Opzionali:
-   - a) Fare grafici empirici dello spazio realmente usato da ogni sketch (thread/processo per algoritmo) al crescere degli elementi.
-   - b) Fare merge di `k` cluster e misurare il deterioramento.
-   - c) Usare un sistema concreto come Apache Kafka per gli input.
-   - d) Aggiungere piu' funzioni di hash e rifare i grafici al variare della funzione.
-   - e) Aggiungere serializzazione per abilitare scenari distribuiti.
+### Opzionali
+1. Integrazione input da sistema streaming reale (es. Apache Kafka).
+2. Campagne comparative su dataset non uniformi (oltre al caso uniforme corrente).
