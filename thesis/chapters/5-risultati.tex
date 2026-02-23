@@ -73,18 +73,93 @@ I parametri individuati sono riportati nella tabella \ref{tab:best-config-select
 Per poter fare le analisi successive si è fatta prima un'analisi sperimentale per verificare
 che scegliere un seed rispetto ad un altro non cambi le valutazioni degli algoritmi in maniera gravosa.
 
-Segue che ...
+L'analisi è stata eseguita fissando, per ciascun algoritmo, la configurazione
+migliore della Tabella~\ref{tab:best-config-selection} e confrontando i seed
+\(\{42,137357,10032018,21041998,29042026\}\) sui valori finali di
+\texttt{results\_streaming.csv}.
+Per misurare la sensibilità al seed è stato utilizzato il coefficiente di
+variazione
+\[
+\mathrm{CV}(X)=\frac{\sigma(X)}{|\mathbb{E}[X]|},
+\]
+calcolato su MRE, RMSE, varianza e bias.
+
+Il CV è una misura \emph{adimensionale} di dispersione relativa: valori vicini
+allo \(0\) indicano che la metrica varia poco al variare del seed, mentre valori
+più alti indicano maggiore sensibilità.
+In seguito si usa la seguente lettura operativa:
+\(\mathrm{CV}<0.10\) indica una variabilità contenuta, \(0.10\le\mathrm{CV}<0.20\) una
+variabilità moderata, mentre \(\mathrm{CV}\ge 0.20\) una variabilità elevata.
+
+Queste soglie sono interpretative (non universali) e vanno sempre lette insieme
+al livello assoluto dell'errore: una configurazione può avere CV basso ma avere un
+errore medio alto.
+
+Inoltre, quando \(|\mathbb{E}[X]|\) è molto vicino a zero, il CV può
+diventare numericamente instabile; in questi casi la valutazione è supportata
+anche da boxplot e metriche assolute.
+
+La Figura~\ref{fig:seed-sens-cv} mostra i valori di CV per configurazione
+algoritmica, mentre la Figura~\ref{fig:seed-sens-box} riporta la distribuzione
+della MRE sui seed per le configurazioni selezionate.
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=0.88\textwidth]{figures/results/seed_sensitivity_mre_cv_by_setting.png}
+    \caption{Sensibilità al seed: coefficiente di variazione della MRE per setting algoritmico.}
+    \label{fig:seed-sens-cv}
+\end{figure}
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=0.88\textwidth]{figures/results/seed_sensitivity_mre_boxplot_best_setting.png}
+    \caption{Distribuzione della MRE sui seed nelle configurazioni best-config.}
+    \label{fig:seed-sens-box}
+\end{figure}
+
+La Tabella~\ref{tab:seed-sens-summary} sintetizza i risultati principali.
+HyperLogLog e HyperLogLog++ mostrano una sensibilità simile e contenuta
+(\(\mathrm{CV}_{\mathrm{MRE}}\approx 0.079\)); LogLog è leggermente più
+sensibile (\(\approx 0.116\)).
+Mentre Probabilistic Counting presenta un \(\mathrm{CV}_{\mathrm{MRE}}\) molto basso,
+ma con MRE assoluta elevata (circa \(0.5\) nel best-config), ricordando che ``stabile'' non implica ``accurato''.
+
+\begin{table}[htbp]
+    \centering
+    \small
+    \setlength{\tabcolsep}{6pt}
+    \renewcommand{\arraystretch}{1.1}
+    \begin{tabular}{|l|c|c|}
+        \hline
+        Algoritmo & Parametri (seed-sensitivity) & \(\mathrm{CV}_{\mathrm{MRE}}\) \\
+        \hline
+        HyperLogLog & \(k=7,\ L=32\) & 0.079052 \\
+        \hline
+        HyperLogLog++ & \(k=7\) & 0.079061 \\
+        \hline
+        LogLog & \(k=8,\ L=32\) & 0.116134 \\
+        \hline
+        Probabilistic Counting & \(L=1\) & \(8.53\times 10^{-6}\) \\
+        \hline
+    \end{tabular}
+    \caption{Sintesi della sensibilità al seed (metrica: coefficiente di variazione della MRE).}
+    \label{tab:seed-sens-summary}
+\end{table}
+
+In base a questo confronto, i seed scelti non alterano in modo sostanziale la stima
+qualitativa tra gli algoritmi nelle configurazioni selezionate.
+Di conseguenza, le analisi successive possono essere discusse su un unico seed
+rappresentativo, in questo caso si è scelto 21041998, senza perdita di generalità operativa, mantenendo
+comunque i risultati aggregati sui seed nelle tabelle riepilogative.
 
 \section{Risultati streaming con le configurazioni ottimali}
 Una volta individuati i parametri che minimizzassero il \emph{mean relative error} si è fatta un'analisi
-sulla stima media di \texttt{F\_0} tra i vari algoritmi.
+sulla stima media di $F_0$ tra i vari algoritmi utilizzando un unico seed.
 \subsection{Stima media nel tempo e transitorio iniziale}
-
-Le Figure~\ref{fig:best-stream-est-linear} e
+Le figure~\ref{fig:best-stream-est-linear} e
 \ref{fig:best-stream-est-loglog} mostrano l'andamento di
-\(\hat{F}_0(t)\) rispetto a \(F_0(t)\) con seed 21041998.
-La scala log-log è usata per rendere visibile il comportamento sui primi
-checkpoint, come richiesto in fase di revisione.
+\(\hat{F}_0(t)\) rispetto a \(F_0(t)\) con seed 21041998. La scala log-log è usata per rendere visibile il comportamento sui primi
+checkpoint.
 
 \begin{figure}[htbp]
     \centering
@@ -102,14 +177,14 @@ checkpoint, come richiesto in fase di revisione.
 
 In questa configurazione HyperLogLog++ e HyperLogLog seguono da vicino la curva
 reale su tutti i livelli di cardinalità testati.
-LogLog rimane vicino ai due algoritmi HLL per \(F_0\) medio-alti, ma mantiene
+L'algoritmo LogLog rimane comunque vicino ai due algoritmi HLL per \(F_0\) medio-alti, ma mantiene
 uno scarto più evidente nel caso \(F_0=10^5\).
-Probabilistic Counting resta l'algoritmo meno stabile nella fase transitoria,
+Mentre Probabilistic Counting resta l'algoritmo meno stabile nella fase transitoria,
 con deviazioni significative già a metà stream.
 
 \subsection{Varianza nel tempo}
 
-La Figura~\ref{fig:best-stream-var-loglog} confronta la varianza della stima in
+La figura~\ref{fig:best-stream-var-loglog} confronta la varianza della stima in
 scala log-log.
 
 \begin{figure}[htbp]
@@ -175,39 +250,6 @@ solo MRE endpoint.
     \label{fig:best-stream-mre-by-f0}
 \end{figure}
 
-\subsection{Grafici aggiuntivi di revisione scientifica}
-
-La Figura~\ref{fig:best-stream-calibration} mostra la calibrazione endpoint,
-ossia \(\hat{F}_0\) medio contro \(F_0\) reale su scala log-log con diagonale
-ideale \(y=x\).
-
-\begin{figure}[htbp]
-    \centering
-    \includegraphics[width=0.78\textwidth]{figures/results/best_stream_endpoint_calibration_loglog.png}
-    \caption{Best-config: calibrazione endpoint \(\hat{F}_0\) vs \(F_0\) (media sui seed, scala log-log).}
-    \label{fig:best-stream-calibration}
-\end{figure}
-
-La Figura~\ref{fig:best-stream-convergence} riporta il primo checkpoint in cui
-MRE\((t) \le 5\%\).
-HLL e HLL++ soddisfano la soglia già al primo checkpoint disponibile;
-LogLog converge più tardi, mentre Probabilistic Counting non raggiunge la soglia
-nel dominio analizzato.
-Formalmente, il tempo di convergenza è definito come
-\[
-t_{5\%} = \min\{t \mid \mathrm{MRE}(t)\le 0.05\}.
-\]
-Nel caso di HLL e HLL++, il valore \(t_{5\%}=1\) va interpretato con cautela:
-la soglia è raggiunta subito perché il prefisso iniziale contiene pochissimi
-distinti e l'errore relativo medio è ancora poco informativo sul comportamento
-asintotico.
-
-\begin{figure}[htbp]
-    \centering
-    \includegraphics[width=0.82\textwidth]{figures/results/best_stream_convergence_t5pct_loglog.png}
-    \caption{Best-config: tempo medio di convergenza alla soglia MRE \(\le 5\%\) (scala log-log).}
-    \label{fig:best-stream-convergence}
-\end{figure}
 
 \section{Risultati merge con best-config}
 
