@@ -1,0 +1,73 @@
+algorithm,param_value,mre_mean
+HyperLogLog,4,0.1977268148
+HyperLogLog,5,0.1512534952
+HyperLogLog,6,0.093039706
+HyperLogLog,7,0.0721187046
+HyperLogLog,8,0.0410875962
+HyperLogLog,9,0.0346386812
+HyperLogLog,10,0.0193556482
+HyperLogLog,11,0.0172351536
+HyperLogLog,12,0.0154385944
+HyperLogLog,13,0.007362497399999999
+HyperLogLog,14,0.005148763
+HyperLogLog,15,0.0063315832
+HyperLogLog,16,0.0027360789999999998
+HyperLogLog++,4,0.1977268148
+HyperLogLog++,5,0.1512534952
+HyperLogLog++,6,0.0930347466
+HyperLogLog++,7,0.0721157206
+HyperLogLog++,8,0.0410860714
+HyperLogLog++,9,0.034637561
+HyperLogLog++,10,0.019354876200000003
+HyperLogLog++,11,0.0172346322
+HyperLogLog++,12,0.0154380342
+HyperLogLog++,13,0.007363077600000001
+HyperLogLog++,14,0.0051483462
+HyperLogLog++,15,0.0048993476
+HyperLogLog++,16,0.002904721
+HyperLogLog++,17,0.0017548094
+HyperLogLog++,18,0.001369746
+LogLog,4,0.2441480426
+LogLog,5,0.1951669106
+LogLog,6,0.090723123
+LogLog,7,0.07338815679999999
+LogLog,8,0.0565334368
+LogLog,9,0.0392991994
+LogLog,10,0.0243353154
+LogLog,11,0.0206949412
+LogLog,12,0.0204972434
+LogLog,13,0.0079612002
+LogLog,14,0.006249966
+LogLog,15,0.005614671
+LogLog,16,0.0110630602
+Probabilistic Counting,1,0.99999435
+Probabilistic Counting,2,0.9999858749999999
+Probabilistic Counting,3,0.99997175
+Probabilistic Counting,4,0.9999435
+Probabilistic Counting,5,0.999884175
+Probabilistic Counting,6,0.9997683499999999
+Probabilistic Counting,7,0.999533875
+Probabilistic Counting,8,0.99906775
+Probabilistic Counting,9,0.9981326749999999
+Probabilistic Counting,10,0.996262525
+Probabilistic Counting,11,0.9925222250000001
+Probabilistic Counting,12,0.985041625
+Probabilistic Counting,13,0.9700832500000001
+Probabilistic Counting,14,0.940375495
+Probabilistic Counting,15,0.8822336500000001
+Probabilistic Counting,16,0.787552345
+Probabilistic Counting,17,0.8109412199999999
+Probabilistic Counting,18,0.785862472
+Probabilistic Counting,19,0.684530774
+Probabilistic Counting,20,0.639642454
+Probabilistic Counting,21,0.6453360076
+Probabilistic Counting,22,0.5521148886
+Probabilistic Counting,23,0.5249507846
+Probabilistic Counting,24,0.8589724726
+Probabilistic Counting,25,0.8589724726
+Probabilistic Counting,26,0.8589724726
+Probabilistic Counting,27,0.8589724726
+Probabilistic Counting,28,0.8589724726
+Probabilistic Counting,29,0.8589724726
+Probabilistic Counting,30,0.8589724726
+Probabilistic Counting,31,0.8589724726

@@ -1,0 +1,73 @@
+algorithm,params,rows,max_abs_delta,max_rel_delta
+HyperLogLog,"k=10,L=32",500,0,0
+HyperLogLog,"k=11,L=32",500,0,0
+HyperLogLog,"k=12,L=32",500,0,0
+HyperLogLog,"k=13,L=32",500,0,0
+HyperLogLog,"k=14,L=32",500,0,0
+HyperLogLog,"k=15,L=32",500,0,0
+HyperLogLog,"k=16,L=32",500,0,0
+HyperLogLog,"k=4,L=32",500,0,0
+HyperLogLog,"k=5,L=32",500,0,0
+HyperLogLog,"k=6,L=32",500,0,0
+HyperLogLog,"k=7,L=32",500,0,0
+HyperLogLog,"k=8,L=32",500,0,0
+HyperLogLog,"k=9,L=32",500,0,0
+HyperLogLog++,k=10,500,0,0
+HyperLogLog++,k=11,500,0,0
+HyperLogLog++,k=12,500,0,0
+HyperLogLog++,k=13,500,0,0
+HyperLogLog++,k=14,500,0,0
+HyperLogLog++,k=15,500,0,0
+HyperLogLog++,k=16,500,0,0
+HyperLogLog++,k=17,500,0,0
+HyperLogLog++,k=18,500,0,0
+HyperLogLog++,k=4,500,0,0
+HyperLogLog++,k=5,500,0,0
+HyperLogLog++,k=6,500,0,0
+HyperLogLog++,k=7,500,0,0
+HyperLogLog++,k=8,500,0,0
+HyperLogLog++,k=9,500,0,0
+LogLog,"k=10,L=32",500,0,0
+LogLog,"k=11,L=32",500,0,0
+LogLog,"k=12,L=32",500,0,0
+LogLog,"k=13,L=32",500,0,0
+LogLog,"k=14,L=32",500,0,0
+LogLog,"k=15,L=32",500,0,0
+LogLog,"k=16,L=32",500,0,0
+LogLog,"k=4,L=32",500,0,0
+LogLog,"k=5,L=32",500,0,0
+LogLog,"k=6,L=32",500,0,0
+LogLog,"k=7,L=32",500,0,0
+LogLog,"k=8,L=32",500,0,0
+LogLog,"k=9,L=32",500,0,0
+Probabilistic Counting,L=1,500,0,0
+Probabilistic Counting,L=10,500,0,0
+Probabilistic Counting,L=11,500,0,0
+Probabilistic Counting,L=12,500,0,0
+Probabilistic Counting,L=13,500,0,0
+Probabilistic Counting,L=14,500,0,0
+Probabilistic Counting,L=15,500,0,0
+Probabilistic Counting,L=16,500,0,0
+Probabilistic Counting,L=17,500,0,0
+Probabilistic Counting,L=18,500,0,0
+Probabilistic Counting,L=19,500,0,0
+Probabilistic Counting,L=2,500,0,0
+Probabilistic Counting,L=20,500,0,0
+Probabilistic Counting,L=21,500,0,0
+Probabilistic Counting,L=22,500,0,0
+Probabilistic Counting,L=23,500,0,0
+Probabilistic Counting,L=24,500,0,0
+Probabilistic Counting,L=25,500,0,0
+Probabilistic Counting,L=26,500,0,0
+Probabilistic Counting,L=27,500,0,0
+Probabilistic Counting,L=28,500,0,0
+Probabilistic Counting,L=29,500,0,0
+Probabilistic Counting,L=3,500,0,0
+Probabilistic Counting,L=30,500,0,0
+Probabilistic Counting,L=31,500,0,0
+Probabilistic Counting,L=4,500,0,0
+Probabilistic Counting,L=5,500,0,0
+Probabilistic Counting,L=6,500,0,0
+Probabilistic Counting,L=7,500,0,0
+Probabilistic Counting,L=8,500,0,0
+Probabilistic Counting,L=9,500,0,0
