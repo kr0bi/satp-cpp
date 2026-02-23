@@ -117,5 +117,7 @@ dataset_*.bin
 
 # ----------------- Results ----------------------
 results.csv
-results/
+results/*
+!results/**/
+!results/**/*.csv
 datasets/
