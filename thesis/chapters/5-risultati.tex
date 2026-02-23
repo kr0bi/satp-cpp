@@ -45,7 +45,7 @@ individuare quali fossero i parametri ottimali.
 Il confronto principale è avvenuto fissando, per ciascun algoritmo, il parametro
 che minimizza il \emph{mean relative error} medio al checkpoint finale
 (aggregazione su seed e valori di \(F_0\)).
-I parametri individuati sono riportati nella tabella \ref{tab:best-config-selection}.
+I parametri individuati sono riportati nella Tabella~\ref{tab:configurazione-ottimale-selection}.
 
 \begin{table}[htbp]
     \centering
@@ -65,8 +65,8 @@ I parametri individuati sono riportati nella tabella \ref{tab:best-config-select
         Probabilistic Counting & \(L=23\) & 0.524951 \\
         \hline
     \end{tabular}
-    \caption{Configurazione migliore per algoritmo nel dominio esplorato.}
-    \label{tab:best-config-selection}
+    \caption{Configurazione ottimale per algoritmo nel dominio esplorato.}
+    \label{tab:configurazione-ottimale-selection}
 \end{table}
 
 \section{Confronto tra i vari seed}
@@ -74,7 +74,7 @@ Per poter fare le analisi successive si è fatta prima un'analisi sperimentale p
 che scegliere un seed rispetto ad un altro non cambi le valutazioni degli algoritmi in maniera gravosa.
 
 L'analisi è stata eseguita fissando, per ciascun algoritmo, la configurazione
-migliore della Tabella~\ref{tab:best-config-selection} e confrontando i seed
+ottimale della Tabella~\ref{tab:configurazione-ottimale-selection} e confrontando i seed
 \(\{42,137357,10032018,21041998,29042026\}\) sui valori finali di
 \texttt{results\_streaming.csv}.
 Per misurare la sensibilità al seed è stato utilizzato il coefficiente di
@@ -113,7 +113,7 @@ della MRE sui seed per le configurazioni selezionate.
 \begin{figure}[htbp]
     \centering
     \includegraphics[width=0.88\textwidth]{figures/results/seed_sensitivity_mre_boxplot_best_setting.png}
-    \caption{Distribuzione della MRE sui seed nelle configurazioni best-config.}
+    \caption{Distribuzione della MRE sui seed nelle configurazioni ottimali.}
     \label{fig:seed-sens-box}
 \end{figure}
 
@@ -122,7 +122,7 @@ HyperLogLog e HyperLogLog++ mostrano una sensibilità simile e contenuta
 (\(\mathrm{CV}_{\mathrm{MRE}}\approx 0.079\)); LogLog è leggermente più
 sensibile (\(\approx 0.116\)).
 Mentre Probabilistic Counting presenta un \(\mathrm{CV}_{\mathrm{MRE}}\) molto basso,
-ma con MRE assoluta elevata (circa \(0.5\) nel best-config), ricordando che ``stabile'' non implica ``accurato''.
+ma con MRE assoluta elevata (circa \(0.5\) nella configurazione ottimale), ricordando che ``stabile'' non implica ``accurato''.
 
 \begin{table}[htbp]
     \centering
@@ -164,7 +164,7 @@ checkpoint.
 \begin{figure}[htbp]
     \centering
     \includegraphics[width=0.96\textwidth]{figures/results/best_stream_estimate_vs_truth_linear_seed21041998.png}
-    \caption{Best-config: confronto tra stima media \(\hat{F}_0(t)\) e valore reale \(F_0(t)\) in scala lineare (seed 21041998).}
+    \caption{Configurazione ottimale: confronto tra stima media \(\hat{F}_0(t)\) e valore reale \(F_0(t)\) in scala lineare (seed 21041998).}
     \label{fig:best-stream-est-linear}
 \end{figure}
 
@@ -190,7 +190,7 @@ scala log-log.
 \begin{figure}[htbp]
     \centering
     \includegraphics[width=0.96\textwidth]{figures/results/best_stream_variance_loglog_seed21041998.png}
-    \caption{Best-config: varianza della stima in modalità streaming (seed 21041998, scala log-log).}
+    \caption{Configurazione ottimale: varianza della stima in modalità streaming (seed 21041998, scala log-log).}
     \label{fig:best-stream-var-loglog}
 \end{figure}
 
@@ -198,13 +198,13 @@ La dispersione di HyperLogLog++ è inferiore a HyperLogLog e LogLog per quasi
 l'intero dominio osservato, in coerenza con la progettazione di HLL++
 \cite{Heule_Nunkesser_Hall_2013}.
 Per \(F_0=10^7\) la varianza endpoint è nulla per tutte le configurazioni
-best-config perché nel dataset usato vale \(n=d\) e l'endpoint è deterministico
+ottimali perché nel dataset usato vale \(n=d\) e l'endpoint è deterministico
 tra run.
 
-\subsection{Metriche endpoint aggregate}
+\subsection{Metriche aggregate in modalità \textit{normal}}
 
-La Tabella~\ref{tab:best-stream-summary} riporta le metriche endpoint mediate
-sui seed per ciascun valore finale di \(F_0\).
+La Tabella~\ref{tab:best-stream-summary} riporta le metriche associate alla modalità di esecuzione
+\textit{normal} mediate sui seed per ciascun valore finale di \(F_0\).
 
 \begin{table}[htbp]
     \centering
@@ -236,22 +236,21 @@ sui seed per ciascun valore finale di \(F_0\).
         Probabilistic Counting & 10000000 & 0.084486 & 844860.000 & 0.000 & 10844860.000 \\
         \hline
     \end{tabular}
-    \caption{Best-config: metriche endpoint aggregate in modalità streaming (media sui seed).}
+    \caption{Configurazione ottimale: metriche endpoint aggregate in modalità streaming (media sui seed).}
     \label{tab:best-stream-summary}
 \end{table}
 
-La Figura~\ref{fig:best-stream-mre-by-f0} visualizza lo stesso confronto sul
-solo MRE endpoint.
+La Figura~\ref{fig:best-stream-mre-by-f0} visualizza lo stesso confronto sull'unica metrica MRE.
 
 \begin{figure}[htbp]
     \centering
     \includegraphics[width=0.90\textwidth]{figures/results/best_stream_final_mre_by_algorithm_and_f0.png}
-    \caption{Best-config: MRE endpoint per algoritmo e valore finale di \(F_0\) (media sui seed).}
+    \caption{Configurazione ottimale: MRE endpoint per algoritmo e valore finale di \(F_0\) (media sui seed).}
     \label{fig:best-stream-mre-by-f0}
 \end{figure}
 
 
-\section{Risultati merge con best-config}
+\section{Risultati merge con la configurazione ottimale}
 
 Per ogni algoritmo si confrontano stima da merge e stima seriale su coppie di
 partizioni.
@@ -266,14 +265,14 @@ Capitolo~\ref{chp:implementazione} e nel background sulla mergeabilità.
 \begin{figure}[htbp]
     \centering
     \includegraphics[width=0.76\textwidth]{figures/results/best_merge_delta_abs_by_algorithm.png}
-    \caption{Best-config: distribuzione di \codepath{delta\_merge\_serial\_abs}.}
+    \caption{Configurazione ottimale: distribuzione di \codepath{delta\_merge\_serial\_abs}.}
     \label{fig:best-merge-box}
 \end{figure}
 
 \begin{figure}[htbp]
     \centering
     \includegraphics[width=0.76\textwidth]{figures/results/best_merge_nonzero_delta_counts.png}
-    \caption{Best-config: conteggio dei casi con delta non nullo nel confronto merge vs seriale.}
+    \caption{Configurazione ottimale: conteggio dei casi con delta non nullo nel confronto merge vs seriale.}
     \label{fig:best-merge-nonzero}
 \end{figure}
 
@@ -295,7 +294,7 @@ Capitolo~\ref{chp:implementazione} e nel background sulla mergeabilità.
         Probabilistic Counting & 500 & 0 & 0 & 0 & 0 \\
         \hline
     \end{tabular}
-    \caption{Best-config: confronto merge vs seriale. Tutti i delta risultano nulli nel dataset analizzato.}
+    \caption{Configurazione ottimale: confronto merge vs seriale. Tutti i delta risultano nulli nel dataset analizzato.}
     \label{tab:best-merge-summary}
 \end{table}
 
@@ -314,7 +313,7 @@ Per la modalità merge, i risultati sono coerenti con la proprietà di fusione
 attesa per gli sketch implementati: nel confronto a coppie non si osservano
 scarti rispetto al processamento seriale.
 
-\section{Limiti sperimentali}
+\section{TODOs}
 
 I limiti principali della campagna corrente sono:
 \begin{itemize}
