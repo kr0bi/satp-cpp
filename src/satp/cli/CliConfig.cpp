@@ -41,6 +41,10 @@ namespace satp::cli::config {
             cfg.datasetPath = value;
             return true;
         }
+        if (param == "resultsNamespace") {
+            cfg.resultsNamespace = value;
+            return true;
+        }
         if (param == "k") return parseU32(value, cfg.k);
         if (param == "l") return parseU32(value, cfg.l);
         if (param == "lLog") return parseU32(value, cfg.lLog);
@@ -54,10 +58,11 @@ namespace satp::cli::config {
             << "  show                         Stampa i parametri correnti\n"
             << "  list                         Elenca algoritmi supportati\n"
             << "  set <param> <value>          Imposta un parametro\n"
+            << "                               Parametri: datasetPath, resultsNamespace, k, l, lLog\n"
             << "  run <algo|all>               Esegue uno o piu' algoritmi (modalita' normale)\n"
             << "  runstream <algo|all>         Esegue uno o piu' algoritmi (modalita' streaming)\n"
             << "  runmerge <algo|all>          Esegue benchmark merge a coppie (0-1,2-3,...)\n"
-            << "                               CSV automatico in results/<algoritmo>/<params>/\n"
+            << "                               CSV automatico in results/<namespace>/<algoritmo>/<params>/\n"
             << "  quit                         Esce\n";
     }
 
@@ -92,6 +97,7 @@ namespace satp::cli::config {
         std::cout
             << "Parametri correnti:\n"
             << "  datasetPath   = " << cfg.datasetPath << '\n'
+            << "  resultsNs     = " << cfg.resultsNamespace << '\n'
             << "  sampleSize    = " << view.sampleSize << " (dal dataset)\n"
             << "  runs          = " << view.runs << " (dal dataset)\n"
             << "  seed          = " << view.seed << " (dal dataset)\n"
@@ -106,6 +112,7 @@ namespace satp::cli::config {
         ctx.sampleSize = ctx.index.info.elements_per_partition;
         ctx.runs = ctx.index.info.partition_count;
         ctx.seed = ctx.index.info.seed;
+        ctx.resultsNamespace = cfg.resultsNamespace;
         ctx.repoRoot = path_utils::detectRepoRoot(cfg.datasetPath);
         return ctx;
     }

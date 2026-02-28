@@ -10,6 +10,7 @@
 namespace satp::cli {
     struct RunConfig {
         std::string datasetPath = "dataset.bin";
+        std::string resultsNamespace = "legacy";
         std::uint32_t k = 16;    // registers for HLL/LogLog
         std::uint32_t l = 16;    // bitmap size for PC
         std::uint32_t lLog = 32; // bitmap size for LogLog internals
@@ -37,6 +38,7 @@ namespace satp::cli {
         std::size_t sampleSize = 0;
         std::size_t runs = 0;
         std::uint32_t seed = 0;
+        std::string resultsNamespace;
         std::filesystem::path repoRoot;
     };
 

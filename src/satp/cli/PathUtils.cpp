@@ -58,16 +58,21 @@ namespace satp::cli::path_utils {
     }
 
     std::filesystem::path buildResultCsvPath(const std::filesystem::path &repoRoot,
+                                             const std::string &resultsNamespace,
                                              const std::string &algorithmName,
                                              const std::string &params,
                                              const RunMode mode) {
         const std::string paramsDir = sanitizeForPath(params);
+        const std::string nsDir = sanitizeForPath(resultsNamespace);
         std::string fileName = "results_oneshot.csv";
+        std::string modeDir = "oneshot";
         if (mode == RunMode::Streaming) {
             fileName = "results_streaming.csv";
+            modeDir = "streaming";
         } else if (mode == RunMode::Merge) {
             fileName = "results_merge.csv";
+            modeDir = "merge";
         }
-        return repoRoot / "results" / algorithmName / paramsDir / fileName;
+        return repoRoot / "results" / nsDir / modeDir / algorithmName / paramsDir / fileName;
     }
 } // namespace satp::cli::path_utils

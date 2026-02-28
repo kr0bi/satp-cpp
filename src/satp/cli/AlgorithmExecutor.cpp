@@ -68,7 +68,7 @@ namespace satp::cli {
                       << '\t' << "sampleSize: " << ctx.sampleSize
                       << '\t' << "runs: " << ctx.runs
                       << '\t' << "seed: " << ctx.seed << '\n'
-                      << "resultsRoot: " << (ctx.repoRoot / "results").string() << '\n';
+                      << "resultsRoot: " << (ctx.repoRoot / "results" / ctx.resultsNamespace).string() << '\n';
         }
 
         void printNormalSummary(const AlgorithmRunSpec &spec,
@@ -124,6 +124,7 @@ namespace satp::cli {
                                 CtorArgs &&... ctorArgs) {
             const std::filesystem::path csvPath = path_utils::buildResultCsvPath(
                 ctx.repoRoot,
+                ctx.resultsNamespace,
                 spec.algorithmName,
                 spec.params,
                 mode);
