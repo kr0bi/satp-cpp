@@ -12,6 +12,7 @@ DEFAULT_N_VALUES = "100,1000,10000,100000,1000000,10000000"
 DEFAULT_D_RATIOS = "0.01,0.1,0.5,1.0"
 DEFAULT_SEEDS = "21041998,42,137357,10032018,29042026"
 DEFAULT_PARTITIONS = 50
+DEFAULT_RESULTS_NAMESPACE = "prefix_constant_rho"
 
 PC_L_DOMAIN = list(range(1, 32))        # ProbabilisticCounting: L in [1,31]
 LL_K_DOMAIN = list(range(4, 17))        # LogLog: k in [4,16], L=32
@@ -76,9 +77,15 @@ def ensure_dataset(repo_root: Path,
 
 def run_benchmarks(main_bin: Path,
                    dataset_path: Path,
+                   results_namespace: str,
                    commands: list[str],
                    run_label: str) -> None:
-    payload = "\n".join([f"set datasetPath {dataset_path}", *commands, "quit"]) + "\n"
+    payload = "\n".join([
+        f"set datasetPath {dataset_path}",
+        f"set resultsNamespace {results_namespace}",
+        *commands,
+        "quit"
+    ]) + "\n"
 
     print(f"[bench] dataset={dataset_path} mode={run_label}")
     subprocess.run(
@@ -182,14 +189,15 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description=(
             "Generate dataset matrix and run SATP benchmarks (oneshot/streaming/merge). "
-            "Results are written automatically by main to results/<algorithm>/<params>/."
+            "Results are written directly to results/<namespace>/<mode>/<algorithm>/<params>/."
         )
     )
     parser.add_argument("--repo-root", type=Path, default=Path(__file__).resolve().parents[1])
     parser.add_argument("--main-bin", type=Path, default=Path("build/main"))
-    parser.add_argument("--generator", type=Path, default=Path("scripts/generate_partitioned_dataset_bin.py"))
-    parser.add_argument("--dataset-dir", type=Path,
-                        default=Path("datasets/uniform_distribution/shuffled/random"))
+    parser.add_argument("--generator", type=Path, default=Path("scripts/generate_prefix_constant_rho_dataset_bin.py"))
+    parser.add_argument("--dataset-dir", type=Path, default=Path("datasets/prefix_constant_rho"))
+    parser.add_argument("--results-namespace", type=str, default=DEFAULT_RESULTS_NAMESPACE,
+                        help="Namespace under results/ for orchestrated outputs")
     parser.add_argument("--n-values", default=DEFAULT_N_VALUES)
     parser.add_argument("--d-ratios", default=DEFAULT_D_RATIOS)
     parser.add_argument("--seeds", default=DEFAULT_SEEDS)
@@ -254,7 +262,7 @@ def main() -> None:
     total = len(jobs)
     print(f"[plan] jobs={total} (n x d x seed), p={args.p}")
     print(f"[datasets] {dataset_dir}")
-    print(f"[results] {repo_root / 'results'}")
+    print(f"[results] {repo_root / 'results' / args.results_namespace}")
     print(
         f"[params] k={args.k} l={args.l} lLog={args.l_log} "
         f"oneshot={not args.skip_oneshot} streaming={not args.skip_streaming} merge={not args.skip_merge} "
@@ -309,6 +317,7 @@ def main() -> None:
         run_benchmarks(
             main_bin=main_bin,
             dataset_path=dataset_path,
+            results_namespace=args.results_namespace,
             commands=commands,
             run_label=run_label,
         )
