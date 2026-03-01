@@ -33,7 +33,8 @@ I componenti principali e le rispettive responsabilità sono:
     risultati;
     \item All'interno di \codepath{src/satp/algorithms/*.cpp} sono presenti le implementazioni concrete degli sketch
     (HyperLogLog++, HyperLogLog, LogLog, ProbabilisticCounting, TODO: CountMin e Bloom Filter);
-    \item \codepath{generate_partitioned_dataset_bin.py}: generazione deterministica
+    \item \codepath{generate_partitioned_dataset_bin.py} e
+    \codepath{generate_prefix_constant_rho_dataset_bin.py}: generazione deterministica
     dei dataset partizionati compressi;
     \item \codepath{orchestrate_benchmarks.py}: esecuzione batch sulle configurazioni \((n,d,seed)\)
     e selezione dei parametri per ogni algoritmo standard o custom.
@@ -41,11 +42,13 @@ I componenti principali e le rispettive responsabilità sono:
 
 L'esecuzione end-to-end della pipeline del framework è la seguente:
 \begin{enumerate}
-    \item vengono prima generati i dataset, chiamati \codepath{dataset_n_{n}_d_{d}_p_{p}_s_{seed}.bin} tramite lo script Python di generazione 
-    (\codepath{scripts/generate_partitioned_dataset_bin.py});
+    \item vengono prima generati i dataset, chiamati \codepath{dataset_n_{n}_d_{d}_p_{p}_s_{seed}.bin}, con gli script Python
+    \codepath{scripts/generate_partitioned_dataset_bin.py} oppure
+    \codepath{scripts/generate_prefix_constant_rho_dataset_bin.py};
     \item viene eseguito poi da CLI il (\codepath{main.cpp}) e vengono configurati i parametri rimanenti per ogni algoritmo, tra cui la modalità di esecuzione;
     \item l' \codepath{EvaluationFramework} gestisce il parsing del dataset e gli algoritmi vengono eseguiti;
-    \item infine, a seconda della modalità, avviene la scrittura CSV in \codepath{results/<algorithm>/<params>/results_*.csv}
+    \item infine, a seconda della modalità, avviene la scrittura CSV in
+    \codepath{results/<namespace>/<mode>/<algorithm>/<params>/results_*.csv}
     con \codepath{PathUtils::buildResultCsvPath} e \codepath{CsvResultWriter}.
 \end{enumerate}
 
@@ -187,27 +190,42 @@ Per la partizione 0:
 
 \section{Generazione dataset}
 
-Lo script \codepath{generate_partitioned_dataset_bin.py} permette il passagio dei seguenti
-parametri \texttt{--n}, \texttt{--d}, \texttt{--p}, \texttt{--seed},
-\texttt{--workers}, \texttt{--progress-batch}. 
-I vincoli implementati sono:
-\[
-0 \le d \le n, \qquad d \le \min(n, 2^{32}), \qquad p > 0.
-\]
-La nomenclatura del file di output è deterministica ed è stato scelto il seguente formato:
+Nel progetto sono presenti due generatori:
+\begin{itemize}
+    \item \codepath{generate_partitioned_dataset_bin.py}, usato per dataset uniformi generali;
+    \item \codepath{generate_prefix_constant_rho_dataset_bin.py}, usato per la campagna
+    \texttt{prefix\_constant\_rho} del Capitolo~\ref{chp:risultati}.
+\end{itemize}
+
+Entrambi accettano i parametri \texttt{--n}, \texttt{--d}, \texttt{--p}, \texttt{--seed},
+\texttt{--workers}, \texttt{--progress-batch} e producono file con nomenclatura deterministica:
 \codepath{dataset_n_{n}_d_{d}_p_{p}_s_{seed}.bin}.
 
-Per ogni partizione, il generatore:
+\subsection{Modalità \texttt{prefix\_constant\_rho}}
+
+Lo script \codepath{generate_prefix_constant_rho_dataset_bin.py} introduce il vincolo:
+\[
+n \bmod d = 0,
+\]
+in modo da fissare
+\[
+\rho=\frac{n}{d}
+\]
+costante per partizione. In questa modalità, per ogni blocco di lunghezza \(\rho\),
+viene forzata esattamente una nuova prima occorrenza. Ne segue che ai bordi di blocco:
+\[
+F_0(j\cdot \rho)=j.
+\]
+
+La costruzione è:
 \begin{enumerate}
-    \item deriva un seed locale da \((seed, partition\_index)\) tramite
-    \codepath{_derive_partition_seed};
-    \item estrae \(d\) ID distinti nel dominio \([0,\min(n,2^{32})-1]\);
-    \item forza \(d\) posizioni per garantire almeno una occorrenza per ogni ID distinto;
-    \item completa le altre posizioni campionando dagli ID distinti;
-    \item costruisce il bitset di prime occorrenze e comprime separatamente valori e bitset.
+    \item estrazione di \(d\) ID distinti nel dominio \([0,\min(n,2^{32})-1]\);
+    \item emissione della prima occorrenza di un nuovo ID all'inizio di ogni blocco;
+    \item completamento delle altre \(\rho-1\) posizioni campionando dagli ID già visti;
+    \item costruzione del bitset di verità e compressione zlib separata di valori e bitset.
 \end{enumerate}
 
-Quando il numero di workers è maggiore di 1, la generazione è parallelizzata per partizione con
+Quando \texttt{workers}>1, la generazione è parallelizzata per partizione con
 \texttt{multiprocessing}; la barra di avanzamento è emessa su \texttt{stderr}.
 
 \section{Interfacce comuni e hashing}
@@ -457,6 +475,31 @@ t_i^{(3)}=\left\lceil \pi_i^{(3)}\,n\right\rceil.
 Infine i checkpoint vengono ordinati, deduplicati e si forza sempre il punto
 finale \(t=n\).
 
+\subsection{Post-processing: analisi Type A e Type B}
+
+Dal medesimo CSV di \texttt{streaming} vengono costruite due viste analitiche nel notebook:
+\begin{itemize}
+    \item \textbf{Type A}: ascissa \(F_0(t)\) reale (\texttt{f0\_mean\_t}),
+    ordinata \(\hat{F}_0(t)\) media (\texttt{f0\_heat\_mean\_t}), pannelli per
+    valori di \(\rho=n/d\).
+    \item \textbf{Type B}: fissato un target \(F_0^{\ast}\), ascissa
+    \(\rho_t=t/F_0(t)\) (ripetizioni medie effettive), ordinata
+    \(\hat{F}_0\) al target. I punti sono ricavati per interpolazione lineare
+    sui checkpoint disponibili.
+\end{itemize}
+
+Nei pannelli in scala log-log, la banda di dispersione è trattata in forma
+moltiplicativa (coerente con la scala logaritmica), partendo da media \(\mu\)
+e deviazione standard \(\sigma\):
+\[
+\sigma_{\log}=\sqrt{\log\!\left(1+\left(\frac{\sigma}{\mu}\right)^2\right)},
+\qquad
+\text{low}=\mu e^{-\sigma_{\log}},
+\qquad
+\text{high}=\mu e^{\sigma_{\log}}.
+\]
+Nei pannelli lineari resta la banda classica \(\mu \pm \sigma\).
+
 \subsection{Output CSV}
 
 Le modalità \texttt{normal} e \texttt{streaming} condividono lo stesso schema CSV dove ogni colonna è:
@@ -507,7 +550,7 @@ L'entry point è il \codepath{main.cpp} che istanzia \codepath{BenchmarkCli}. I 
     \item \texttt{help}: mostra l'elenco dei comandi disponibili e una breve descrizione d'uso.
     \item \texttt{show}: stampa la configurazione corrente; \texttt{sampleSize}, \texttt{runs} e \texttt{seed} sono letti dal dataset indicato in \texttt{datasetPath}.
     \item \texttt{list}: elenca gli algoritmi disponibili (\texttt{hllpp}, \texttt{hll}, \texttt{ll}, \texttt{pc}).
-    \item \texttt{set <param> <value>}: imposta un parametro della sessione. I parametri supportati sono \texttt{datasetPath}, \texttt{k}, \texttt{l}, \texttt{lLog}.
+    \item \texttt{set <param> <value>}: imposta un parametro della sessione. I parametri supportati sono \texttt{datasetPath}, \texttt{resultsNamespace}, \texttt{k}, \texttt{l}, \texttt{lLog}.
     \item \texttt{run <algo|all>}: esegue uno o più algoritmi in modalità \texttt{normal} (metriche all'endpoint \(t=n\)).
     \item \texttt{runstream <algo|all>}: esegue uno o più algoritmi in modalità \texttt{streaming} (metriche ai checkpoint \(t\) durante la scansione della partizione).
     \item \texttt{runmerge <algo|all>}: esegue benchmark di merge a coppie di partizioni \((0,1),(2,3),\dots\), confrontando stima da merge e stima seriale.
@@ -520,9 +563,9 @@ Per i comandi \texttt{run}, \texttt{runstream} e \texttt{runmerge}, l'argomento
 
 Il metodo \codepath{PathUtils::buildResultCsvPath} costruisce i percorsi:
 \begin{itemize}
-    \item \codepath{results/<AlgorithmName>/<params>/results_oneshot.csv};
-    \item \codepath{results/<AlgorithmName>/<params>/results_streaming.csv};
-    \item \codepath{results/<AlgorithmName>/<params>/results_merge.csv}.
+    \item \codepath{results/<namespace>/oneshot/<AlgorithmName>/<params>/results_oneshot.csv};
+    \item \codepath{results/<namespace>/streaming/<AlgorithmName>/<params>/results_streaming.csv};
+    \item \codepath{results/<namespace>/merge/<AlgorithmName>/<params>/results_merge.csv}.
 \end{itemize}
 La stringa \texttt{params} viene sanitizzata da
 \codepath{sanitizeForPath} sostituendo i caratteri non alfanumerici con

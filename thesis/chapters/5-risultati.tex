@@ -3,276 +3,259 @@
 \chapter{Risultati sperimentali}
 \label{chp:risultati}
 
-In questo capitolo presenta i risultati sperimentali finali ottenuti con il
+In questo capitolo sono riportati i risultati sperimentali ottenuti con il
 framework descritto nel Capitolo~\ref{chp:implementazione}.
-L'analisi è limitata alle modalità di \emph{streaming} e di \emph{merge}, mentre i
-file \emph{oneshot} non vengono utilizzati poiché, a differenza, della modalità streaming viene preso un solo risultato finale per esecuzione.
-Le metriche considerate sono quelle formalizzate nel
-Capitolo~\ref{chp:background}.
+L'analisi è focalizzata sulla modalità \emph{streaming} e sulle due viste
+analitiche introdotte nel post-processing (\emph{Type A} e \emph{Type B}).
+La modalità \emph{oneshot} non viene discussa in quanto fornisce un solo punto
+finale per run e non consente di analizzare il transitorio.
 
 \section{Ambiente di test}
-I risultati sperimentali sono stati ottenuti su un notebook Apple MacBook Pro 13'' (2020) con processore Apple M1
-(Apple Silicon) con 16 GB di memoria RAM, un SSD NVMe da 512 GB e macOS Sequoia 15.7.2.
+I risultati sperimentali sono stati ottenuti su un notebook Apple MacBook Pro
+13'' (2020) con processore Apple M1 (Apple Silicon), 16 GB di RAM, SSD NVMe da
+512 GB e macOS Sequoia 15.7.2.
 
-L'esecuzione è avvenuta localmente su singola macchina, senza distribuzione su più nodi.
-
-La build e l'esecuzione dei test sono state effettuate con la seguente toolchain:
+L'esecuzione è avvenuta in locale su singola macchina.
+La toolchain utilizzata è:
 \begin{itemize}
     \item CMake 4.2.3;
     \item Apple Clang 17.0.0 (\texttt{clang-1700.0.13.5});
     \item target compilazione: \texttt{arm64-apple-darwin24.6.0}.
 \end{itemize}
 
-\subsection{Configurazione sperimentale}
-I risultati sono stati estratti dai CSV presenti in \codepath{results/} con la
-seguente configurazione:
+\section{Setup sperimentale}
+
+\subsection{Dataset usati nella campagna}
+
+Per questa campagna è stato usato il namespace:
+\codepath{datasets/prefix_constant_rho/}, con file:
+\begin{center}
+\small
+\codepath{dataset_n_10000000_d_<d>_p_50_s_21041998.bin}
+\end{center}
+e
+\[
+d \in \{10^5,2\cdot 10^5,5\cdot 10^5,10^6,2\cdot 10^6,5\cdot 10^6,10^7\}.
+\]
+
+Quindi:
+\[
+n=10^7,\qquad p=50,\qquad seed=21041998,\qquad
+\rho=\frac{n}{d}\in\{100,50,20,10,5,2,1\}.
+\]
+
+I risultati corrispondenti sono nei CSV:
+\codepath{results/prefix_constant_rho/streaming/.../results_streaming.csv},
+uno per algoritmo.
+
+\subsection{Come sono generati i dataset}
+
+I dataset sono generati con
+\codepath{scripts/generate_prefix_constant_rho_dataset_bin.py}.  
+La proprietà imposta è:
+\[
+n \bmod d = 0.
+\]
+Con tale vincolo, ogni blocco di \(\rho=n/d\) elementi contiene esattamente una
+nuova prima occorrenza; quindi:
+\[
+F_0(j\cdot \rho)=j.
+\]
+
+Questa costruzione separa in modo controllato l'effetto del numero di
+ripetizioni medie dalla crescita della cardinalità reale lungo i prefissi.
+
+\section{Perché due famiglie di grafici}
+
+Sono stati costruiti due insiemi di grafici perché rispondono a due domande
+diverse:
 \begin{itemize}
-    \item \(n=10^7\) elementi per partizione;
-    \item \(F_0 \in \{10^5,10^6,5\cdot10^6,10^7\}\);
-    \item seed \(\in \{42,137357,10032018,21041998,29042026\}\);
-    \item 50 run per ogni dataset.
+    \item \textbf{Type A}: a parità di \(\rho\), come cambia la stima quando
+    cresce la cardinalità reale \(F_0(t)\)?
+    \item \textbf{Type B}: fissata una cardinalità target \(F_0^{\ast}\), come cambia
+    la stima al variare delle ripetizioni medie effettive
+    \(\rho_t=t/F_0(t)\)?
 \end{itemize}
 
-Ottenendo un totale di 72 file di \codepath{results\_streaming.csv} e \codepath{results\_merge.csv}.
+In entrambi i casi sono mostrate media e dispersione, così da osservare sia
+\emph{bias} sia \emph{robustezza}, come discusso nel
+Capitolo~\ref{chp:background}.
 
-La produzione delle figure e delle tabelle è stata ottenuta tramite l'utilizzo di notebook Jupyter per
-riproducibilità all'interno della cartella \texttt{notebooks}.
+\section{Come sono stati costruiti i grafici}
 
-\section{Selezione delle configurazioni migliori}
-Uno dei principali problemi di tutte queste possibili configurazioni dei parametri per ogni algoritmo è stato di
-individuare quali fossero i parametri ottimali.
+I grafici sono prodotti dai notebook:
+\begin{itemize}
+    \item \codepath{notebooks/16_ch5_typeA_prefix_constant_rho.ipynb};
+    \item \codepath{notebooks/17_ch5_typeA_prefix_constant_rho_no_pc.ipynb};
+    \item \codepath{notebooks/18_ch5_typeA_prefix_constant_rho_hll_hllpp.ipynb};
+    \item \codepath{notebooks/19_ch5_typeB_prefix_constant_rho.ipynb}.
+\end{itemize}
 
-Il confronto principale è avvenuto fissando, per ciascun algoritmo, il parametro
-che minimizza il \emph{mean relative error} medio al checkpoint finale
-(aggregazione su seed e valori di \(F_0\)).
-I parametri individuati sono riportati nella Tabella~\ref{tab:configurazione-ottimale-selection}.
+\paragraph{Type A}
+Ascissa \(x=F_0(t)\) reale (\texttt{f0\_mean\_t}), ordinata
+\(y=\hat{F}_0(t)\) media (\texttt{f0\_heat\_mean\_t}), pannelli per \(\rho\).
 
-\begin{table}[htbp]
-    \centering
-    \small
-    \setlength{\tabcolsep}{6pt}
-    \renewcommand{\arraystretch}{1.12}
-    \begin{tabular}{|l|c|r|}
-        \hline
-        Algoritmo & Parametro migliore & MRE medio endpoint \\
-        \hline
-        HyperLogLog & \(k=16\) & 0.002736 \\
-        \hline
-        HyperLogLog++ & \(k=18\) & 0.001370 \\
-        \hline
-        LogLog & \(k=15\) & 0.005615 \\
-        \hline
-        Probabilistic Counting & \(L=23\) & 0.524951 \\
-        \hline
-    \end{tabular}
-    \caption{Configurazione ottimale per algoritmo nel dominio esplorato.}
-    \label{tab:configurazione-ottimale-selection}
-\end{table}
-
-\section{Confronto tra i vari seed}
-Per poter fare le analisi successive si è fatta prima un'analisi sperimentale per verificare
-che scegliere un seed rispetto ad un altro non cambi le valutazioni degli algoritmi in maniera gravosa.
-
-L'analisi è stata eseguita fissando, per ciascun algoritmo, la configurazione
-ottimale della Tabella~\ref{tab:configurazione-ottimale-selection} e confrontando i seed
-\(\{42,137357,10032018,21041998,29042026\}\) sui valori finali di
-\texttt{results\_streaming.csv}.
-Per misurare la sensibilità al seed è stato utilizzato il coefficiente di
-variazione
+\paragraph{Type B}
+Per ogni target
 \[
-\mathrm{CV}(X)=\frac{\sigma(X)}{|\mathbb{E}[X]|},
+F_0^{\ast} \in \{1000,2000,5000,10000,20000,50000,100000\},
 \]
-calcolato su MRE, RMSE, varianza e bias.
+viene estratto (per interpolazione lineare sui checkpoint) il punto
+corrispondente per ogni algoritmo e ogni \(\rho\), e si rappresenta:
+\[
+x=\rho_t=\frac{t}{F_0(t)},\qquad y=\hat{F}_0.
+\]
 
-Il CV è una misura \emph{adimensionale} di dispersione relativa: valori vicini
-allo \(0\) indicano che la metrica varia poco al variare del seed, mentre valori
-più alti indicano maggiore sensibilità.
-In seguito si usa la seguente lettura operativa:
-\(\mathrm{CV}<0.10\) indica una variabilità contenuta, \(0.10\le\mathrm{CV}<0.20\) una
-variabilità moderata, mentre \(\mathrm{CV}\ge 0.20\) una variabilità elevata.
+\paragraph{Bande di dispersione}
+Nei grafici lineari la banda è \(\mu\pm \sigma\).  
+Nei grafici log-log è usata una banda moltiplicativa coerente con la scala
+logaritmica:
+\[
+\sigma_{\log}=\sqrt{\log\!\left(1+\left(\frac{\sigma}{\mu}\right)^2\right)},
+\qquad
+\text{low}=\mu e^{-\sigma_{\log}},
+\qquad
+\text{high}=\mu e^{\sigma_{\log}}.
+\]
 
-Queste soglie sono interpretative (non universali) e vanno sempre lette insieme
-al livello assoluto dell'errore: una configurazione può avere CV basso ma avere un
-errore medio alto.
+\section{Risultati Type A}
 
-Inoltre, quando \(|\mathbb{E}[X]|\) è molto vicino a zero, il CV può
-diventare numericamente instabile; in questi casi la valutazione è supportata
-anche da boxplot e metriche assolute.
-
-La Figura~\ref{fig:seed-sens-cv} mostra i valori di CV per configurazione
-algoritmica, mentre la Figura~\ref{fig:seed-sens-box} riporta la distribuzione
-della MRE sui seed per le configurazioni selezionate.
+Le Figure~\ref{fig:typeA-all-linear}--\ref{fig:typeA-hllpp-loglog}
+mostrano l'andamento di \(\hat{F}_0(t)\) rispetto a \(F_0(t)\), per tutti i
+valori di \(\rho\), in scala lineare e log-log.
 
 \begin{figure}[htbp]
     \centering
-    \includegraphics[width=0.88\textwidth]{figures/results/seed_sensitivity_mre_cv_by_setting.png}
-    \caption{Sensibilità al seed: coefficiente di variazione della MRE per setting algoritmico.}
-    \label{fig:seed-sens-cv}
+    \includegraphics[width=0.96\textwidth]{figures/results/typeA_prefix_constant_rho_linear.png}
+    \caption{Type A, tutti gli algoritmi, scala lineare.}
+    \label{fig:typeA-all-linear}
 \end{figure}
 
 \begin{figure}[htbp]
     \centering
-    \includegraphics[width=0.88\textwidth]{figures/results/seed_sensitivity_mre_boxplot_best_setting.png}
-    \caption{Distribuzione della MRE sui seed nelle configurazioni ottimali.}
-    \label{fig:seed-sens-box}
-\end{figure}
-
-La Tabella~\ref{tab:seed-sens-summary} sintetizza i risultati principali.
-HyperLogLog e HyperLogLog++ mostrano una sensibilità simile e contenuta
-(\(\mathrm{CV}_{\mathrm{MRE}}\approx 0.079\)); LogLog è leggermente più
-sensibile (\(\approx 0.116\)).
-Mentre Probabilistic Counting presenta un \(\mathrm{CV}_{\mathrm{MRE}}\) molto basso,
-ma con MRE assoluta elevata (circa \(0.5\) nella configurazione ottimale), ricordando che ``stabile'' non implica ``accurato''.
-
-\begin{table}[htbp]
-    \centering
-    \small
-    \setlength{\tabcolsep}{6pt}
-    \renewcommand{\arraystretch}{1.1}
-    \begin{tabular}{|l|c|c|}
-        \hline
-        Algoritmo & Parametri (seed-sensitivity) & \(\mathrm{CV}_{\mathrm{MRE}}\) \\
-        \hline
-        HyperLogLog & \(k=7,\ L=32\) & 0.079052 \\
-        \hline
-        HyperLogLog++ & \(k=7\) & 0.079061 \\
-        \hline
-        LogLog & \(k=8,\ L=32\) & 0.116134 \\
-        \hline
-        Probabilistic Counting & \(L=1\) & \(8.53\times 10^{-6}\) \\
-        \hline
-    \end{tabular}
-    \caption{Sintesi della sensibilità al seed (metrica: coefficiente di variazione della MRE).}
-    \label{tab:seed-sens-summary}
-\end{table}
-
-In base a questo confronto, i seed scelti non alterano in modo sostanziale la stima
-qualitativa tra gli algoritmi nelle configurazioni selezionate.
-Di conseguenza, le analisi successive possono essere discusse su un unico seed
-rappresentativo, in questo caso si è scelto 21041998, senza perdita di generalità operativa, mantenendo
-comunque i risultati aggregati sui seed nelle tabelle riepilogative.
-
-\section{Risultati streaming con le configurazioni ottimali}
-Una volta individuati i parametri che minimizzassero il \emph{mean relative error} si è fatta un'analisi
-sulla stima media di $F_0$ tra i vari algoritmi utilizzando un unico seed.
-\subsection{Stima media nel tempo e transitorio iniziale}
-Le figure~\ref{fig:best-stream-est-linear} e
-\ref{fig:best-stream-est-loglog} mostrano l'andamento di
-\(\hat{F}_0(t)\) rispetto a \(F_0(t)\) con seed 21041998. La scala log-log è usata per rendere visibile il comportamento sui primi
-checkpoint.
-
-\begin{figure}[htbp]
-    \centering
-    \includegraphics[width=0.96\textwidth]{figures/results/best_stream_estimate_vs_truth_linear_seed21041998.png}
-    \caption{Configurazione ottimale: confronto tra stima media \(\hat{F}_0(t)\) e valore reale \(F_0(t)\) in scala lineare (seed 21041998).}
-    \label{fig:best-stream-est-linear}
+    \includegraphics[width=0.96\textwidth]{figures/results/typeA_prefix_constant_rho_loglog.png}
+    \caption{Type A, tutti gli algoritmi, scala log-log.}
+    \label{fig:typeA-all-loglog}
 \end{figure}
 
 \begin{figure}[htbp]
     \centering
-    \includegraphics[width=0.96\textwidth]{figures/results/best_stream_estimate_vs_truth_loglog_seed21041998.png}
-    \caption{Stesso confronto della Figura~\ref{fig:best-stream-est-linear} in scala log-log.}
-    \label{fig:best-stream-est-loglog}
+    \includegraphics[width=0.96\textwidth]{figures/results/typeA_prefix_constant_rho_no_pc_linear.png}
+    \caption{Type A, senza Probabilistic Counting, scala lineare.}
+    \label{fig:typeA-no-pc-linear}
 \end{figure}
-
-In questa configurazione HyperLogLog++ e HyperLogLog seguono da vicino la curva
-reale su tutti i livelli di cardinalità testati.
-L'algoritmo LogLog rimane comunque vicino ai due algoritmi HLL per \(F_0\) medio-alti, ma mantiene
-uno scarto più evidente nel caso \(F_0=10^5\).
-Mentre Probabilistic Counting resta l'algoritmo meno stabile nella fase transitoria,
-con deviazioni significative già a metà stream.
-
-\subsection{Varianza nel tempo}
-
-La figura~\ref{fig:best-stream-var-loglog} confronta la varianza della stima in
-scala log-log.
 
 \begin{figure}[htbp]
     \centering
-    \includegraphics[width=0.96\textwidth]{figures/results/best_stream_variance_loglog_seed21041998.png}
-    \caption{Configurazione ottimale: varianza della stima in modalità streaming (seed 21041998, scala log-log).}
-    \label{fig:best-stream-var-loglog}
+    \includegraphics[width=0.96\textwidth]{figures/results/typeA_prefix_constant_rho_no_pc_loglog.png}
+    \caption{Type A, senza Probabilistic Counting, scala log-log.}
+    \label{fig:typeA-no-pc-loglog}
 \end{figure}
-
-La dispersione di HyperLogLog++ è inferiore a HyperLogLog e LogLog per quasi
-l'intero dominio osservato, in coerenza con la progettazione di HLL++
-\cite{Heule_Nunkesser_Hall_2013}.
-Per \(F_0=10^7\) la varianza endpoint è nulla per tutte le configurazioni
-ottimali perché nel dataset usato vale \(n=d\) e l'endpoint è deterministico
-tra run.
-
-\subsection{Metriche aggregate in modalità \textit{normal}}
-
-La Tabella~\ref{tab:best-stream-summary} riporta le metriche associate alla modalità di esecuzione
-\textit{normal} mediate sui seed per ciascun valore finale di \(F_0\).
-
-\begin{table}[htbp]
-    \centering
-    \scriptsize
-    \setlength{\tabcolsep}{4pt}
-    \renewcommand{\arraystretch}{1.1}
-    \begin{tabular}{|l|r|r|r|r|r|}
-        \hline
-        Algoritmo & \(F_0\) & MRE medio & RMSE medio & Varianza media & \(\hat{F}_0\) medio \\
-        \hline
-        HyperLogLog++ & 100000 & 0.001237 & 153.661 & 22550.603 & 99990.816 \\
-        HyperLogLog++ & 1000000 & 0.001629 & 2026.870 & 3272587.016 & 1000904.100 \\
-        HyperLogLog++ & 5000000 & 0.001287 & 8072.642 & 62887388.036 & 5001168.396 \\
-        HyperLogLog++ & 10000000 & 0.001326 & 13256.000 & 0.000 & 10013256.000 \\
-        \hline
-        HyperLogLog & 100000 & 0.002836 & 358.238 & 127585.802 & 100008.844 \\
-        HyperLogLog & 1000000 & 0.003195 & 3938.423 & 15118314.694 & 999213.888 \\
-        HyperLogLog & 5000000 & 0.002800 & 17416.878 & 278970064.540 & 4994349.692 \\
-        HyperLogLog & 10000000 & 0.002113 & 21134.000 & 0.000 & 9978866.000 \\
-        \hline
-        LogLog & 100000 & 0.005206 & 649.431 & 407725.504 & 100124.060 \\
-        LogLog & 1000000 & 0.005390 & 6789.407 & 46105629.058 & 999245.028 \\
-        LogLog & 5000000 & 0.004713 & 28669.821 & 699006423.800 & 4988366.864 \\
-        LogLog & 10000000 & 0.007150 & 71500.000 & 0.000 & 9928500.000 \\
-        \hline
-        Probabilistic Counting & 100000 & 0.579277 & 79492.780 & 6139769255.600 & 117344.080 \\
-        Probabilistic Counting & 1000000 & 0.911951 & 1321697.966 & 1418662093360.000 & 1646384.880 \\
-        Probabilistic Counting & 5000000 & 0.524089 & 3231428.510 & 10582138707400.000 & 5210955.228 \\
-        Probabilistic Counting & 10000000 & 0.084486 & 844860.000 & 0.000 & 10844860.000 \\
-        \hline
-    \end{tabular}
-    \caption{Configurazione ottimale: metriche endpoint aggregate in modalità streaming (media sui seed).}
-    \label{tab:best-stream-summary}
-\end{table}
-
-La Figura~\ref{fig:best-stream-mre-by-f0} visualizza lo stesso confronto sull'unica metrica MRE.
 
 \begin{figure}[htbp]
     \centering
-    \includegraphics[width=0.90\textwidth]{figures/results/best_stream_final_mre_by_algorithm_and_f0.png}
-    \caption{Configurazione ottimale: MRE endpoint per algoritmo e valore finale di \(F_0\) (media sui seed).}
-    \label{fig:best-stream-mre-by-f0}
+    \includegraphics[width=0.96\textwidth]{figures/results/typeA_prefix_constant_rho_hll_hllpp_linear.png}
+    \caption{Type A, confronto HyperLogLog e HyperLogLog++, scala lineare.}
+    \label{fig:typeA-hllpp-linear}
 \end{figure}
 
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=0.96\textwidth]{figures/results/typeA_prefix_constant_rho_hll_hllpp_loglog.png}
+    \caption{Type A, confronto HyperLogLog e HyperLogLog++, scala log-log.}
+    \label{fig:typeA-hllpp-loglog}
+\end{figure}
 
-\section{Risultati merge con la configurazione ottimale}
+\noindent
+Dai CSV endpoint (\(t=n\)) si osserva:
+\begin{itemize}
+    \item HyperLogLog e HyperLogLog++ risultano quasi sovrapposti in questo
+    setup (\(\mathrm{MRE}\) media \(\approx 0.00618\) per entrambi);
+    \item LogLog è leggermente meno accurato (\(\mathrm{MRE}\) media
+    \(\approx 0.00708\));
+    \item Probabilistic Counting è nettamente meno accurato
+    (\(\mathrm{MRE}\) media \(\approx 0.770\)).
+\end{itemize}
 
-Per ogni algoritmo si confrontano stima da merge e stima seriale su coppie di
-partizioni.
-Le Figure~\ref{fig:best-merge-box} e \ref{fig:best-merge-nonzero} e la
-Tabella~\ref{tab:best-merge-summary} mostrano che nel dominio sperimentale
-analizzato i delta sono nulli in tutti i casi.
-Il risultato è coerente con gli operatori di merge implementati
-(massimo componente-per-componente per LogLog/HLL/HLL++ e OR bit-a-bit per
-Probabilistic Counting), discussi in
-Capitolo~\ref{chp:implementazione} e nel background sulla mergeabilità.
+\section{Risultati Type B}
+
+Le Figure~\ref{fig:typeB-all-linear}--\ref{fig:typeB-hllpp-loglog}
+mostrano la stima in funzione delle ripetizioni medie effettive \(\rho_t\), a
+cardinalità target \(F_0^{\ast}\) fissata.
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=0.96\textwidth]{figures/results/typeB_prefix_constant_rho_all_linear.png}
+    \caption{Type B, tutti gli algoritmi, scala lineare.}
+    \label{fig:typeB-all-linear}
+\end{figure}
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=0.96\textwidth]{figures/results/typeB_prefix_constant_rho_all_loglog.png}
+    \caption{Type B, tutti gli algoritmi, scala log-log.}
+    \label{fig:typeB-all-loglog}
+\end{figure}
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=0.96\textwidth]{figures/results/typeB_prefix_constant_rho_no_pc_linear.png}
+    \caption{Type B, senza Probabilistic Counting, scala lineare.}
+    \label{fig:typeB-no-pc-linear}
+\end{figure}
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=0.96\textwidth]{figures/results/typeB_prefix_constant_rho_no_pc_loglog.png}
+    \caption{Type B, senza Probabilistic Counting, scala log-log.}
+    \label{fig:typeB-no-pc-loglog}
+\end{figure}
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=0.96\textwidth]{figures/results/typeB_prefix_constant_rho_hll_hllpp_linear.png}
+    \caption{Type B, confronto HyperLogLog e HyperLogLog++, scala lineare.}
+    \label{fig:typeB-hllpp-linear}
+\end{figure}
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=0.96\textwidth]{figures/results/typeB_prefix_constant_rho_hll_hllpp_loglog.png}
+    \caption{Type B, confronto HyperLogLog e HyperLogLog++, scala log-log.}
+    \label{fig:typeB-hllpp-loglog}
+\end{figure}
+
+\noindent
+Le osservazioni principali sono:
+\begin{itemize}
+    \item HyperLogLog++ è il più accurato anche in questa vista
+    (\(\mathrm{MRE}\) media su \(F_0^{\ast}\) e \(\rho\) \(\approx 3.3\cdot 10^{-4}\));
+    \item HyperLogLog segue con errore medio più alto ma contenuto
+    (\(\approx 2.0\cdot 10^{-3}\));
+    \item Probabilistic Counting mantiene errori elevati
+    (\(\mathrm{MRE}\) media \(\approx 0.352\));
+    \item LogLog mostra forte instabilità per target piccoli (\(F_0^{\ast}=1000,2000\)),
+    che domina la media globale del Type B.
+\end{itemize}
+
+\section{Risultati merge}
+
+La modalità merge è analizzata con confronto \emph{merge vs seriale} su coppie
+di partizioni. Le Figure~\ref{fig:best-merge-box} e
+\ref{fig:best-merge-nonzero} e la Tabella~\ref{tab:best-merge-summary}
+riportano delta nulli nel dominio testato.
 
 \begin{figure}[htbp]
     \centering
     \includegraphics[width=0.76\textwidth]{figures/results/best_merge_delta_abs_by_algorithm.png}
-    \caption{Configurazione ottimale: distribuzione di \codepath{delta\_merge\_serial\_abs}.}
+    \caption{Distribuzione di \codepath{delta\_merge\_serial\_abs}.}
     \label{fig:best-merge-box}
 \end{figure}
 
 \begin{figure}[htbp]
     \centering
     \includegraphics[width=0.76\textwidth]{figures/results/best_merge_nonzero_delta_counts.png}
-    \caption{Configurazione ottimale: conteggio dei casi con delta non nullo nel confronto merge vs seriale.}
+    \caption{Conteggio dei casi con delta non nullo nel confronto merge vs seriale.}
     \label{fig:best-merge-nonzero}
 \end{figure}
 
@@ -294,35 +277,32 @@ Capitolo~\ref{chp:implementazione} e nel background sulla mergeabilità.
         Probabilistic Counting & 500 & 0 & 0 & 0 & 0 \\
         \hline
     \end{tabular}
-    \caption{Configurazione ottimale: confronto merge vs seriale. Tutti i delta risultano nulli nel dataset analizzato.}
+    \caption{Confronto merge vs seriale nel dominio testato.}
     \label{tab:best-merge-summary}
 \end{table}
 
 \section{Discussione}
 
-Nel dominio sperimentale considerato emergono tre risultati principali.
-Primo, HyperLogLog++ risulta il metodo più accurato e stabile tra le
-configurazioni migliori, con errore medio endpoint inferiore a HyperLogLog e
-LogLog su tutti i livelli di \(F_0\) osservati.
-Secondo, LogLog resta competitivo ma con una dispersione più alta e una
-sensibilità maggiore nelle cardinalità più piccole.
-Terzo, Probabilistic Counting rimane sensibilmente più instabile, anche quando
-si seleziona il miglior parametro nel dominio testato.
-
-Per la modalità merge, i risultati sono coerenti con la proprietà di fusione
-attesa per gli sketch implementati: nel confronto a coppie non si osservano
-scarti rispetto al processamento seriale.
-
-\section{TODOs}
-
-I limiti principali della campagna corrente sono:
+I risultati ottenuti con i dataset \texttt{prefix\_constant\_rho} mostrano che:
 \begin{itemize}
-    \item un solo valore di \(n\) nella fase finale (\(10^7\));
-    \item un unico profilo dati (distribuzione uniforme, ordine shuffled);
-    \item assenza in questo capitolo di misure esplicite di costo temporale e
-    footprint di memoria a runtime.
+    \item i grafici Type A evidenziano il comportamento della stima al crescere
+    della cardinalità reale, mantenendo controllato il rapporto \(n/d\);
+    \item i grafici Type B isolano la dipendenza dalle ripetizioni medie
+    effettive a cardinalità target fissata;
+    \item HyperLogLog++ e HyperLogLog sono molto vicini nel setup corrente, con
+    vantaggio sistematico di HyperLogLog++ nei target piccoli del Type B;
+    \item Probabilistic Counting resta il meno robusto tra gli algoritmi
+    implementati;
+    \item il merge, nelle configurazioni compatibili analizzate, è coerente con
+    la semantica attesa (nessuno scostamento rispetto al seriale).
 \end{itemize}
 
-Un'estensione naturale è replicare la stessa analisi su distribuzioni non
-uniformi e su workload con overlap controllato tra partizioni, mantenendo il
-medesimo protocollo di confronto tra endpoint, transitorio e merge.
+\section{TODOs}
+\begin{itemize}
+    \item estendere Type B con ulteriori target \(F_0^{\ast}\) e con più semi per
+    stimare intervalli di confidenza empirici;
+    \item aggiungere grafici analoghi per Count-Min Sketch e Bloom Filter dopo
+    l'implementazione;
+    \item completare la campagna merge includendo casi con parametri differenti
+    (stessa famiglia algoritmica) e confronto del degrado.
+\end{itemize}
