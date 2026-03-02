@@ -69,7 +69,7 @@ Questo bit vale 1 se l'elemento è la prima volta che appare nella partizione, 0
 Inoltre, il dataset è in un formato binario, il quale dopo essere stato generato viene pure compresso.
 
 \subsection{Motivazione del formato}
-Poiché gli algoritmi di sketching sono generalmente utilizzati con i big data, 
+Poiché gli algoritmi di sketching sono generalmente utilizzati per i big data, 
 i cui dati non vengono effettivamente memorizzati su disco, si è dovuto
 scegliere un formato che permettesse di salvare su file i vari dataset.
 
@@ -77,11 +77,11 @@ Il motivo di dover salvare su disco il dataset è per motivi di riproducibilità
 analisi e valutazione degli algoritmi.
 
 Precedentemente \`e stato definito che all'interno di un dataset sono presenti più partizioni.
-K'idea che sta dietro a questa scelta è che così facendo, si può materializzare in memoria
+L'idea che motiva questa scelta è per materializzare in memoria
 un'unica partizione dell'intero dataset durante la valutazione alla volta. 
 Ogni partizione è compressa
-indipendentemente con \texttt{zlib}; il framework carica solo il blocco
-necessario alla run corrente tramite \codepath{BinaryDatasetPartitionReader}
+indipendentemente dalle altre con \texttt{zlib}; il framework carica solo il blocco
+necessario all'esecuzione corrente tramite \codepath{BinaryDatasetPartitionReader}
 in (\codepath{BinaryDatasetIO.h}).
 
 \subsection{Struttura del file}
