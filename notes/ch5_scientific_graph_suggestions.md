@@ -9,7 +9,7 @@
 ## Grafici da includere
 1. Traiettorie \(\hat{F}_0(t)\) vs \(F_0(t)\) in scala lineare e log-log (4 pannelli per i valori finali di \(F_0\)).
    - Asse x: `number_of_elements_processed`
-   - Asse y: `f0_heat_mean_t` + `f0_mean_t`
+   - Asse y: `f0_hat_mean_t` + `f0_mean_t`
    - Motivo: mostra accuratezza dinamica e fase transitoria.
 
 2. Varianza nel tempo (log-log) sulle stesse best-config.
@@ -33,7 +33,7 @@
 
 6. (Aggiuntivo consigliato) Scatter di calibrazione endpoint \(\hat{F}_0\) vs \(F_0\) con diagonale ideale.
    - Asse x: `f0` endpoint
-   - Asse y: `f0_heat_mean_t` endpoint
+   - Asse y: `f0_hat_mean_t` endpoint
    - Motivo: visualizza bias sistematico in modo diretto e leggibile.
 
 7. (Aggiuntivo consigliato) Tempo di convergenza al 5\% di errore relativo.

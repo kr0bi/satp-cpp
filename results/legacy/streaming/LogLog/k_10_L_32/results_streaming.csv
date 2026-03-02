@@ -1,4 +1,4 @@
-algorithm,params,mode,runs,sample_size,number_of_elements_processed,f0,seed,f0_mean_t,f0_heat_mean_t,variance,stddev,rse_theoretical,rse_observed,bias,absolute_bias,relative_bias,mean_relative_error,rmse,mae
+algorithm,params,mode,runs,sample_size,number_of_elements_processed,f0,seed,f0_mean_t,f0_hat_mean_t,variance,stddev,rse_theoretical,rse_observed,bias,absolute_bias,relative_bias,mean_relative_error,rmse,mae
 LogLog,"k=10,L=32",streaming,50,10000000,1,100000,21041998,1,406.64,0.3575510204,0.597955701,0.040625,0.597955701,405.64,405.64,405.64,405.64,405.6404319,405.64
 LogLog,"k=10,L=32",streaming,50,10000000,102,100000,21041998,101.94,463.54,19.51877551,4.41800583,0.040625,0.04333927633,361.6,361.6,3.547184618,3.547208309,361.6264924,361.6
 LogLog,"k=10,L=32",streaming,50,10000000,203,100000,21041998,202.82,524.54,55.31469388,7.437384882,0.040625,0.03666987911,321.72,321.72,1.586234099,1.586245427,321.8047234,321.72

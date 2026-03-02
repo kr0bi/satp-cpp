@@ -1,4 +1,4 @@
-algorithm,params,mode,runs,sample_size,number_of_elements_processed,f0,seed,f0_mean_t,f0_heat_mean_t,variance,stddev,rse_theoretical,rse_observed,bias,absolute_bias,relative_bias,mean_relative_error,rmse,mae
+algorithm,params,mode,runs,sample_size,number_of_elements_processed,f0,seed,f0_mean_t,f0_hat_mean_t,variance,stddev,rse_theoretical,rse_observed,bias,absolute_bias,relative_bias,mean_relative_error,rmse,mae
 Probabilistic Counting,L=17,normal,50,10000000,10000000,100000,21041998,100000,107177.02,2717706212,52131.62392,nan,0.5213162392,7177.02,7177.02,0.0717702,0.4560498,52104.33479,45604.98
 Probabilistic Counting,L=17,normal,50,10000000,10000000,100000,42,100000,100399,2615159620,51138.63138,nan,0.5113863138,399,399,0.00399,0.44049,50626.23459,44049
 Probabilistic Counting,L=17,normal,50,10000000,10000000,100000,137357,100000,114590.46,2901057479,53861.46562,nan,0.5386146562,14590.46,14590.46,0.1459046,0.4930354,55280.35684,49303.54

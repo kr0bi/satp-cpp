@@ -81,7 +81,7 @@ ctest --test-dir build
 The benchmark CSV includes standard error metrics plus observed/theoretical RSE:
 ```
 algorithm,params,mode,runs,sample_size,number_of_elements_processed,f0,seed,
-f0_mean_t,f0_heat_mean_t,variance,stddev,rse_theoretical,rse_observed,
+f0_mean_t,f0_hat_mean_t,variance,stddev,rse_theoretical,rse_observed,
 bias,absolute_bias,relative_bias,mean_relative_error,rmse,mae
 ```
 

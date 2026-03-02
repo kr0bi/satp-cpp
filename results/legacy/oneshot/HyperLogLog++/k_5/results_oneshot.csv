@@ -1,4 +1,4 @@
-algorithm,params,mode,runs,sample_size,number_of_elements_processed,f0,seed,f0_mean_t,f0_heat_mean_t,variance,stddev,rse_theoretical,rse_observed,bias,absolute_bias,relative_bias,mean_relative_error,rmse,mae
+algorithm,params,mode,runs,sample_size,number_of_elements_processed,f0,seed,f0_mean_t,f0_hat_mean_t,variance,stddev,rse_theoretical,rse_observed,bias,absolute_bias,relative_bias,mean_relative_error,rmse,mae
 HyperLogLog++,k=5,normal,50,10000000,10000000,100000,21041998,100000,105008.66,442417296.7,21033.71809,0.1838477631,0.2103371809,5008.66,5008.66,0.0500866,0.1641846,21416.24677,16418.46
 HyperLogLog++,k=5,normal,50,10000000,10000000,100000,42,100000,100332.5,476572420.3,21830.53871,0.1838477631,0.2183053871,332.5,332.5,0.003325,0.1638346,21613.68844,16383.46
 HyperLogLog++,k=5,normal,50,10000000,10000000,100000,137357,100000,100579.92,354916753.2,18839.23441,0.1838477631,0.1883923441,579.92,579.92,0.0057992,0.1550116,18658.90472,15501.16
