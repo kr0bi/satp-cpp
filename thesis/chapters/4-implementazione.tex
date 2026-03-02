@@ -480,7 +480,7 @@ finale \(t=n\).
 Dal medesimo CSV di \texttt{streaming} vengono costruite due viste analitiche nel notebook:
 \begin{itemize}
     \item \textbf{Type A}: ascissa \(F_0(t)\) reale (\texttt{f0\_mean\_t}),
-    ordinata \(\hat{F}_0(t)\) media (\texttt{f0\_heat\_mean\_t}), pannelli per
+    ordinata \(\hat{F}_0(t)\) media (\texttt{f0\_hat\_mean\_t}), pannelli per
     valori di \(\rho=n/d\).
     \item \textbf{Type B}: fissato un target \(F_0^{\ast}\), ascissa
     \(\rho_t=t/F_0(t)\) (ripetizioni medie effettive), ordinata
@@ -514,7 +514,7 @@ Le modalità \texttt{normal} e \texttt{streaming} condividono lo stesso schema C
     \item \texttt{f0}: cardinalità distinta nominale del dataset (\(d\), uguale per partizione).
     \item \texttt{seed}: seed del dataset letto dal file binario.
     \item \texttt{f0\_mean\_t}: verità media aggregata al tempo \(t\), cioè \(\bar{F}_0(t)\).
-    \item \texttt{f0\_heat\_mean\_t}: stima media aggregata al tempo \(t\), cioè \(\bar{\hat{F}}_0(t)\).
+    \item \texttt{f0\_hat\_mean\_t}: stima media aggregata al tempo \(t\), cioè \(\bar{\hat{F}}_0(t)\).
     \item \texttt{variance}: varianza campionaria della stima al tempo \(t\), \(\widehat{\mathrm{Var}}(t)\).
     \item \texttt{stddev}: deviazione standard campionaria, \(\widehat{\sigma}(t)\).
     \item \texttt{rse\_theoretical}: RSE teorica assegnata alla famiglia algoritmica (se disponibile).
