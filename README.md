@@ -40,14 +40,14 @@ cmake --build build
 
 The CLI no longer takes a manual CSV output path. Results are written automatically under:
 ```text
-results/<AlgorithmName>/<params>/results_oneshot.csv
-results/<AlgorithmName>/<params>/results_streaming.csv
-results/<AlgorithmName>/<params>/results_merge.csv
+results/<namespace>/<mode>/<AlgorithmName>/<params>/results_oneshot.csv
+results/<namespace>/<mode>/<AlgorithmName>/<params>/results_streaming.csv
+results/<namespace>/<mode>/<AlgorithmName>/<params>/results_merge.csv
 ```
 
 Example:
 ```text
-results/HyperLogLog++/k_16/results_oneshot.csv
+results/legacy/oneshot/HyperLogLog++/k_16/results_oneshot.csv
 ```
 
 ## Orchestration script

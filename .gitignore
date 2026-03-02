@@ -87,6 +87,14 @@ CMakeLists.txt.user
 *.swo
 /cmake-build-debug/*
 
+# ----------------- Python / notebooks ------------------
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.ipynb_checkpoints/
+.venv/
+
 # ----------------- Generated datasets ------------------
 compressed_dataset_*.bin
 dataset_*.bin
@@ -112,6 +120,7 @@ dataset_*.bin
 /thesis/**/*.out
 /thesis/**/*.run.xml
 /thesis/**/*.synctex.gz
+/thesis/**/*.synctex(busy)
 /thesis/**/*.toc
 /thesis/**/*.xmpi
 
@@ -121,7 +130,3 @@ results/*
 !results/**/
 !results/**/*.csv
 datasets/
-
-
-# ----------------- Python Generated ----------------------
-*.pyc

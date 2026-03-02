@@ -9,17 +9,7 @@ find_package(ZLIB REQUIRED)
 
 # ---- Libreria core -------------------------------------------------
 file(GLOB_RECURSE SRC_FILES CONFIGURE_DEPENDS src/satp/*.cpp)
-add_library(satp STATIC ${SRC_FILES}
-        src/satp/hashing.h
-        src/satp/algorithms/LogLog.cpp
-        src/satp/algorithms/LogLog.h
-        src/satp/algorithms/HyperLogLog.cpp
-        src/satp/algorithms/HyperLogLog.h
-        src/satp/algorithms/HyperLogLogPlusPlus.cpp
-        src/satp/algorithms/HyperLogLogPlusPlus.h
-        src/satp/algorithms/hllpp_tables.h
-        src/satp/algorithms/hllpp_tables.cpp
-)
+add_library(satp STATIC ${SRC_FILES})
 target_include_directories(satp PUBLIC src)
 target_link_libraries(satp PUBLIC ZLIB::ZLIB)
 
@@ -44,12 +34,7 @@ FetchContent_MakeAvailable(Catch2)
 
 # ---- Eseguibile di test -------------------------------------------
 file(GLOB_RECURSE TEST_FILES CONFIGURE_DEPENDS tests/*.cpp)
-add_executable(satp_tests ${TEST_FILES}
-        tests/algorithms/LogLogTest.cpp
-        tests/simulation/EvaluationFrameworkTest.cpp
-        tests/algorithms/HyperLogLog.cpp
-        tests/UtilsTest.cpp
-)
+add_executable(satp_tests ${TEST_FILES})
 target_link_libraries(satp_tests
         PRIVATE satp
         Catch2::Catch2WithMain)
