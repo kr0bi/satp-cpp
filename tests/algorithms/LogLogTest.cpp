@@ -1,4 +1,5 @@
 #include "catch2/catch_test_macros.hpp"
+#include <cmath>
 #include <stdexcept>
 #include "satp/algorithms/LogLog.h"
 #include "satp/simulation/Loop.h"

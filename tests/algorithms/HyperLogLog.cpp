@@ -1,4 +1,5 @@
 #include "catch2/catch_test_macros.hpp"
+#include <cmath>
 #include <stdexcept>
 #include "satp/algorithms/HyperLogLog.h"
 #include "satp/algorithms/HyperLogLogPlusPlus.h"
