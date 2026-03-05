@@ -99,23 +99,17 @@ Current hashing is deterministic (splitmix64), so results are reproducible for a
 - [x] Formato binario compresso per partizione (`zlib`) con caricamento di una sola partizione alla volta.
 - [x] Modalita' `normal`, `streaming` e `merge` integrate nel framework.
 - [x] Operazione di merge implementata e valutata in CSV dedicato (`results_merge.csv`).
-- [x] Output CSV standardizzati e salvati automaticamente in `results/<AlgorithmName>/<params>/`.
+- [x] Output CSV standardizzati e salvati automaticamente in `results/<namespace>/<mode>/<AlgorithmName>/<params>/`.
 - [x] Orchestrazione batch con sweep completo dei parametri (`scripts/orchestrate_benchmarks.py --full`).
 - [x] Pipeline notebook per grafici e analisi sperimentale (streaming + merge).
 
 ### Da fare (priorita')
-1. Implementare Count-Min Sketch (frequenze).
-2. Implementare Bloom Filter (membership).
-3. Implementare Ring Bloom Filter.
-4. Estendere il merge da coppie a topologie con `k` nodi/cluster (catena/albero) e misurarne il degrado.
-5. Aggiungere misure empiriche di costo:
-   - tempo di `update`, `query`, `merge`;
-   - memoria residente effettiva per algoritmo.
-6. Introdurre robustezza all'hash sperimentale:
-   - piu' funzioni di hash e/o seed di hash configurabile;
-   - confronto dei grafici al variare dell'hash.
-7. Aggiungere serializzazione/deserializzazione degli sketch per scenari distribuiti.
+1. Fare refactoring e pulire il codice e la repository, in modo che sia chiaro cosa fa ogni componente.
+2. Fare esperimenti sul degrado del merge in condizioni non ottimali (ad esempio funzioni di hash differenti o parametri differenti).
+3. Implementare Count-Min Sketch, Bloom Filter e Ring Bloom Filter.
+4. Aggiungere ulteriori grafici per gli algoritmi attuali.
 
 ### Opzionali
-1. Integrazione input da sistema streaming reale (es. Apache Kafka).
-2. Campagne comparative su dataset non uniformi (oltre al caso uniforme corrente).
+1. Aggiungere test sulla dimensione degli sketch e analisi queste infomrazioni
+2. Integrazione input da sistema streaming reale (es. Apache Kafka).
+3. Campagne comparative su dataset non uniformi (oltre al caso uniforme corrente).
