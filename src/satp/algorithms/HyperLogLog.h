@@ -12,7 +12,7 @@ using namespace std;
 namespace satp::algorithms {
     class HyperLogLog final : public Algorithm {
     public:
-        // Paper-strict mode (Flajolet et al. 2007 practical setting):
+        // Algoritmo basato sul paper (Flajolet et al. 2007):
         // - k in [4,16], m = 2^k registers
         // - 32-bit hash domain (L = 32)
         explicit HyperLogLog(uint32_t K, uint32_t L);

@@ -39,7 +39,7 @@ namespace satp::algorithms {
         const uint32_t hash = h32;
 
         const uint32_t firstKBits = hash >> (lengthOfBitMap - k);
-        // remaining (32-k) bits shifted to MSB side; rho = leading zeros + 1.
+        // the remaining (32-k) bits shifted to the MSB side; rho = leading zeros + 1.
         const uint32_t rem = hash << k;
         const uint32_t wbits = lengthOfBitMap - k;
         const uint32_t b = (rem == 0u) ? (wbits + 1u) : (static_cast<uint32_t>(countl_zero(rem)) + 1u);
@@ -77,16 +77,16 @@ namespace satp::algorithms {
                 return static_cast<uint64_t>(numberOfBuckets * log(static_cast<double>(numberOfBuckets) / V));
             }
             return static_cast<uint64_t>(E);
-        } else if (E <= ((1.0 / 30.0) * ldexp(1.0, 32))) { // 2^32
-            return static_cast<uint64_t>(E);
-        } else {
-            const double two_pow_32 = ldexp(1.0, 32); // 2^32
-            return static_cast<uint64_t>(-two_pow_32 * log(1 - (E / two_pow_32)));
         }
+        if (E <= ((1.0 / 30.0) * ldexp(1.0, 32))) { // 2^32
+            return static_cast<uint64_t>(E);
+        }
+        const double two_pow_32 = ldexp(1.0, 32); // 2^32
+        return static_cast<uint64_t>(-two_pow_32 * log(1 - (E / two_pow_32)));
     }
 
     void HyperLogLog::reset() {
-        std::fill(bitmap.begin(), bitmap.end(), 0u);
+        ranges::fill(bitmap, 0u);
         sumInversePowers = static_cast<double>(numberOfBuckets);
         zeroRegisters = numberOfBuckets;
     }
