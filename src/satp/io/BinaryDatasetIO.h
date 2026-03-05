@@ -109,7 +109,7 @@ namespace satp::io {
         in.seekg(0, std::ios::end);
         const auto endPos = in.tellg();
         if (endPos < 0) throw std::runtime_error("Cannot determine binary dataset size");
-        const std::uint64_t fileSize = static_cast<std::uint64_t>(endPos);
+        const auto fileSize = static_cast<std::uint64_t>(endPos);
         in.seekg(0, std::ios::beg);
 
         if (fileSize < detail::HEADER_SIZE) {

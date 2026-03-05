@@ -72,8 +72,8 @@ namespace satp::evaluation {
             appendLogPercent(PHASE1_END_RATIO, PHASE2_END_RATIO, phase2Count);
             appendLogPercent(PHASE2_END_RATIO, 1.0, phase3Count);
 
-            std::sort(checkpoints.begin(), checkpoints.end());
-            checkpoints.erase(std::unique(checkpoints.begin(), checkpoints.end()), checkpoints.end());
+            ranges::sort(checkpoints);
+            checkpoints.erase(ranges::unique(checkpoints).begin(), checkpoints.end());
 
             if (checkpoints.back() != sampleSize) {
                 checkpoints.push_back(sampleSize);
