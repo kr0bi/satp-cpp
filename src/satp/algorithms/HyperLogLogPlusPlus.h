@@ -15,7 +15,9 @@ namespace satp::algorithms {
     public:
         // p = number of register index bits (m = 2^p registers).
         // Follows HyperLogLog++ as described by Heule et al. for p in [4, 18].
-        explicit HyperLogLogPlusPlus(uint32_t K);
+        explicit HyperLogLogPlusPlus(
+            uint32_t K,
+            const hashing::HashFunction &hashFunction = hashing::defaultHashFunction());
 
         void process(uint32_t id) override;
 

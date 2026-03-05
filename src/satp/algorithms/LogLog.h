@@ -15,7 +15,10 @@ namespace satp::algorithms {
         // Algoritmo basato sul paper (Durand-Flajolet 2003 / HLL 2007 practical range):
         // - k in [4,16], m = 2^k registers
         // - 32-bit hash domain (L = 32)
-        explicit LogLog(uint32_t K, uint32_t L);
+        explicit LogLog(
+            uint32_t K,
+            uint32_t L,
+            const hashing::HashFunction &hashFunction = hashing::defaultHashFunction());
 
         void process(uint32_t id) override;
 

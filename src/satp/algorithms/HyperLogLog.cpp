@@ -3,8 +3,6 @@
 #include <cmath>
 #include <stdexcept>
 
-#include "satp/hashing.h"
-
 using namespace std;
 
 namespace satp::algorithms {
@@ -24,8 +22,12 @@ namespace satp::algorithms {
         }
     } // namespace
 
-    HyperLogLog::HyperLogLog(uint32_t K, uint32_t L)
-        : k(K),
+    HyperLogLog::HyperLogLog(
+        uint32_t K,
+        uint32_t L,
+        const hashing::HashFunction &hashFunction)
+        : Algorithm(hashFunction),
+          k(K),
           numberOfBuckets(validateAndBucketCount(K, L)),
           lengthOfBitMap(L),
           bitmap(numberOfBuckets, 0u),
@@ -34,9 +36,7 @@ namespace satp::algorithms {
           zeroRegisters(numberOfBuckets) {}
 
     void HyperLogLog::process(uint32_t id) {
-        const uint64_t hash64 = util::hashing::splitmix64(id);
-        const uint32_t h32 = util::hashing::hash32_from_64(hash64);
-        const uint32_t hash = h32;
+        const uint32_t hash = hashFunction().hash32(id);
 
         const uint32_t firstKBits = hash >> (lengthOfBitMap - k);
         // the remaining (32-k) bits shifted to the MSB side; rho = leading zeros + 1.

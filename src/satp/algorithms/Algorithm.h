@@ -1,6 +1,10 @@
 #pragma once
 #include <cstdint>
 #include <string>
+
+#include "satp/hashing/HashFunction.h"
+#include "satp/hashing/HashFactory.h"
+
 using namespace std;
 
 namespace satp::algorithms {
@@ -16,6 +20,10 @@ namespace satp::algorithms {
      */
     class Algorithm {
     public:
+        explicit Algorithm(const hashing::HashFunction &hashFunction = hashing::defaultHashFunction())
+            : hashFunction_(&hashFunction) {
+        }
+
         virtual ~Algorithm() = default;
 
         virtual void process(uint32_t id) = 0;
@@ -28,5 +36,13 @@ namespace satp::algorithms {
         }
 
         virtual string getName() = 0;
+
+    protected:
+        [[nodiscard]] const hashing::HashFunction &hashFunction() const {
+            return *hashFunction_;
+        }
+
+    private:
+        const hashing::HashFunction *hashFunction_ = nullptr;
     };
 } // namespace satp::algorithms

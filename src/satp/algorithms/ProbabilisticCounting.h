@@ -12,7 +12,9 @@ using namespace std;
 namespace satp::algorithms {
     class ProbabilisticCounting final : public Algorithm {
     public:
-        explicit ProbabilisticCounting(uint32_t L);
+        explicit ProbabilisticCounting(
+            uint32_t L,
+            const hashing::HashFunction &hashFunction = hashing::defaultHashFunction());
 
         void process(uint32_t id) override;
 

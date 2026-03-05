@@ -5,6 +5,10 @@
 #include <stdexcept>
 
 namespace satp::algorithms {
+    NaiveCounting::NaiveCounting(const hashing::HashFunction &hashFunction)
+        : Algorithm(hashFunction) {
+    }
+
     void NaiveCounting::process(uint32_t id) {
         if (!ids.contains(id)) {
             ids.insert(id);

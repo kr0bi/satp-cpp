@@ -2,22 +2,21 @@
 #include <cmath>
 #include <stdexcept>
 
-#include "satp/hashing.h"
-
 using namespace std;
 
 namespace satp::algorithms {
-    ProbabilisticCounting::ProbabilisticCounting(uint32_t L)
-        : lengthBitMap(L),
+    ProbabilisticCounting::ProbabilisticCounting(
+        uint32_t L,
+        const hashing::HashFunction &hashFunction)
+        : Algorithm(hashFunction),
+          lengthBitMap(L),
           bitmap(0) {
         if (lengthBitMap == 0 || lengthBitMap > 31)
             throw invalid_argument("L must be in [1,31]");
     }
 
     void ProbabilisticCounting::process(uint32_t id) {
-        const uint64_t hash64 = util::hashing::splitmix64(id);
-        const uint32_t h32 = util::hashing::hash32_from_64(hash64);
-        const uint32_t hash = h32 & ((1u << lengthBitMap) - 1u);
+        const uint32_t hash = hashFunction().hash32(id) & ((1u << lengthBitMap) - 1u);
         if (hash == 0) return;
 
         uint32_t rightMostOneBit = countr_zero(hash);

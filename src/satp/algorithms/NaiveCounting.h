@@ -20,6 +20,9 @@ namespace satp::algorithms {
      */
     class NaiveCounting final : public Algorithm {
     public:
+        explicit NaiveCounting(
+            const hashing::HashFunction &hashFunction = hashing::defaultHashFunction());
+
         void process(uint32_t id) override;
 
         uint64_t count() override;

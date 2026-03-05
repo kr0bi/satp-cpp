@@ -6,13 +6,15 @@
 #include <stdexcept>
 
 #include "hllpp_tables.h"
-#include "satp/hashing.h"
 
 using namespace std;
 
 namespace satp::algorithms {
-    HyperLogLogPlusPlus::HyperLogLogPlusPlus(uint32_t K)
-        : p(K),
+    HyperLogLogPlusPlus::HyperLogLogPlusPlus(
+        uint32_t K,
+        const hashing::HashFunction &hashFunction)
+        : Algorithm(hashFunction),
+          p(K),
           m(0),
           mSparse(1u << SPARSE_P),
           format(Format::Sparse),
@@ -42,7 +44,7 @@ namespace satp::algorithms {
     }
 
     void HyperLogLogPlusPlus::process(uint32_t id) {
-        const uint64_t hash = util::hashing::splitmix64(id);
+        const uint64_t hash = hashFunction().hash64(id);
         if (format == Format::Normal) {
             addNormalHash(hash);
             return;
