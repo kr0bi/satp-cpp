@@ -12,7 +12,7 @@ using namespace std;
 namespace satp::algorithms {
     class LogLog final : public Algorithm {
     public:
-        // Paper-strict mode (Durand-Flajolet 2003 / HLL 2007 practical range):
+        // Algoritmo basato sul paper (Durand-Flajolet 2003 / HLL 2007 practical range):
         // - k in [4,16], m = 2^k registers
         // - 32-bit hash domain (L = 32)
         explicit LogLog(uint32_t K, uint32_t L);
