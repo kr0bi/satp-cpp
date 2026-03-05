@@ -13,6 +13,7 @@
 #include "satp/algorithms/ProbabilisticCounting.h"
 #include "satp/cli/CliConfig.h"
 #include "satp/cli/PathUtils.h"
+#include "satp/hashing/HashFactory.h"
 #include "satp/simulation/EvaluationFramework.h"
 
 namespace satp::cli {
@@ -63,11 +64,12 @@ namespace satp::cli {
             return selected.contains("all") || selected.contains(key);
         }
 
-        void printRunContext(const DatasetRuntimeContext &ctx, const RunMode mode) {
+        void printRunContext(const DatasetRuntimeContext &ctx, const RunMode mode, const std::string &hashName) {
             std::cout << "mode: " << modeLabel(mode)
                       << '\t' << "sampleSize: " << ctx.sampleSize
                       << '\t' << "runs: " << ctx.runs
-                      << '\t' << "seed: " << ctx.seed << '\n'
+                      << '\t' << "seed: " << ctx.seed
+                      << '\t' << "hash: " << hashName << '\n'
                       << "resultsRoot: " << (ctx.repoRoot / "results" / ctx.resultsNamespace).string() << '\n';
         }
 
@@ -127,6 +129,7 @@ namespace satp::cli {
                 ctx.resultsNamespace,
                 spec.algorithmName,
                 spec.params,
+                spec.hashName,
                 mode);
             std::filesystem::create_directories(csvPath.parent_path());
 
@@ -175,10 +178,12 @@ namespace satp::cli {
                                 const std::vector<std::string> &algs,
                                 const RunMode mode) const {
         auto ctx = config::loadDatasetRuntimeContext(cfg);
-        eval::EvaluationFramework bench(std::move(ctx.index));
+        const auto &hashFunction = cfg.hashFunction.get();
+        const std::string hashName = hashFunction.name();
+        eval::EvaluationFramework bench(std::move(ctx.index), hashFunction);
         const auto selected = collectRequestedAlgorithms(algs);
 
-        printRunContext(ctx, mode);
+        printRunContext(ctx, mode, hashName);
 
         if (shouldRun(selected, "hllpp")) {
             const AlgorithmRunSpec spec{
@@ -186,6 +191,7 @@ namespace satp::cli {
                 "HLL++",
                 "HyperLogLog++",
                 "k=" + std::to_string(cfg.k),
+                hashName,
                 rseHll(cfg.k)
             };
             runSingleAlgorithm<alg::HyperLogLogPlusPlus>(bench, ctx, spec, mode, cfg.k);
@@ -197,6 +203,7 @@ namespace satp::cli {
                 "HLL ",
                 "HyperLogLog",
                 "k=" + std::to_string(cfg.k) + ",L=" + std::to_string(cfg.lLog),
+                hashName,
                 rseHll(cfg.k)
             };
             runSingleAlgorithm<alg::HyperLogLog>(bench, ctx, spec, mode, cfg.k, cfg.lLog);
@@ -208,6 +215,7 @@ namespace satp::cli {
                 "LL  ",
                 "LogLog",
                 "k=" + std::to_string(cfg.k) + ",L=" + std::to_string(cfg.lLog),
+                hashName,
                 rseLogLog(cfg.k)
             };
             runSingleAlgorithm<alg::LogLog>(bench, ctx, spec, mode, cfg.k, cfg.lLog);
@@ -219,6 +227,7 @@ namespace satp::cli {
                 "PC  ",
                 "ProbabilisticCounting",
                 "L=" + std::to_string(cfg.l),
+                hashName,
                 rseUnknown()
             };
             runSingleAlgorithm<alg::ProbabilisticCounting>(bench, ctx, spec, mode, cfg.l);

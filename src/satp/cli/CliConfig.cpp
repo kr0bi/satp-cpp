@@ -5,6 +5,7 @@
 #include <sstream>
 
 #include "satp/cli/PathUtils.h"
+#include "satp/hashing/HashFactory.h"
 #include "satp/io/BinaryDatasetIO.h"
 
 namespace satp::cli::config {
@@ -45,6 +46,14 @@ namespace satp::cli::config {
             cfg.resultsNamespace = value;
             return true;
         }
+        if (param == "hashFunction") {
+            try {
+                cfg.hashFunction = std::cref(hashing::hashFunctionByName(value));
+            } catch (const std::exception &) {
+                return false;
+            }
+            return true;
+        }
         if (param == "k") return parseU32(value, cfg.k);
         if (param == "l") return parseU32(value, cfg.l);
         if (param == "lLog") return parseU32(value, cfg.lLog);
@@ -58,7 +67,7 @@ namespace satp::cli::config {
             << "  show                         Stampa i parametri correnti\n"
             << "  list                         Elenca algoritmi supportati\n"
             << "  set <param> <value>          Imposta un parametro\n"
-            << "                               Parametri: datasetPath, resultsNamespace, k, l, lLog\n"
+            << "                               Parametri: datasetPath, resultsNamespace, hashFunction, k, l, lLog\n"
             << "  run <algo|all>               Esegue uno o piu' algoritmi (modalita' normale)\n"
             << "  runstream <algo|all>         Esegue uno o piu' algoritmi (modalita' streaming)\n"
             << "  runmerge <algo|all>          Esegue benchmark merge a coppie (0-1,2-3,...)\n"
@@ -72,7 +81,11 @@ namespace satp::cli::config {
             << "  hllpp  (HyperLogLog++)\n"
             << "  hll    (HyperLogLog)\n"
             << "  ll     (LogLog)\n"
-            << "  pc     (ProbabilisticCounting)\n";
+            << "  pc     (ProbabilisticCounting)\n"
+            << "Hash functions:\n";
+        for (const auto &name : hashing::hashFunctionNames()) {
+            std::cout << "  " << name << '\n';
+        }
     }
 
     std::optional<DatasetView> readDatasetView(const std::string &datasetPath) {
@@ -98,6 +111,7 @@ namespace satp::cli::config {
             << "Parametri correnti:\n"
             << "  datasetPath   = " << cfg.datasetPath << '\n'
             << "  resultsNs     = " << cfg.resultsNamespace << '\n'
+            << "  hashFunction  = " << cfg.hashFunction.get().name() << '\n'
             << "  sampleSize    = " << view.sampleSize << " (dal dataset)\n"
             << "  runs          = " << view.runs << " (dal dataset)\n"
             << "  seed          = " << view.seed << " (dal dataset)\n"
@@ -108,7 +122,7 @@ namespace satp::cli::config {
 
     DatasetRuntimeContext loadDatasetRuntimeContext(const RunConfig &cfg) {
         DatasetRuntimeContext ctx;
-        ctx.index = satp::io::indexBinaryDataset(cfg.datasetPath);
+        ctx.index = io::indexBinaryDataset(cfg.datasetPath);
         ctx.sampleSize = ctx.index.info.elements_per_partition;
         ctx.runs = ctx.index.info.partition_count;
         ctx.seed = ctx.index.info.seed;

@@ -6,6 +6,8 @@
 #include <string>
 #include <vector>
 
+#include "satp/hashing/HashFunction.h"
+#include "satp/hashing/HashFactory.h"
 #include "satp/io/BinaryDatasetIO.h"
 #include "satp/simulation/Stats.h"
 
@@ -14,8 +16,12 @@ namespace satp::evaluation {
     public:
         static constexpr std::size_t DEFAULT_STREAMING_CHECKPOINTS = 200u;
 
-        explicit EvaluationFramework(const std::filesystem::path &filePath);
-        explicit EvaluationFramework(satp::io::BinaryDatasetIndex datasetIndex);
+        explicit EvaluationFramework(
+            const std::filesystem::path &filePath,
+            const hashing::HashFunction &hashFunction = hashing::defaultHashFunction());
+        explicit EvaluationFramework(
+            io::BinaryDatasetIndex datasetIndex,
+            const hashing::HashFunction &hashFunction = hashing::defaultHashFunction());
 
         template<typename Algo, typename... Args>
         [[nodiscard]] Stats evaluate(std::size_t runs,
@@ -73,9 +79,13 @@ namespace satp::evaluation {
         template<typename Algo, typename... Args>
         [[nodiscard]] std::vector<StreamingPointStats> evaluateStreamingFromBinary(Args &&... ctorArgs) const;
 
-        satp::io::BinaryDatasetIndex binaryDataset;
+        template<typename Algo, typename... Args>
+        [[nodiscard]] Algo makeAlgo(Args &&... ctorArgs) const;
+
+        io::BinaryDatasetIndex binaryDataset;
         std::size_t numElementiDistintiEffettivi = 0;
         std::uint32_t seed = 0;
+        const hashing::HashFunction &hashFunction;
     };
 } // namespace satp::evaluation
 

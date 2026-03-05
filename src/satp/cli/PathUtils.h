@@ -20,5 +20,6 @@ namespace satp::cli::path_utils {
         const std::string &resultsNamespace,
         const std::string &algorithmName,
         const std::string &params,
+        const std::string &hashName,
         RunMode mode);
 } // namespace satp::cli::path_utils

@@ -3,14 +3,19 @@
 #include <utility>
 
 namespace satp::evaluation {
-    EvaluationFramework::EvaluationFramework(const std::filesystem::path &filePath)
-        : EvaluationFramework(satp::io::indexBinaryDataset(filePath)) {
+    EvaluationFramework::EvaluationFramework(
+        const std::filesystem::path &filePath,
+        const hashing::HashFunction &hashFunction)
+        : EvaluationFramework(io::indexBinaryDataset(filePath), hashFunction) {
     }
 
-    EvaluationFramework::EvaluationFramework(satp::io::BinaryDatasetIndex datasetIndex)
+    EvaluationFramework::EvaluationFramework(
+        io::BinaryDatasetIndex datasetIndex,
+        const hashing::HashFunction &hashFunction)
         : binaryDataset(std::move(datasetIndex)),
           numElementiDistintiEffettivi(binaryDataset.info.distinct_per_partition),
-          seed(binaryDataset.info.seed) {
+          seed(binaryDataset.info.seed),
+          hashFunction(hashFunction) {
     }
 
     std::size_t EvaluationFramework::getNumElementiDistintiEffettivi() const noexcept {

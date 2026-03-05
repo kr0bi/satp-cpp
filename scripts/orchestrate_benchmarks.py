@@ -13,6 +13,7 @@ DEFAULT_D_RATIOS = "0.01,0.1,0.5,1.0"
 DEFAULT_SEEDS = "21041998,42,137357,10032018,29042026"
 DEFAULT_PARTITIONS = 50
 DEFAULT_RESULTS_NAMESPACE = "prefix_constant_rho"
+DEFAULT_HASH_FUNCTION = "splitmix64"
 
 PC_L_DOMAIN = list(range(1, 32))        # ProbabilisticCounting: L in [1,31]
 LL_K_DOMAIN = list(range(4, 17))        # LogLog: k in [4,16], L=32
@@ -78,11 +79,13 @@ def ensure_dataset(repo_root: Path,
 def run_benchmarks(main_bin: Path,
                    dataset_path: Path,
                    results_namespace: str,
+                   hash_function: str,
                    commands: list[str],
                    run_label: str) -> None:
     payload = "\n".join([
         f"set datasetPath {dataset_path}",
         f"set resultsNamespace {results_namespace}",
+        f"set hashFunction {hash_function}",
         *commands,
         "quit"
     ]) + "\n"
@@ -198,6 +201,8 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--dataset-dir", type=Path, default=Path("datasets/prefix_constant_rho"))
     parser.add_argument("--results-namespace", type=str, default=DEFAULT_RESULTS_NAMESPACE,
                         help="Namespace under results/ for orchestrated outputs")
+    parser.add_argument("--hash-function", type=str, default=DEFAULT_HASH_FUNCTION,
+                        help="Hash function name passed to SATP CLI (default: splitmix64)")
     parser.add_argument("--n-values", default=DEFAULT_N_VALUES)
     parser.add_argument("--d-ratios", default=DEFAULT_D_RATIOS)
     parser.add_argument("--seeds", default=DEFAULT_SEEDS)
@@ -264,7 +269,7 @@ def main() -> None:
     print(f"[datasets] {dataset_dir}")
     print(f"[results] {repo_root / 'results' / args.results_namespace}")
     print(
-        f"[params] k={args.k} l={args.l} lLog={args.l_log} "
+        f"[params] hashFunction={args.hash_function} k={args.k} l={args.l} lLog={args.l_log} "
         f"oneshot={not args.skip_oneshot} streaming={not args.skip_streaming} merge={not args.skip_merge} "
         f"full={args.full}"
     )
@@ -318,6 +323,7 @@ def main() -> None:
             main_bin=main_bin,
             dataset_path=dataset_path,
             results_namespace=args.results_namespace,
+            hash_function=args.hash_function,
             commands=commands,
             run_label=run_label,
         )

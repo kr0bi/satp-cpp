@@ -61,8 +61,10 @@ namespace satp::cli::path_utils {
                                              const std::string &resultsNamespace,
                                              const std::string &algorithmName,
                                              const std::string &params,
+                                             const std::string &hashName,
                                              const RunMode mode) {
         const std::string paramsDir = sanitizeForPath(params);
+        const std::string hashDir = sanitizeForPath(hashName);
         const std::string nsDir = sanitizeForPath(resultsNamespace);
         std::string fileName = "results_oneshot.csv";
         std::string modeDir = "oneshot";
@@ -73,6 +75,6 @@ namespace satp::cli::path_utils {
             fileName = "results_merge.csv";
             modeDir = "merge";
         }
-        return repoRoot / "results" / nsDir / modeDir / algorithmName / paramsDir / fileName;
+        return repoRoot / "results" / nsDir / modeDir / algorithmName / hashDir / paramsDir / fileName;
     }
 } // namespace satp::cli::path_utils

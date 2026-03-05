@@ -54,6 +54,13 @@ namespace satp::evaluation {
     } // namespace detail
 
     template<typename Algo, typename... Args>
+    Algo EvaluationFramework::makeAlgo(Args &&... ctorArgs) const {
+        static_assert(std::constructible_from<Algo, Args..., const hashing::HashFunction &>,
+                      "Algorithm must be constructible with (..., const hashing::HashFunction&)");
+        return Algo(std::forward<Args>(ctorArgs)..., hashFunction);
+    }
+
+    template<typename Algo, typename... Args>
     Stats EvaluationFramework::evaluate(std::size_t runs,
                                         std::size_t sampleSize,
                                         Args &&... ctorArgs) const {
@@ -73,7 +80,7 @@ namespace satp::evaluation {
         (void) runs;
         (void) sampleSize;
 
-        Algo algo(ctorArgs...);
+        Algo algo = makeAlgo<Algo>(ctorArgs...);
         const auto scope = datasetScope();
         const Stats stats = evaluateFromBinary<Algo>(std::forward<Args>(ctorArgs)...);
         CsvResultWriter::appendNormal(
@@ -110,7 +117,7 @@ namespace satp::evaluation {
         (void) runs;
         (void) sampleSize;
 
-        Algo algo(ctorArgs...);
+        Algo algo = makeAlgo<Algo>(ctorArgs...);
         const auto scope = datasetScope();
         auto series = evaluateStreamingFromBinary<Algo>(std::forward<Args>(ctorArgs)...);
         CsvResultWriter::appendStreaming(
@@ -155,13 +162,13 @@ namespace satp::evaluation {
             reader.load(idxA, partA);
             reader.load(idxB, partB);
 
-            Algo sketchA(std::forward<Args>(ctorArgs)...);
+            Algo sketchA = makeAlgo<Algo>(std::forward<Args>(ctorArgs)...);
             for (const auto value : partA) {
                 sketchA.process(value);
                 bar.tick();
             }
 
-            Algo sketchB(std::forward<Args>(ctorArgs)...);
+            Algo sketchB = makeAlgo<Algo>(std::forward<Args>(ctorArgs)...);
             for (const auto value : partB) {
                 sketchB.process(value);
                 bar.tick();
@@ -170,7 +177,7 @@ namespace satp::evaluation {
             Algo merged = sketchA;
             merged.merge(sketchB);
 
-            Algo serial(std::forward<Args>(ctorArgs)...);
+            Algo serial = makeAlgo<Algo>(std::forward<Args>(ctorArgs)...);
             for (const auto value : partA) {
                 serial.process(value);
                 bar.tick();
@@ -206,7 +213,7 @@ namespace satp::evaluation {
         std::size_t sampleSize,
         const std::string &algorithmParams,
         Args &&... ctorArgs) const {
-        Algo algo(ctorArgs...);
+        Algo algo = makeAlgo<Algo>(ctorArgs...);
         const auto scope = datasetScope();
         const auto points = evaluateMergePairs<Algo>(runs, sampleSize, std::forward<Args>(ctorArgs)...);
         CsvResultWriter::appendMergePairs(
@@ -234,7 +241,7 @@ namespace satp::evaluation {
 
         for (std::size_t run = 0; run < scope.runs; ++run) {
             reader.load(run, partitionValues);
-            Algo algo(std::forward<Args>(ctorArgs)...);
+            Algo algo = makeAlgo<Algo>(std::forward<Args>(ctorArgs)...);
 
             for (const auto value : partitionValues) {
                 algo.process(value);
@@ -274,7 +281,7 @@ namespace satp::evaluation {
                 throw std::runtime_error("Invalid binary dataset: truth bitset size mismatch while streaming");
             }
 
-            Algo algo(std::forward<Args>(ctorArgs)...);
+            Algo algo = makeAlgo<Algo>(std::forward<Args>(ctorArgs)...);
             std::uint64_t truthPrefix = 0;
             std::size_t checkpointIndex = 0;
 
