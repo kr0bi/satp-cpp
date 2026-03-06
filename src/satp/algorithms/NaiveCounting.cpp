@@ -4,6 +4,8 @@
 #include <cstdint>
 #include <stdexcept>
 
+#include "satp/algorithms/AlgorithmCatalog.h"
+
 namespace satp::algorithms {
     NaiveCounting::NaiveCounting(const hashing::HashFunction &hashFunction)
         : Algorithm(hashFunction) {
@@ -24,7 +26,7 @@ namespace satp::algorithms {
     }
 
     string NaiveCounting::getName() {
-        return "Naive";
+        return catalog::getNameBy("naive");
     }
 
     void NaiveCounting::merge(const Algorithm &other) {

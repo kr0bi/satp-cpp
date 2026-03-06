@@ -7,6 +7,7 @@
 #include <unordered_set>
 #include <utility>
 
+#include "satp/algorithms/AlgorithmCatalog.h"
 #include "satp/algorithms/HyperLogLog.h"
 #include "satp/algorithms/HyperLogLogPlusPlus.h"
 #include "satp/algorithms/LogLog.h"
@@ -66,6 +67,10 @@ namespace satp::cli {
             return selected.contains("all") || selected.contains(key);
         }
 
+        [[nodiscard]] string algorithmLogPrefix(const AlgorithmRunSpec &spec) {
+            return "[" + spec.algorithmId + "|" + satp::algorithms::catalog::getNameBy(spec.algorithmId) + "]";
+        }
+
         void printRunContext(const DatasetRuntimeContext &ctx, const RunMode mode, const string &hashName) {
             cout << "mode: " << modeLabel(mode)
                       << '\t' << "sampleSize: " << ctx.sampleSize
@@ -78,7 +83,7 @@ namespace satp::cli {
         void printNormalSummary(const AlgorithmRunSpec &spec,
                                 const filesystem::path &csvPath,
                                 const eval::Stats &stats) {
-            cout << '[' << spec.displayTag << "] csv=" << csvPath.string()
+            cout << algorithmLogPrefix(spec) << " csv=" << csvPath.string()
                       << "  mean=" << stats.mean
                       << "  f0_hat=" << stats.mean
                       << "  f0_true=" << stats.truth_mean
@@ -93,7 +98,7 @@ namespace satp::cli {
         void printStreamingSummary(const AlgorithmRunSpec &spec,
                                    const filesystem::path &csvPath,
                                    const eval::StreamingPointStats &lastPoint) {
-            cout << '[' << spec.displayTag << "][stream] csv=" << csvPath.string()
+            cout << algorithmLogPrefix(spec) << "[stream] csv=" << csvPath.string()
                       << "  t=" << lastPoint.number_of_elements_processed
                       << "  mean=" << lastPoint.mean
                       << "  f0_hat=" << lastPoint.mean
@@ -109,7 +114,7 @@ namespace satp::cli {
         void printMergeSummary(const AlgorithmRunSpec &spec,
                                const filesystem::path &csvPath,
                                const eval::MergePairStats &stats) {
-            cout << '[' << spec.displayTag << "][merge] csv=" << csvPath.string()
+            cout << algorithmLogPrefix(spec) << "[merge] csv=" << csvPath.string()
                       << "  pairs=" << stats.pair_count
                       << "  merge_mean=" << stats.estimate_merge_mean
                       << "  serial_mean=" << stats.estimate_serial_mean
@@ -129,7 +134,7 @@ namespace satp::cli {
             const filesystem::path csvPath = path_utils::buildResultCsvPath(
                 ctx.repoRoot,
                 ctx.resultsNamespace,
-                spec.algorithmName,
+                spec.algorithmId,
                 spec.params,
                 spec.hashName,
                 mode);
@@ -145,7 +150,7 @@ namespace satp::cli {
                     forward<CtorArgs>(ctorArgs)...);
 
                 if (series.empty()) {
-                    cout << '[' << spec.displayTag << "][stream] csv=" << csvPath.string()
+                    cout << algorithmLogPrefix(spec) << "[stream] csv=" << csvPath.string()
                               << "  no data\n";
                     return;
                 }
@@ -174,6 +179,34 @@ namespace satp::cli {
                 forward<CtorArgs>(ctorArgs)...);
             printNormalSummary(spec, csvPath, stats);
         }
+
+        template<typename Algo, typename... CtorArgs>
+        void runIfSelected(eval::EvaluationFramework &bench,
+                           const DatasetRuntimeContext &ctx,
+                           const unordered_set<string> &selected,
+                           const string &algorithmId,
+                           const string &params,
+                           const string &hashName,
+                           const double rseTheoretical,
+                           const RunMode mode,
+                           CtorArgs &&... ctorArgs) {
+            if (!shouldRun(selected, algorithmId)) {
+                return;
+            }
+
+            const AlgorithmRunSpec spec{
+                algorithmId,
+                params,
+                hashName,
+                rseTheoretical
+            };
+            runSingleAlgorithm<Algo>(
+                bench,
+                ctx,
+                spec,
+                mode,
+                forward<CtorArgs>(ctorArgs)...);
+        }
     } // namespace
 
     void AlgorithmExecutor::run(const RunConfig &cfg,
@@ -184,55 +217,34 @@ namespace satp::cli {
         const string hashName = cfg.hashFunctionName;
         eval::EvaluationFramework bench(move(ctx.index), move(runtimeHash));
         const auto selected = collectRequestedAlgorithms(algs);
+        const string kParam = "k=" + to_string(cfg.k);
+        const string kAndLLogParam = kParam + ",L=" + to_string(cfg.lLog);
+        const string lParam = "L=" + to_string(cfg.l);
 
         printRunContext(ctx, mode, hashName);
 
-        if (shouldRun(selected, "hllpp")) {
-            const AlgorithmRunSpec spec{
-                "hllpp",
-                "HLL++",
-                "HyperLogLog++",
-                "k=" + to_string(cfg.k),
-                hashName,
-                rseHll(cfg.k)
-            };
-            runSingleAlgorithm<alg::HyperLogLogPlusPlus>(bench, ctx, spec, mode, cfg.k);
-        }
+        runIfSelected<alg::HyperLogLogPlusPlus>(
+            bench, ctx, selected,
+            "hllpp",
+            kParam, hashName, rseHll(cfg.k),
+            mode, cfg.k);
 
-        if (shouldRun(selected, "hll")) {
-            const AlgorithmRunSpec spec{
-                "hll",
-                "HLL ",
-                "HyperLogLog",
-                "k=" + to_string(cfg.k) + ",L=" + to_string(cfg.lLog),
-                hashName,
-                rseHll(cfg.k)
-            };
-            runSingleAlgorithm<alg::HyperLogLog>(bench, ctx, spec, mode, cfg.k, cfg.lLog);
-        }
+        runIfSelected<alg::HyperLogLog>(
+            bench, ctx, selected,
+            "hll",
+            kAndLLogParam, hashName, rseHll(cfg.k),
+            mode, cfg.k, cfg.lLog);
 
-        if (shouldRun(selected, "ll")) {
-            const AlgorithmRunSpec spec{
-                "ll",
-                "LL  ",
-                "LogLog",
-                "k=" + to_string(cfg.k) + ",L=" + to_string(cfg.lLog),
-                hashName,
-                rseLogLog(cfg.k)
-            };
-            runSingleAlgorithm<alg::LogLog>(bench, ctx, spec, mode, cfg.k, cfg.lLog);
-        }
+        runIfSelected<alg::LogLog>(
+            bench, ctx, selected,
+            "ll",
+            kAndLLogParam, hashName, rseLogLog(cfg.k),
+            mode, cfg.k, cfg.lLog);
 
-        if (shouldRun(selected, "pc")) {
-            const AlgorithmRunSpec spec{
-                "pc",
-                "PC  ",
-                "ProbabilisticCounting",
-                "L=" + to_string(cfg.l),
-                hashName,
-                rseUnknown()
-            };
-            runSingleAlgorithm<alg::ProbabilisticCounting>(bench, ctx, spec, mode, cfg.l);
-        }
+        runIfSelected<alg::ProbabilisticCounting>(
+            bench, ctx, selected,
+            "pc",
+            lParam, hashName, rseUnknown(),
+            mode, cfg.l);
     }
 } // namespace satp::cli

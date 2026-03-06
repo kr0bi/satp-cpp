@@ -20,7 +20,7 @@ namespace satp::cli::path_utils {
     [[nodiscard]] filesystem::path buildResultCsvPath(
         const filesystem::path &repoRoot,
         const string &resultsNamespace,
-        const string &algorithmName,
+        const string &algorithmId,
         const string &params,
         const string &hashName,
         RunMode mode);

@@ -5,6 +5,7 @@
 #include <limits>
 #include <sstream>
 
+#include "satp/algorithms/AlgorithmCatalog.h"
 #include "satp/cli/PathUtils.h"
 #include "satp/hashing/HashFactory.h"
 #include "satp/io/BinaryDatasetIO.h"
@@ -92,13 +93,12 @@ namespace satp::cli::config {
     }
 
     void printAlgorithms() {
-        cout
-            << "Algoritmi:\n"
-            << "  hllpp  (HyperLogLog++)\n"
-            << "  hll    (HyperLogLog)\n"
-            << "  ll     (LogLog)\n"
-            << "  pc     (ProbabilisticCounting)\n"
-            << "Hash functions:\n";
+        cout << "Algoritmi:\n";
+        for (const auto id : satp::algorithms::catalog::getIdsOfSupportedAlgorithms()) {
+            cout << "  " << id << "  (" << satp::algorithms::catalog::getNameBy(id) << ")\n";
+        }
+
+        cout << "Hash functions:\n";
         for (const auto *name : supportedHashFunctionNames()) {
             cout << "  " << name << '\n';
         }

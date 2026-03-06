@@ -46,9 +46,7 @@ namespace satp::cli {
     };
 
     struct AlgorithmRunSpec {
-        string key;
-        string displayTag;
-        string algorithmName;
+        string algorithmId;
         string params;
         string hashName;
         double rseTheoretical = 0.0;

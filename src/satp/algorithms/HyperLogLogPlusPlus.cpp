@@ -5,6 +5,7 @@
 #include <limits>
 #include <stdexcept>
 
+#include "satp/algorithms/AlgorithmCatalog.h"
 #include "hllpp_tables.h"
 
 using namespace std;
@@ -96,7 +97,7 @@ namespace satp::algorithms {
     }
 
     string HyperLogLogPlusPlus::getName() {
-        return "HyperLogLog++";
+        return catalog::getNameBy("hllpp");
     }
 
     void HyperLogLogPlusPlus::merge(const Algorithm &other) {

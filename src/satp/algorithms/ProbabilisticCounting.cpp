@@ -2,6 +2,8 @@
 #include <cmath>
 #include <stdexcept>
 
+#include "satp/algorithms/AlgorithmCatalog.h"
+
 using namespace std;
 
 namespace satp::algorithms {
@@ -37,7 +39,7 @@ namespace satp::algorithms {
     }
 
     string ProbabilisticCounting::getName() {
-        return "Probabilistic Counting";
+        return catalog::getNameBy("pc");
     }
 
     void ProbabilisticCounting::merge(const Algorithm &other) {

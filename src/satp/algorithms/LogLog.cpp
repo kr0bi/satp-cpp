@@ -3,6 +3,8 @@
 #include <cmath>
 #include <stdexcept>
 
+#include "satp/algorithms/AlgorithmCatalog.h"
+
 using namespace std;
 
 namespace satp::algorithms {
@@ -60,7 +62,7 @@ namespace satp::algorithms {
     }
 
     string LogLog::getName() {
-        return "LogLog";
+        return catalog::getNameBy("ll");
     }
 
     void LogLog::merge(const Algorithm &other) {

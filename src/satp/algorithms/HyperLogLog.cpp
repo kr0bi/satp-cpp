@@ -3,6 +3,8 @@
 #include <cmath>
 #include <stdexcept>
 
+#include "satp/algorithms/AlgorithmCatalog.h"
+
 using namespace std;
 
 namespace satp::algorithms {
@@ -92,7 +94,7 @@ namespace satp::algorithms {
     }
 
     string HyperLogLog::getName() {
-        return "HyperLogLog";
+        return catalog::getNameBy("hll");
     }
 
     void HyperLogLog::merge(const Algorithm &other) {
