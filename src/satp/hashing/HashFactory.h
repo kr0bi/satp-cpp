@@ -1,20 +1,16 @@
 #pragma once
 
-#include <string>
+#include <cstdint>
+#include <memory>
+#include <optional>
 #include <string_view>
-#include <vector>
 
 #include "satp/hashing/HashFunction.h"
 
 using namespace std;
 
 namespace satp::hashing {
-    [[nodiscard]] const HashFunction &defaultHashFunction();
-
-    [[nodiscard]] const HashFunction &hashFunctionByName(string_view name);
-
-    [[nodiscard]] bool isSupportedHashFunction(string_view name);
-
-    [[nodiscard]] vector<string> hashFunctionNames();
+    [[nodiscard]] unique_ptr<HashFunction> getHashFunctionBy(
+        optional<string_view> name = nullopt,
+        optional<uint32_t> seed = nullopt);
 } // namespace satp::hashing
-

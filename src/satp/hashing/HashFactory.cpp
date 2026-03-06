@@ -1,6 +1,5 @@
 #include "satp/hashing/HashFactory.h"
 
-#include <algorithm>
 #include <cctype>
 #include <stdexcept>
 
@@ -25,53 +24,40 @@ namespace satp::hashing {
         }
     } // namespace
 
-    const HashFunction &defaultHashFunction() {
-        static const functions::SplitMix64 hash{};
-        return hash;
-    }
+    unique_ptr<HashFunction> getHashFunctionBy(
+        const optional<string_view> name,
+        const optional<uint32_t> seed) {
+        if (!name.has_value()) {
+            if (seed.has_value()) {
+                throw invalid_argument("Hash seed provided without hash function name.");
+            }
+            return make_unique<functions::SplitMix64>();
+        }
 
-    const HashFunction &hashFunctionByName(const string_view name) {
-        const string normalized = normalizeName(name);
+        const string normalized = normalizeName(*name);
+        if (normalized.empty()) {
+            return make_unique<functions::SplitMix64>();
+        }
 
-        static const functions::SplitMix64 splitMix64{};
-        static const functions::XXHash64 xxHash64{};
-        static const functions::MurmurHash3 murmurHash3{};
-        static const functions::SipHash24 sipHash24{};
+        if (!seed.has_value()) {
+            throw invalid_argument("Hash seed is required when hash function name is provided.");
+        }
 
         if (normalized == "splitmix64" || normalized == "splitmix") {
-            return splitMix64;
+            return make_unique<functions::SplitMix64>();
         }
         if (normalized == "xxhash64" || normalized == "xxhash") {
-            return xxHash64;
+            return make_unique<functions::XXHash64>(static_cast<uint64_t>(*seed));
         }
         if (normalized == "murmurhash3" || normalized == "murmur3" || normalized == "murmur") {
-            return murmurHash3;
+            return make_unique<functions::MurmurHash3>(*seed);
         }
         if (normalized == "siphash24" || normalized == "siphash") {
-            return sipHash24;
+            return make_unique<functions::SipHash24>();
         }
 
         throw invalid_argument(
-            "Unsupported hash function '" + string(name) +
+            "Unsupported hash function '" + string(*name) +
             "'. Supported: splitmix64, xxhash64, murmurhash3, siphash24");
     }
-
-    bool isSupportedHashFunction(const string_view name) {
-        try {
-            (void) hashFunctionByName(name);
-            return true;
-        } catch (const exception &) {
-            return false;
-        }
-    }
-
-    vector<string> hashFunctionNames() {
-        return {
-            "splitmix64",
-            "xxhash64",
-            "murmurhash3",
-            "siphash24",
-        };
-    }
 } // namespace satp::hashing
-
