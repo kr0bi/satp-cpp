@@ -21,7 +21,7 @@ namespace satp::algorithms {
     class NaiveCounting final : public Algorithm {
     public:
         explicit NaiveCounting(
-            const hashing::HashFunction &hashFunction = hashing::defaultHashFunction());
+            const hashing::HashFunction &hashFunction);
 
         void process(uint32_t id) override;
 

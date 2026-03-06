@@ -14,7 +14,7 @@ namespace satp::algorithms {
     public:
         explicit ProbabilisticCounting(
             uint32_t L,
-            const hashing::HashFunction &hashFunction = hashing::defaultHashFunction());
+            const hashing::HashFunction &hashFunction);
 
         void process(uint32_t id) override;
 

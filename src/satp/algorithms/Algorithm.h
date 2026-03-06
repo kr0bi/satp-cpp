@@ -3,7 +3,6 @@
 #include <string>
 
 #include "satp/hashing/HashFunction.h"
-#include "satp/hashing/HashFactory.h"
 
 using namespace std;
 
@@ -20,7 +19,7 @@ namespace satp::algorithms {
      */
     class Algorithm {
     public:
-        explicit Algorithm(const hashing::HashFunction &hashFunction = hashing::defaultHashFunction())
+        explicit Algorithm(const hashing::HashFunction &hashFunction)
             : hashFunction_(&hashFunction) {
         }
 

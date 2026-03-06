@@ -18,7 +18,7 @@ namespace satp::algorithms {
         explicit LogLog(
             uint32_t K,
             uint32_t L,
-            const hashing::HashFunction &hashFunction = hashing::defaultHashFunction());
+            const hashing::HashFunction &hashFunction);
 
         void process(uint32_t id) override;
 

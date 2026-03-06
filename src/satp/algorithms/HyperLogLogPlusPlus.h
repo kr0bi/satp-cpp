@@ -17,7 +17,7 @@ namespace satp::algorithms {
         // Follows HyperLogLog++ as described by Heule et al. for p in [4, 18].
         explicit HyperLogLogPlusPlus(
             uint32_t K,
-            const hashing::HashFunction &hashFunction = hashing::defaultHashFunction());
+            const hashing::HashFunction &hashFunction);
 
         void process(uint32_t id) override;
 
