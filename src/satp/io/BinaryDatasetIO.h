@@ -102,6 +102,78 @@ namespace satp::io {
                 throw runtime_error(error);
             }
         }
+
+        inline const BinaryPartitionEntry &partitionEntryOrThrow(const BinaryDatasetIndex &index,
+                                                                 size_t partitionIndex) {
+            if (partitionIndex >= index.partitions.size()) {
+                throw runtime_error("Requested partition index out of range");
+            }
+            return index.partitions[partitionIndex];
+        }
+
+        inline void seekChecked(ifstream &in,
+                                uint64_t offset,
+                                const string &fieldName,
+                                const char *error) {
+            const auto streamOffset = toStreamoffChecked(offset, fieldName);
+            in.clear();
+            in.seekg(streamOffset, ios::beg);
+            if (!in) {
+                throw runtime_error(error);
+            }
+        }
+
+        inline void loadValuesInto(ifstream &in,
+                                   const BinaryPartitionEntry &entry,
+                                   vector<uint8_t> &compressed,
+                                   vector<uint8_t> &decompressed,
+                                   vector<uint32_t> &out) {
+            out.clear();
+            out.resize(entry.elements);
+            if (entry.elements == 0) {
+                return;
+            }
+
+            seekChecked(in, entry.values_offset, "entry.values_offset",
+                        "Cannot seek binary dataset partition");
+
+            compressed.resize(toSizeTChecked(entry.values_byte_size, "entry.values_byte_size"));
+            readExact(in, compressed.data(), compressed.size(),
+                      "Cannot read binary dataset partition payload");
+
+            const uint64_t expectedBytesU64 = static_cast<uint64_t>(entry.elements) * 4ull;
+            const size_t expectedBytes = toSizeTChecked(expectedBytesU64, "partition.uncompressed_size");
+            decompressZlibBlock(compressed, expectedBytes, decompressed,
+                                "Cannot decompress binary dataset partition");
+
+            for (size_t i = 0; i < entry.elements; ++i) {
+                const auto *p = decompressed.data() + (i * 4u);
+                out[i] = readU32LE(p);
+            }
+        }
+
+        inline void loadTruthBitsInto(ifstream &in,
+                                      const BinaryPartitionEntry &entry,
+                                      vector<uint8_t> &compressedTruth,
+                                      vector<uint8_t> &decompressedTruth,
+                                      vector<uint8_t> &outTruthBits) {
+            const size_t expectedTruthBytes = (entry.elements + 7u) / 8u;
+            outTruthBits.clear();
+            outTruthBits.resize(expectedTruthBytes);
+            if (expectedTruthBytes == 0) {
+                return;
+            }
+
+            seekChecked(in, entry.truth_offset, "entry.truth_offset",
+                        "Cannot seek binary dataset truth partition");
+
+            compressedTruth.resize(toSizeTChecked(entry.truth_byte_size, "entry.truth_byte_size"));
+            readExact(in, compressedTruth.data(), compressedTruth.size(),
+                      "Cannot read binary dataset truth payload");
+            decompressZlibBlock(compressedTruth, expectedTruthBytes, decompressedTruth,
+                                "Cannot decompress binary dataset truth");
+            outTruthBits = decompressedTruth;
+        }
     } // namespace detail
 
     inline BinaryDatasetIndex indexBinaryDataset(const filesystem::path &path) {
@@ -201,69 +273,25 @@ namespace satp::io {
     inline void loadBinaryPartition(const BinaryDatasetIndex &index,
                                     size_t partitionIndex,
                                     vector<uint32_t> &out) {
-        if (partitionIndex >= index.partitions.size()) {
-            throw runtime_error("Requested partition index out of range");
-        }
-        const auto &entry = index.partitions[partitionIndex];
-
-        out.clear();
-        out.resize(entry.elements);
-        if (entry.elements == 0) {
-            return;
-        }
+        const auto &entry = detail::partitionEntryOrThrow(index, partitionIndex);
 
         ifstream in(index.path, ios::binary);
         if (!in) throw runtime_error("Cannot open binary dataset file");
-
-        const auto offset = detail::toStreamoffChecked(entry.values_offset, "entry.values_offset");
-        in.seekg(offset, ios::beg);
-        if (!in) throw runtime_error("Cannot seek binary dataset partition");
-
-        vector<uint8_t> compressed(detail::toSizeTChecked(entry.values_byte_size, "entry.values_byte_size"));
-        detail::readExact(in, compressed.data(), compressed.size(), "Cannot read binary dataset partition payload");
-
-        const uint64_t expectedBytesU64 = static_cast<uint64_t>(entry.elements) * 4ull;
-        const size_t expectedBytes = detail::toSizeTChecked(expectedBytesU64, "partition.uncompressed_size");
-
+        vector<uint8_t> compressed;
         vector<uint8_t> decompressed;
-        detail::decompressZlibBlock(compressed, expectedBytes, decompressed,
-                                    "Cannot decompress binary dataset partition");
-
-        for (size_t i = 0; i < entry.elements; ++i) {
-            const auto *p = decompressed.data() + (i * 4u);
-            out[i] = detail::readU32LE(p);
-        }
+        detail::loadValuesInto(in, entry, compressed, decompressed, out);
     }
 
     inline void loadBinaryPartitionTruthBits(const BinaryDatasetIndex &index,
                                              size_t partitionIndex,
                                              vector<uint8_t> &outTruthBits) {
-        if (partitionIndex >= index.partitions.size()) {
-            throw runtime_error("Requested partition index out of range");
-        }
-        const auto &entry = index.partitions[partitionIndex];
-
-        const size_t expectedBytes = (entry.elements + 7u) / 8u;
-        outTruthBits.clear();
-        outTruthBits.resize(expectedBytes);
-        if (expectedBytes == 0) {
-            return;
-        }
+        const auto &entry = detail::partitionEntryOrThrow(index, partitionIndex);
 
         ifstream in(index.path, ios::binary);
         if (!in) throw runtime_error("Cannot open binary dataset file");
-
-        const auto offset = detail::toStreamoffChecked(entry.truth_offset, "entry.truth_offset");
-        in.seekg(offset, ios::beg);
-        if (!in) throw runtime_error("Cannot seek binary dataset truth partition");
-
-        vector<uint8_t> compressed(detail::toSizeTChecked(entry.truth_byte_size, "entry.truth_byte_size"));
-        detail::readExact(in, compressed.data(), compressed.size(), "Cannot read binary dataset truth payload");
-
-        vector<uint8_t> decompressed;
-        detail::decompressZlibBlock(compressed, expectedBytes, decompressed,
-                                    "Cannot decompress binary dataset truth");
-        outTruthBits = move(decompressed);
+        vector<uint8_t> compressedTruth;
+        vector<uint8_t> decompressedTruth;
+        detail::loadTruthBitsInto(in, entry, compressedTruth, decompressedTruth, outTruthBits);
     }
 
     class BinaryDatasetPartitionReader {
@@ -276,59 +304,16 @@ namespace satp::io {
         }
 
         void load(size_t partitionIndex, vector<uint32_t> &out) {
-            if (partitionIndex >= index.partitions.size()) {
-                throw runtime_error("Requested partition index out of range");
-            }
-            const auto &entry = index.partitions[partitionIndex];
-
-            out.clear();
-            out.resize(entry.elements);
-            if (entry.elements == 0) {
-                return;
-            }
-
-            const auto offset = detail::toStreamoffChecked(entry.values_offset, "entry.values_offset");
-            in.clear();
-            in.seekg(offset, ios::beg);
-            if (!in) throw runtime_error("Cannot seek binary dataset partition");
-
-            compressed.resize(detail::toSizeTChecked(entry.values_byte_size, "entry.values_byte_size"));
-            detail::readExact(in, compressed.data(), compressed.size(), "Cannot read binary dataset partition payload");
-
-            const uint64_t expectedBytesU64 = static_cast<uint64_t>(entry.elements) * 4ull;
-            const size_t expectedBytes = detail::toSizeTChecked(expectedBytesU64, "partition.uncompressed_size");
-
-            detail::decompressZlibBlock(compressed, expectedBytes, decompressed,
-                                        "Cannot decompress binary dataset partition");
-
-            for (size_t i = 0; i < entry.elements; ++i) {
-                const auto *p = decompressed.data() + (i * 4u);
-                out[i] = detail::readU32LE(p);
-            }
+            const auto &entry = detail::partitionEntryOrThrow(index, partitionIndex);
+            detail::loadValuesInto(in, entry, compressed, decompressed, out);
         }
 
         void loadWithTruthBits(size_t partitionIndex,
                                vector<uint32_t> &outValues,
                                vector<uint8_t> &outTruthBits) {
-            if (partitionIndex >= index.partitions.size()) {
-                throw runtime_error("Requested partition index out of range");
-            }
-            const auto &entry = index.partitions[partitionIndex];
-
+            const auto &entry = detail::partitionEntryOrThrow(index, partitionIndex);
             load(partitionIndex, outValues);
-
-            const auto truthOffset = detail::toStreamoffChecked(entry.truth_offset, "entry.truth_offset");
-            in.clear();
-            in.seekg(truthOffset, ios::beg);
-            if (!in) throw runtime_error("Cannot seek binary dataset truth partition");
-
-            compressedTruth.resize(detail::toSizeTChecked(entry.truth_byte_size, "entry.truth_byte_size"));
-            detail::readExact(in, compressedTruth.data(), compressedTruth.size(), "Cannot read binary dataset truth payload");
-
-            const size_t expectedTruthBytes = (entry.elements + 7u) / 8u;
-            detail::decompressZlibBlock(compressedTruth, expectedTruthBytes, decompressedTruth,
-                                        "Cannot decompress binary dataset truth");
-            outTruthBits = decompressedTruth;
+            detail::loadTruthBitsInto(in, entry, compressedTruth, decompressedTruth, outTruthBits);
         }
 
     private:
