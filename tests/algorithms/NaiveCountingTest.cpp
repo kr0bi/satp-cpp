@@ -1,15 +1,22 @@
 #include <catch2/catch_test_macros.hpp>
 
+#include "satp/hashing/HashFactory.h"
 #include "satp/algorithms/NaiveCounting.h"
 #include "satp/simulation/Loop.h"
 #include "TestData.h"
 
+namespace {
+    const satp::hashing::HashFunction &defaultHash() {
+        static const auto hash = satp::hashing::getHashFunctionBy();
+        return *hash;
+    }
+}
 
 TEST_CASE("NaiveCounting conta 1000 distinti su 10000 campioni", "[naive]") {
     auto dataset = satp::testdata::loadDataset();
     auto NUMBER_OF_UNIQUE_ELEMENTS = dataset.distinct;
 
-    satp::algorithms::NaiveCounting algo;
+    satp::algorithms::NaiveCounting algo(defaultHash());
     satp::simulation::Loop loop(std::move(algo), std::move(dataset.values));
 
     auto result = loop.process();
@@ -21,9 +28,9 @@ TEST_CASE("NaiveCounting merge: seriale, commutativita', idempotenza", "[naive][
     const auto partA = satp::testdata::loadPartition(0);
     const auto partB = satp::testdata::loadPartition(1);
 
-    satp::algorithms::NaiveCounting a;
-    satp::algorithms::NaiveCounting b;
-    satp::algorithms::NaiveCounting serial;
+    satp::algorithms::NaiveCounting a(defaultHash());
+    satp::algorithms::NaiveCounting b(defaultHash());
+    satp::algorithms::NaiveCounting serial(defaultHash());
     for (const auto v : partA) {
         a.process(v);
         serial.process(v);

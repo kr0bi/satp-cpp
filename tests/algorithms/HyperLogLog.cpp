@@ -1,11 +1,18 @@
 #include "catch2/catch_test_macros.hpp"
 #include <cmath>
 #include <stdexcept>
+#include "satp/hashing/HashFactory.h"
 #include "satp/algorithms/HyperLogLog.h"
 #include "satp/algorithms/HyperLogLogPlusPlus.h"
 #include "satp/simulation/Loop.h"
 #include "TestData.h"
 
+namespace {
+    const satp::hashing::HashFunction &defaultHash() {
+        static const auto hash = satp::hashing::getHashFunctionBy();
+        return *hash;
+    }
+}
 
 TEST_CASE("HyperLogLog stima ~1000 distinti su 10000 campioni", "[hyperloglog-count]") {
     constexpr std::uint32_t K = 10;
@@ -13,7 +20,7 @@ TEST_CASE("HyperLogLog stima ~1000 distinti su 10000 campioni", "[hyperloglog-co
     auto dataset = satp::testdata::loadDataset();
     auto NUMBER_OF_UNIQUE_ELEMENTS = dataset.distinct;
 
-    satp::algorithms::HyperLogLog hll(K, 32);
+    satp::algorithms::HyperLogLog hll(K, 32, defaultHash());
     satp::simulation::Loop loop(std::move(hll), std::move(dataset.values));
 
     auto estimate = loop.process();
@@ -35,7 +42,7 @@ TEST_CASE("HyperLogLog++ stima ~1000 distinti su 10000 campioni", "[hyperloglogp
     auto dataset = satp::testdata::loadDataset();
     auto NUMBER_OF_UNIQUE_ELEMENTS = dataset.distinct;
 
-    satp::algorithms::HyperLogLogPlusPlus hllpp(K);
+    satp::algorithms::HyperLogLogPlusPlus hllpp(K, defaultHash());
     satp::simulation::Loop loop(std::move(hllpp), std::move(dataset.values));
 
     auto estimate = loop.process();
@@ -52,30 +59,30 @@ TEST_CASE("HyperLogLog++ stima ~1000 distinti su 10000 campioni", "[hyperloglogp
 }
 
 TEST_CASE("HyperLogLog valida parametri", "[hyperloglog-params]") {
-    REQUIRE_THROWS_AS(satp::algorithms::HyperLogLog(0, 32), std::invalid_argument);
-    REQUIRE_THROWS_AS(satp::algorithms::HyperLogLog(3, 32), std::invalid_argument);
-    REQUIRE_THROWS_AS(satp::algorithms::HyperLogLog(17, 32), std::invalid_argument);
-    REQUIRE_THROWS_AS(satp::algorithms::HyperLogLog(5, 31), std::invalid_argument);
-    REQUIRE_THROWS_AS(satp::algorithms::HyperLogLog(5, 33), std::invalid_argument);
-    REQUIRE_NOTHROW(satp::algorithms::HyperLogLog(4, 32));
-    REQUIRE_NOTHROW(satp::algorithms::HyperLogLog(16, 32));
+    REQUIRE_THROWS_AS(satp::algorithms::HyperLogLog(0, 32, defaultHash()), std::invalid_argument);
+    REQUIRE_THROWS_AS(satp::algorithms::HyperLogLog(3, 32, defaultHash()), std::invalid_argument);
+    REQUIRE_THROWS_AS(satp::algorithms::HyperLogLog(17, 32, defaultHash()), std::invalid_argument);
+    REQUIRE_THROWS_AS(satp::algorithms::HyperLogLog(5, 31, defaultHash()), std::invalid_argument);
+    REQUIRE_THROWS_AS(satp::algorithms::HyperLogLog(5, 33, defaultHash()), std::invalid_argument);
+    REQUIRE_NOTHROW(satp::algorithms::HyperLogLog(4, 32, defaultHash()));
+    REQUIRE_NOTHROW(satp::algorithms::HyperLogLog(16, 32, defaultHash()));
 }
 
 TEST_CASE("HyperLogLog++ valida parametri", "[hyperloglogpp-params]") {
-    REQUIRE_THROWS_AS(satp::algorithms::HyperLogLogPlusPlus(0), std::invalid_argument);
-    REQUIRE_THROWS_AS(satp::algorithms::HyperLogLogPlusPlus(3), std::invalid_argument);
-    REQUIRE_THROWS_AS(satp::algorithms::HyperLogLogPlusPlus(19), std::invalid_argument);
+    REQUIRE_THROWS_AS(satp::algorithms::HyperLogLogPlusPlus(0, defaultHash()), std::invalid_argument);
+    REQUIRE_THROWS_AS(satp::algorithms::HyperLogLogPlusPlus(3, defaultHash()), std::invalid_argument);
+    REQUIRE_THROWS_AS(satp::algorithms::HyperLogLogPlusPlus(19, defaultHash()), std::invalid_argument);
 }
 
 TEST_CASE("HyperLogLog++ supporta i limiti p=4 e p=18", "[hyperloglogpp-params]") {
     auto dataset = satp::testdata::loadDataset();
 
-    satp::algorithms::HyperLogLogPlusPlus hllppMin(4);
+    satp::algorithms::HyperLogLogPlusPlus hllppMin(4, defaultHash());
     satp::simulation::Loop loopMin(std::move(hllppMin), dataset.values);
     const auto estimateMin = loopMin.process();
     REQUIRE(estimateMin > 0);
 
-    satp::algorithms::HyperLogLogPlusPlus hllppMax(18);
+    satp::algorithms::HyperLogLogPlusPlus hllppMax(18, defaultHash());
     satp::simulation::Loop loopMax(std::move(hllppMax), dataset.values);
     const auto estimateMax = loopMax.process();
     REQUIRE(estimateMax > 0);
@@ -87,9 +94,9 @@ TEST_CASE("HyperLogLog merge: seriale, commutativita', idempotenza", "[hyperlogl
     const auto partA = satp::testdata::loadPartition(0);
     const auto partB = satp::testdata::loadPartition(1);
 
-    satp::algorithms::HyperLogLog a(K, L);
-    satp::algorithms::HyperLogLog b(K, L);
-    satp::algorithms::HyperLogLog serial(K, L);
+    satp::algorithms::HyperLogLog a(K, L, defaultHash());
+    satp::algorithms::HyperLogLog b(K, L, defaultHash());
+    satp::algorithms::HyperLogLog serial(K, L, defaultHash());
     for (const auto v : partA) {
         a.process(v);
         serial.process(v);
@@ -113,8 +120,8 @@ TEST_CASE("HyperLogLog merge: seriale, commutativita', idempotenza", "[hyperlogl
 }
 
 TEST_CASE("HyperLogLog merge valida compatibilita' parametri", "[hyperloglog][merge][params]") {
-    satp::algorithms::HyperLogLog a(10, 32);
-    satp::algorithms::HyperLogLog b(11, 32);
+    satp::algorithms::HyperLogLog a(10, 32, defaultHash());
+    satp::algorithms::HyperLogLog b(11, 32, defaultHash());
     REQUIRE_THROWS_AS(a.merge(b), std::invalid_argument);
 }
 
@@ -123,9 +130,9 @@ TEST_CASE("HyperLogLog++ merge: seriale, commutativita', idempotenza", "[hyperlo
     const auto partA = satp::testdata::loadPartition(0);
     const auto partB = satp::testdata::loadPartition(1);
 
-    satp::algorithms::HyperLogLogPlusPlus a(P);
-    satp::algorithms::HyperLogLogPlusPlus b(P);
-    satp::algorithms::HyperLogLogPlusPlus serial(P);
+    satp::algorithms::HyperLogLogPlusPlus a(P, defaultHash());
+    satp::algorithms::HyperLogLogPlusPlus b(P, defaultHash());
+    satp::algorithms::HyperLogLogPlusPlus serial(P, defaultHash());
     for (const auto v : partA) {
         a.process(v);
         serial.process(v);
@@ -159,16 +166,16 @@ TEST_CASE("HyperLogLog++ merge: seriale, commutativita', idempotenza", "[hyperlo
 }
 
 TEST_CASE("HyperLogLog++ merge valida compatibilita' parametri", "[hyperloglogpp][merge][params]") {
-    satp::algorithms::HyperLogLogPlusPlus a(10);
-    satp::algorithms::HyperLogLogPlusPlus b(11);
+    satp::algorithms::HyperLogLogPlusPlus a(10, defaultHash());
+    satp::algorithms::HyperLogLogPlusPlus b(11, defaultHash());
     REQUIRE_THROWS_AS(a.merge(b), std::invalid_argument);
 }
 
 TEST_CASE("HyperLogLog++ merge sparse+normal equivale al seriale", "[hyperloglogpp][merge][format]") {
     constexpr std::uint32_t P = 10;
-    satp::algorithms::HyperLogLogPlusPlus sparse(P);
-    satp::algorithms::HyperLogLogPlusPlus normal(P);
-    satp::algorithms::HyperLogLogPlusPlus serial(P);
+    satp::algorithms::HyperLogLogPlusPlus sparse(P, defaultHash());
+    satp::algorithms::HyperLogLogPlusPlus normal(P, defaultHash());
+    satp::algorithms::HyperLogLogPlusPlus serial(P, defaultHash());
 
     // Parte piccola: resta in sparse.
     for (std::uint32_t v = 0; v < 128; ++v) {
