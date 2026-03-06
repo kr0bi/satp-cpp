@@ -2,7 +2,6 @@
 #include <cmath>
 #include <filesystem>
 #include <fstream>
-#include <iostream>
 
 #include "catch2/catch_approx.hpp"
 #include "catch2/catch_test_macros.hpp"
@@ -12,17 +11,34 @@
 #include "satp/algorithms/NaiveCounting.h"
 #include "satp/algorithms/ProbabilisticCounting.h"
 #include "satp/hashing/HashFactory.h"
-#include "satp/simulation/Loop.h"
 #include "satp/simulation/EvaluationFramework.h"
 #include "satp/simulation/StreamingCheckpointBuilder.h"
 #include "TestData.h"
 
 using namespace std;
 
-
 namespace eval = satp::evaluation;
 namespace alg = satp::algorithms;
 using Catch::Approx;
+
+namespace {
+    struct EvaluationFrameworkFixture {
+        satp::testdata::LoadedDataset dataset = satp::testdata::loadDataset();
+        eval::EvaluationFramework bench{satp::testdata::datasetPath(), satp::hashing::getHashFunctionBy()};
+
+        [[nodiscard]] size_t runs() const noexcept {
+            return dataset.partition_count;
+        }
+
+        [[nodiscard]] size_t sampleSize() const noexcept {
+            return dataset.elements_per_partition;
+        }
+    };
+
+    [[nodiscard]] filesystem::path mergePairsCsvPath() {
+        return filesystem::temp_directory_path() / "satp_merge_pairs_test.csv";
+    }
+} // namespace
 
 static void requireFiniteNonNegative(const eval::Stats &stats) {
     REQUIRE(isfinite(stats.mean));
@@ -43,52 +59,41 @@ static void requireFiniteNonNegative(const eval::Stats &stats) {
 }
 
 TEST_CASE("Evaluation Framework", "[eval-framework]") {
-        // --------------- parametri del benchmark ---------------------------
-        constexpr uint32_t K = 16; // registri LogLog
-        constexpr uint32_t L = 16; // bitmap ProbabilisticCounting
-        constexpr uint32_t L_LOG = 32; // bitmap LogLog
+    constexpr uint32_t K = 16;
+    constexpr uint32_t L = 16;
+    constexpr uint32_t L_LOG = 32;
 
-        // --------------- dataset da file ----------------------------------
-        eval::EvaluationFramework bench(satp::testdata::datasetPath(), satp::hashing::getHashFunctionBy());
-        const auto dataset = satp::testdata::loadDataset();
-        const auto SAMPLE_SIZE = dataset.elements_per_partition;
-        const auto RUNS = dataset.partition_count;
+    const EvaluationFrameworkFixture fixture;
 
-        cout << "Ground‑truth distinct = " << bench.getNumElementiDistintiEffettivi() << '\n';
+    auto hllStats = fixture.bench.evaluate<alg::HyperLogLogPlusPlus>(fixture.runs(), fixture.sampleSize(), K);
+    requireFiniteNonNegative(hllStats);
 
-        // -------- valutazione HyperLogLog ----------------------------------
-        auto hllStats = bench.evaluate<alg::HyperLogLogPlusPlus>(RUNS, SAMPLE_SIZE, K);
-        cout << "[HyperLogLog]  mean=" << hllStats.mean
-                        << "  var=" << hllStats.variance
-                        << "  bias=" << hllStats.bias << '\n';
-        requireFiniteNonNegative(hllStats);
+    auto llStats = fixture.bench.evaluate<alg::LogLog>(fixture.runs(), fixture.sampleSize(), K, L_LOG);
+    requireFiniteNonNegative(llStats);
 
-        // -------- valutazione LogLog ---------------------------------------
-        auto llStats = bench.evaluate<alg::LogLog>(RUNS, SAMPLE_SIZE, K, L_LOG);
+    auto pcStats = fixture.bench.evaluate<alg::ProbabilisticCounting>(fixture.runs(), fixture.sampleSize(), L);
+    requireFiniteNonNegative(pcStats);
+}
 
-        cout << "[LogLog]  mean=" << llStats.mean
-                        << "  var=" << llStats.variance
-                        << "  bias=" << llStats.bias << '\n';
-        requireFiniteNonNegative(llStats);
+TEST_CASE("Evaluation Framework ritorna vuoto per scope richiesto nullo", "[eval-framework][scope]") {
+    const EvaluationFrameworkFixture fixture;
 
-        // -------- valutazione ProbabilisticCounting ------------------------
-        auto pcStats = bench.evaluate<alg::ProbabilisticCounting>(RUNS, SAMPLE_SIZE, L);
+    const auto stats = fixture.bench.evaluate<alg::NaiveCounting>(0u, fixture.sampleSize());
+    const auto streaming = fixture.bench.evaluateStreaming<alg::NaiveCounting>(fixture.runs(), 0u);
+    const auto merge = fixture.bench.evaluateMergePairs<alg::NaiveCounting>(0u, fixture.sampleSize());
 
-        cout << "[PC]      mean=" << pcStats.mean
-                        << "  var=" << pcStats.variance
-                        << "  bias=" << pcStats.bias << '\n';
-        requireFiniteNonNegative(pcStats);
+    REQUIRE(stats.mean == Approx(0.0).margin(1e-12));
+    REQUIRE(stats.variance == Approx(0.0).margin(1e-12));
+    REQUIRE(streaming.empty());
+    REQUIRE(merge.empty());
 }
 
 TEST_CASE("Evaluation Framework streaming usa F0(t) del dataset", "[eval-framework][streaming]") {
-    eval::EvaluationFramework bench(satp::testdata::datasetPath(), satp::hashing::getHashFunctionBy());
-    const auto dataset = satp::testdata::loadDataset();
-    const auto sampleSize = dataset.elements_per_partition;
-    const auto runs = dataset.partition_count;
+    const EvaluationFrameworkFixture fixture;
 
-    const auto series = bench.evaluateStreaming<alg::NaiveCounting>(runs, sampleSize);
+    const auto series = fixture.bench.evaluateStreaming<alg::NaiveCounting>(fixture.runs(), fixture.sampleSize());
     const auto expectedCheckpoints = eval::StreamingCheckpointBuilder::build(
-        sampleSize,
+        fixture.sampleSize(),
         eval::EvaluationFramework::DEFAULT_STREAMING_CHECKPOINTS);
 
     REQUIRE(series.size() == expectedCheckpoints.size());
@@ -107,7 +112,7 @@ TEST_CASE("Evaluation Framework streaming usa F0(t) del dataset", "[eval-framewo
         REQUIRE(isfinite(point.bias));
         REQUIRE(isfinite(point.mean_relative_error));
         REQUIRE(point.number_of_elements_processed >= 1);
-        REQUIRE(point.number_of_elements_processed <= sampleSize);
+        REQUIRE(point.number_of_elements_processed <= fixture.sampleSize());
         REQUIRE(point.number_of_elements_processed == expectedIndex);
         if (i > 0) {
             REQUIRE(point.number_of_elements_processed > series[i - 1].number_of_elements_processed);
@@ -122,8 +127,8 @@ TEST_CASE("Evaluation Framework streaming usa F0(t) del dataset", "[eval-framewo
     }
 
     const auto &last = series.back();
-    REQUIRE(last.truth_mean == Approx(static_cast<double>(dataset.distinct)).margin(1e-12));
-    REQUIRE(last.mean == Approx(static_cast<double>(dataset.distinct)).margin(1e-12));
+    REQUIRE(last.truth_mean == Approx(static_cast<double>(fixture.dataset.distinct)).margin(1e-12));
+    REQUIRE(last.mean == Approx(static_cast<double>(fixture.dataset.distinct)).margin(1e-12));
 }
 
 TEST_CASE("Streaming checkpoint builder usa fasi percentuali e termina a n", "[eval-framework][streaming]") {
@@ -158,13 +163,12 @@ TEST_CASE("Streaming checkpoint builder usa fasi percentuali e termina a n", "[e
 }
 
 TEST_CASE("Evaluation Framework merge pairs: Naive merge equivale al seriale", "[eval-framework][merge]") {
-    eval::EvaluationFramework bench(satp::testdata::datasetPath(), satp::hashing::getHashFunctionBy());
-    const auto dataset = satp::testdata::loadDataset();
+    const EvaluationFrameworkFixture fixture;
 
-    const auto points = bench.evaluateMergePairs<alg::NaiveCounting>(
-        dataset.partition_count,
-        dataset.elements_per_partition);
-    REQUIRE(points.size() == dataset.partition_count / 2u);
+    const auto points = fixture.bench.evaluateMergePairs<alg::NaiveCounting>(
+        fixture.runs(),
+        fixture.sampleSize());
+    REQUIRE(points.size() == fixture.runs() / 2u);
     REQUIRE_FALSE(points.empty());
 
     for (const auto &point : points) {
@@ -180,21 +184,20 @@ TEST_CASE("Evaluation Framework merge pairs: Naive merge equivale al seriale", "
 TEST_CASE("Evaluation Framework merge pairs CSV", "[eval-framework][merge][csv]") {
     namespace fs = filesystem;
 
-    eval::EvaluationFramework bench(satp::testdata::datasetPath(), satp::hashing::getHashFunctionBy());
-    const auto dataset = satp::testdata::loadDataset();
+    const EvaluationFrameworkFixture fixture;
 
-    const fs::path csvPath = fs::temp_directory_path() / "satp_merge_pairs_test.csv";
+    const fs::path csvPath = mergePairsCsvPath();
     if (fs::exists(csvPath)) {
         fs::remove(csvPath);
     }
 
-    const auto stats = bench.evaluateMergePairsToCsv<alg::NaiveCounting>(
+    const auto stats = fixture.bench.evaluateMergePairsToCsv<alg::NaiveCounting>(
         csvPath,
-        dataset.partition_count,
-        dataset.elements_per_partition,
+        fixture.runs(),
+        fixture.sampleSize(),
         "naive");
 
-    REQUIRE(stats.pair_count == dataset.partition_count / 2u);
+    REQUIRE(stats.pair_count == fixture.runs() / 2u);
     REQUIRE(stats.delta_merge_serial_abs_mean == Approx(0.0).margin(1e-12));
     REQUIRE(stats.delta_merge_serial_abs_max == Approx(0.0).margin(1e-12));
     REQUIRE(stats.delta_merge_serial_rmse == Approx(0.0).margin(1e-12));

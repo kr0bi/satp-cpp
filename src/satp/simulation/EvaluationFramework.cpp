@@ -28,10 +28,14 @@ namespace satp::evaluation {
         return numElementiDistintiEffettivi;
     }
 
-    EvaluationFramework::EvaluationScope EvaluationFramework::datasetScope() const noexcept {
+    detail::EvaluationContext EvaluationFramework::context() const {
         return {
+            binaryDataset,
             binaryDataset.info.partition_count,
-            binaryDataset.info.elements_per_partition
+            binaryDataset.info.elements_per_partition,
+            numElementiDistintiEffettivi,
+            seed,
+            *hashFunction
         };
     }
 } // namespace satp::evaluation

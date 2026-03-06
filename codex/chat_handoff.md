@@ -388,3 +388,59 @@ Validation check performed after section 14:
 - no additional source-code or notebook changes were detected
 - only `codex/chat_handoff.md` is currently modified in the working tree
 - section 14 remains the latest technical delta to carry forward
+
+---
+
+## 16) Delta Update (2026-03-06, latest)
+
+### 16.1 EvaluationFramework modularization finalized
+
+The previous aggregator file `src/satp/simulation/EvaluationFramework.tpp` has been removed.
+
+`src/satp/simulation/EvaluationFramework.h` now directly includes the modular implementation files:
+
+- `satp/simulation/evaluationFramework/Detail.h`
+- `satp/simulation/evaluationFramework/Common.tpp`
+- `satp/simulation/evaluationFramework/modes/normal/Core.tpp`
+- `satp/simulation/evaluationFramework/modes/normal/Csv.tpp`
+- `satp/simulation/evaluationFramework/modes/streaming/Core.tpp`
+- `satp/simulation/evaluationFramework/modes/streaming/Csv.tpp`
+- `satp/simulation/evaluationFramework/modes/merge/Core.tpp`
+- `satp/simulation/evaluationFramework/modes/merge/Csv.tpp`
+
+This removes one extra indirection and keeps all mode-specific responsibilities in the dedicated `evaluationFramework/` tree.
+
+### 16.2 Verification status after removal
+
+- build: OK
+- tests: **37/37 passed**
+- no residual references to `EvaluationFramework.tpp` in `src/` or `tests/`
+
+### 16.3 Note on warnings
+
+The build still shows the previously known `-Wunqualified-std-cast-call` warnings (`move`/`forward`) caused by the adopted `using namespace std;` style choice. Functional behavior is unchanged.
+
+### 16.4 EvaluationFramework facade refactor
+
+`EvaluationFramework` was further slimmed down:
+
+- the class now acts as a thin facade
+- mode logic (`normal`, `streaming`, `merge`) is implemented as free functions under `satp::evaluation::modes::*`
+- runtime metadata is passed through a dedicated `detail::EvaluationContext`
+- the old member-template helpers tied to the class (`makeAlgo`, `evaluateFromBinary`, `evaluateStreamingFromBinary`, dataset-scope struct) were removed
+
+New modular files:
+
+- `src/satp/simulation/evaluationFramework/Context.h`
+- `src/satp/simulation/evaluationFramework/Facade.tpp`
+
+Helper cleanup:
+
+- `src/satp/simulation/evaluationFramework/Common.tpp` was removed
+- `Detail.h` now contains only shared evaluation helpers (progress, stream truth-bit helpers, merge summary)
+
+Testing:
+
+- `tests/simulation/EvaluationFrameworkTest.cpp` now uses a small shared fixture
+- added explicit contract test for zero requested scope returning empty results
+- current status after this refactor: **38/38 passed**
