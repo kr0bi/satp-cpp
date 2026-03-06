@@ -5,7 +5,7 @@
 #include <memory>
 
 #include "satp/ProgressBar.h"
-#include "satp/simulation/ProgressCallbacks.h"
+#include "satp/simulation/framework/ProgressCallbacks.h"
 
 using namespace std;
 

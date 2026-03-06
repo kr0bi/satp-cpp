@@ -3,12 +3,12 @@
 #include <cstdint>
 #include <vector>
 
-#include "satp/simulation/ErrorAccumulator.h"
-#include "satp/simulation/EvaluationMetadata.h"
-#include "satp/simulation/StreamingCheckpointBuilder.h"
-#include "satp/simulation/evaluationFramework/AlgorithmFactory.h"
-#include "satp/simulation/evaluationFramework/Context.h"
-#include "satp/simulation/evaluationFramework/DatasetHelpers.h"
+#include "satp/simulation/framework/AlgorithmFactory.h"
+#include "satp/simulation/framework/Context.h"
+#include "satp/simulation/framework/DatasetHelpers.h"
+#include "satp/simulation/framework/EvaluationMetadata.h"
+#include "satp/simulation/metrics/ErrorAccumulator.h"
+#include "satp/simulation/streaming/StreamingCheckpointBuilder.h"
 
 using namespace std;
 

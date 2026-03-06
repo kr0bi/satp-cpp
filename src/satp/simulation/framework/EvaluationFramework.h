@@ -9,10 +9,10 @@
 
 #include "satp/hashing/HashFunction.h"
 #include "satp/io/BinaryDatasetIO.h"
-#include "satp/simulation/EvaluationMetadata.h"
-#include "satp/simulation/ProgressCallbacks.h"
-#include "satp/simulation/Stats.h"
-#include "satp/simulation/evaluationFramework/Context.h"
+#include "satp/simulation/framework/Context.h"
+#include "satp/simulation/framework/EvaluationMetadata.h"
+#include "satp/simulation/framework/ProgressCallbacks.h"
+#include "satp/simulation/metrics/Stats.h"
 
 namespace satp::evaluation {
     namespace modes::streaming {
@@ -61,8 +61,8 @@ namespace satp::evaluation {
     };
 } // namespace satp::evaluation
 
-#include "satp/simulation/evaluationFramework/modes/streaming/Core.tpp"
-#include "satp/simulation/evaluationFramework/modes/merge/Core.tpp"
-#include "satp/simulation/evaluationFramework/Facade.tpp"
+#include "satp/simulation/framework/Facade.tpp"
+#include "satp/simulation/merge/MergeEvaluation.tpp"
+#include "satp/simulation/streaming/StreamingEvaluation.tpp"
 
 using namespace std;

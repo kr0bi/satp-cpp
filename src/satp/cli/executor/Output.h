@@ -5,7 +5,7 @@
 #include <string>
 
 #include "satp/cli/CliTypes.h"
-#include "satp/simulation/Stats.h"
+#include "satp/simulation/metrics/Stats.h"
 
 using namespace std;
 

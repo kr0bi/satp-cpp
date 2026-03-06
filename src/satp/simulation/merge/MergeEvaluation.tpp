@@ -3,10 +3,10 @@
 #include <cmath>
 #include <vector>
 
-#include "satp/simulation/EvaluationMetadata.h"
-#include "satp/simulation/evaluationFramework/AlgorithmFactory.h"
-#include "satp/simulation/evaluationFramework/Context.h"
-#include "satp/simulation/evaluationFramework/DatasetHelpers.h"
+#include "satp/simulation/framework/AlgorithmFactory.h"
+#include "satp/simulation/framework/Context.h"
+#include "satp/simulation/framework/DatasetHelpers.h"
+#include "satp/simulation/framework/EvaluationMetadata.h"
 
 using namespace std;
 

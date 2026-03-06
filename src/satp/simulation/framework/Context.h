@@ -4,8 +4,8 @@
 
 #include "satp/hashing/HashFunction.h"
 #include "satp/io/BinaryDatasetIO.h"
-#include "satp/simulation/EvaluationMetadata.h"
-#include "satp/simulation/ProgressCallbacks.h"
+#include "satp/simulation/framework/EvaluationMetadata.h"
+#include "satp/simulation/framework/ProgressCallbacks.h"
 
 using namespace std;
 

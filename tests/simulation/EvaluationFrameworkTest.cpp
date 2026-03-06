@@ -1,5 +1,4 @@
 #include <algorithm>
-#include <array>
 #include <cmath>
 #include <filesystem>
 #include <fstream>
@@ -8,10 +7,10 @@
 #include "catch2/catch_test_macros.hpp"
 #include "satp/algorithms/NaiveCounting.h"
 #include "satp/hashing/HashFactory.h"
-#include "satp/simulation/CsvResultWriter.h"
-#include "satp/simulation/EvaluationFramework.h"
-#include "satp/simulation/MergeSummary.h"
-#include "satp/simulation/StreamingCheckpointBuilder.h"
+#include "satp/simulation/framework/EvaluationFramework.h"
+#include "satp/simulation/merge/MergeSummary.h"
+#include "satp/simulation/results/CsvResultWriter.h"
+#include "satp/simulation/streaming/StreamingCheckpointBuilder.h"
 #include "TestData.h"
 
 using namespace std;

@@ -4,7 +4,7 @@
 #include <cmath>
 #include <vector>
 
-#include "satp/simulation/Stats.h"
+#include "satp/simulation/metrics/Stats.h"
 
 using namespace std;
 

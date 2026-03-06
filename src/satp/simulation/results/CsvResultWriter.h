@@ -3,10 +3,10 @@
 #include <filesystem>
 #include <vector>
 
-#include "satp/simulation/Stats.h"
-#include "satp/simulation/csv/CsvField.h"
-#include "satp/simulation/csv/CsvFile.h"
-#include "satp/simulation/csv/CsvRunDescriptor.h"
+#include "satp/simulation/metrics/Stats.h"
+#include "satp/simulation/results/csv/CsvField.h"
+#include "satp/simulation/results/csv/CsvFile.h"
+#include "satp/simulation/results/csv/CsvRunDescriptor.h"
 
 using namespace std;
 

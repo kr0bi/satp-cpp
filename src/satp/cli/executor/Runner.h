@@ -12,9 +12,9 @@
 #include "satp/cli/PathUtils.h"
 #include "satp/cli/executor/Output.h"
 #include "satp/cli/executor/ProgressBarAdapter.h"
-#include "satp/simulation/CsvResultWriter.h"
-#include "satp/simulation/EvaluationFramework.h"
-#include "satp/simulation/MergeSummary.h"
+#include "satp/simulation/framework/EvaluationFramework.h"
+#include "satp/simulation/merge/MergeSummary.h"
+#include "satp/simulation/results/CsvResultWriter.h"
 
 using namespace std;
 

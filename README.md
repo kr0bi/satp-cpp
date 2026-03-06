@@ -12,7 +12,7 @@ C++ project that implements and evaluates probabilistic algorithms for estimatin
 
 ## Project layout
 - `src/satp/algorithms/`: implementations of the counting algorithms
-- `src/satp/simulation/`: evaluation and loop utilities
+- `src/satp/simulation/`: simulation modules (`framework`, `streaming`, `merge`, `metrics`, `results`)
 - `src/satp/io/`: dataset I/O helpers
 - `main.cpp`: benchmark-style executable
 - `tests/`: Catch2 unit tests

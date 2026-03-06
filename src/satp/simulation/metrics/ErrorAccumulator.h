@@ -3,7 +3,7 @@
 #include <cmath>
 #include <cstddef>
 
-#include "satp/simulation/Stats.h"
+#include "satp/simulation/metrics/Stats.h"
 
 using namespace std;
 
