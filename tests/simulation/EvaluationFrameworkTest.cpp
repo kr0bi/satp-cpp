@@ -11,6 +11,7 @@
 #include "satp/algorithms/LogLog.h"
 #include "satp/algorithms/NaiveCounting.h"
 #include "satp/algorithms/ProbabilisticCounting.h"
+#include "satp/hashing/HashFactory.h"
 #include "satp/simulation/Loop.h"
 #include "satp/simulation/EvaluationFramework.h"
 #include "satp/simulation/StreamingCheckpointBuilder.h"
@@ -46,7 +47,7 @@ TEST_CASE("Evaluation Framework", "[eval-framework]") {
         constexpr std::uint32_t L_LOG = 32; // bitmap LogLog
 
         // --------------- dataset da file ----------------------------------
-        eval::EvaluationFramework bench(satp::testdata::datasetPath());
+        eval::EvaluationFramework bench(satp::testdata::datasetPath(), satp::hashing::getHashFunctionBy());
         const auto dataset = satp::testdata::loadDataset();
         const auto SAMPLE_SIZE = dataset.elements_per_partition;
         const auto RUNS = dataset.partition_count;
@@ -78,7 +79,7 @@ TEST_CASE("Evaluation Framework", "[eval-framework]") {
 }
 
 TEST_CASE("Evaluation Framework streaming usa F0(t) del dataset", "[eval-framework][streaming]") {
-    eval::EvaluationFramework bench(satp::testdata::datasetPath());
+    eval::EvaluationFramework bench(satp::testdata::datasetPath(), satp::hashing::getHashFunctionBy());
     const auto dataset = satp::testdata::loadDataset();
     const auto sampleSize = dataset.elements_per_partition;
     const auto runs = dataset.partition_count;
@@ -155,7 +156,7 @@ TEST_CASE("Streaming checkpoint builder usa fasi percentuali e termina a n", "[e
 }
 
 TEST_CASE("Evaluation Framework merge pairs: Naive merge equivale al seriale", "[eval-framework][merge]") {
-    eval::EvaluationFramework bench(satp::testdata::datasetPath());
+    eval::EvaluationFramework bench(satp::testdata::datasetPath(), satp::hashing::getHashFunctionBy());
     const auto dataset = satp::testdata::loadDataset();
 
     const auto points = bench.evaluateMergePairs<alg::NaiveCounting>(
@@ -177,7 +178,7 @@ TEST_CASE("Evaluation Framework merge pairs: Naive merge equivale al seriale", "
 TEST_CASE("Evaluation Framework merge pairs CSV", "[eval-framework][merge][csv]") {
     namespace fs = std::filesystem;
 
-    eval::EvaluationFramework bench(satp::testdata::datasetPath());
+    eval::EvaluationFramework bench(satp::testdata::datasetPath(), satp::hashing::getHashFunctionBy());
     const auto dataset = satp::testdata::loadDataset();
 
     const fs::path csvPath = fs::temp_directory_path() / "satp_merge_pairs_test.csv";
