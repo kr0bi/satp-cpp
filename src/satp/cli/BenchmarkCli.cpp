@@ -1,13 +1,30 @@
 #include "satp/cli/BenchmarkCli.h"
 
 #include <iostream>
+#include <optional>
 #include <string>
+#include <string_view>
 
 #include "satp/cli/CliConfig.h"
 
 using namespace std;
 
 namespace satp::cli {
+    namespace {
+        [[nodiscard]] optional<RunMode> runModeByCommand(const string_view commandName) {
+            if (commandName == "run") return RunMode::Normal;
+            if (commandName == "runstream") return RunMode::Streaming;
+            if (commandName == "runmerge") return RunMode::Merge;
+            return nullopt;
+        }
+
+        [[nodiscard]] const char *runUsageByMode(const RunMode mode) {
+            if (mode == RunMode::Streaming) return "Uso: runstream <algo|all>";
+            if (mode == RunMode::Merge) return "Uso: runmerge <algo|all>";
+            return "Uso: run <algo|all>";
+        }
+    } // namespace
+
     int BenchmarkCli::run() {
         cout << "SATP benchmark CLI. Digita 'help' per i comandi.\n";
 
@@ -37,28 +54,12 @@ namespace satp::cli {
                 }
                 continue;
             }
-            if (cmd.name == "run") {
+            if (const auto mode = runModeByCommand(cmd.name)) {
                 if (cmd.args.empty()) {
-                    cout << "Uso: run <algo|all>\n";
+                    cout << runUsageByMode(*mode) << '\n';
                     continue;
                 }
-                executor_.run(cfg_, cmd.args, RunMode::Normal);
-                continue;
-            }
-            if (cmd.name == "runstream") {
-                if (cmd.args.empty()) {
-                    cout << "Uso: runstream <algo|all>\n";
-                    continue;
-                }
-                executor_.run(cfg_, cmd.args, RunMode::Streaming);
-                continue;
-            }
-            if (cmd.name == "runmerge") {
-                if (cmd.args.empty()) {
-                    cout << "Uso: runmerge <algo|all>\n";
-                    continue;
-                }
-                executor_.run(cfg_, cmd.args, RunMode::Merge);
+                executor_.run(cfg_, cmd.args, *mode);
                 continue;
             }
             if (cmd.name == "quit") {
