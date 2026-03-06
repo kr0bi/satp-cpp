@@ -1,5 +1,6 @@
 #include "satp/cli/CliConfig.h"
 
+#include <array>
 #include <iostream>
 #include <limits>
 #include <sstream>
@@ -22,6 +23,16 @@ namespace satp::cli::config {
             } catch (const std::exception &) {
                 return false;
             }
+        }
+
+        [[nodiscard]] const std::array<const char *, 4> &supportedHashFunctionNames() {
+            static const std::array<const char *, 4> names{
+                "splitmix64",
+                "xxhash64",
+                "murmurhash3",
+                "siphash24"
+            };
+            return names;
         }
     } // namespace
 
@@ -48,7 +59,10 @@ namespace satp::cli::config {
         }
         if (param == "hashFunction") {
             try {
-                cfg.hashFunction = std::cref(hashing::hashFunctionByName(value));
+                // CLI parsing does not know dataset seed yet: use a dummy seed only
+                // to validate/normalize the hash function name.
+                const auto hash = hashing::getHashFunctionBy(value, 0u);
+                cfg.hashFunctionName = hash->name();
             } catch (const std::exception &) {
                 return false;
             }
@@ -83,7 +97,7 @@ namespace satp::cli::config {
             << "  ll     (LogLog)\n"
             << "  pc     (ProbabilisticCounting)\n"
             << "Hash functions:\n";
-        for (const auto &name : hashing::hashFunctionNames()) {
+        for (const auto *name : supportedHashFunctionNames()) {
             std::cout << "  " << name << '\n';
         }
     }
@@ -111,7 +125,7 @@ namespace satp::cli::config {
             << "Parametri correnti:\n"
             << "  datasetPath   = " << cfg.datasetPath << '\n'
             << "  resultsNs     = " << cfg.resultsNamespace << '\n'
-            << "  hashFunction  = " << cfg.hashFunction.get().name() << '\n'
+            << "  hashFunction  = " << cfg.hashFunctionName << '\n'
             << "  sampleSize    = " << view.sampleSize << " (dal dataset)\n"
             << "  runs          = " << view.runs << " (dal dataset)\n"
             << "  seed          = " << view.seed << " (dal dataset)\n"

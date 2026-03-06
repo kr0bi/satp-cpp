@@ -178,9 +178,9 @@ namespace satp::cli {
                                 const std::vector<std::string> &algs,
                                 const RunMode mode) const {
         auto ctx = config::loadDatasetRuntimeContext(cfg);
-        const auto &hashFunction = cfg.hashFunction.get();
-        const std::string hashName = hashFunction.name();
-        eval::EvaluationFramework bench(std::move(ctx.index), hashFunction);
+        auto runtimeHash = satp::hashing::getHashFunctionBy(cfg.hashFunctionName, ctx.seed);
+        const std::string hashName = cfg.hashFunctionName;
+        eval::EvaluationFramework bench(std::move(ctx.index), std::move(runtimeHash));
         const auto selected = collectRequestedAlgorithms(algs);
 
         printRunContext(ctx, mode, hashName);
