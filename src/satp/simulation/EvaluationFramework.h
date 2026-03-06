@@ -3,11 +3,11 @@
 #include <cstddef>
 #include <cstdint>
 #include <filesystem>
+#include <memory>
 #include <string>
 #include <vector>
 
 #include "satp/hashing/HashFunction.h"
-#include "satp/hashing/HashFactory.h"
 #include "satp/io/BinaryDatasetIO.h"
 #include "satp/simulation/Stats.h"
 
@@ -18,10 +18,10 @@ namespace satp::evaluation {
 
         explicit EvaluationFramework(
             const std::filesystem::path &filePath,
-            const hashing::HashFunction &hashFunction = hashing::defaultHashFunction());
+            unique_ptr<hashing::HashFunction> hashFunction);
         explicit EvaluationFramework(
             io::BinaryDatasetIndex datasetIndex,
-            const hashing::HashFunction &hashFunction = hashing::defaultHashFunction());
+            unique_ptr<hashing::HashFunction> hashFunction);
 
         template<typename Algo, typename... Args>
         [[nodiscard]] Stats evaluate(std::size_t runs,
@@ -85,7 +85,7 @@ namespace satp::evaluation {
         io::BinaryDatasetIndex binaryDataset;
         std::size_t numElementiDistintiEffettivi = 0;
         std::uint32_t seed = 0;
-        const hashing::HashFunction &hashFunction;
+        unique_ptr<hashing::HashFunction> hashFunction;
     };
 } // namespace satp::evaluation
 

@@ -57,7 +57,7 @@ namespace satp::evaluation {
     Algo EvaluationFramework::makeAlgo(Args &&... ctorArgs) const {
         static_assert(std::constructible_from<Algo, Args..., const hashing::HashFunction &>,
                       "Algorithm must be constructible with (..., const hashing::HashFunction&)");
-        return Algo(std::forward<Args>(ctorArgs)..., hashFunction);
+        return Algo(std::forward<Args>(ctorArgs)..., *hashFunction);
     }
 
     template<typename Algo, typename... Args>

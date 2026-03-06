@@ -1,21 +1,25 @@
 #include "satp/simulation/EvaluationFramework.h"
 
+#include <stdexcept>
 #include <utility>
 
 namespace satp::evaluation {
     EvaluationFramework::EvaluationFramework(
         const std::filesystem::path &filePath,
-        const hashing::HashFunction &hashFunction)
-        : EvaluationFramework(io::indexBinaryDataset(filePath), hashFunction) {
+        unique_ptr<hashing::HashFunction> hashFunction)
+        : EvaluationFramework(io::indexBinaryDataset(filePath), std::move(hashFunction)) {
     }
 
     EvaluationFramework::EvaluationFramework(
         io::BinaryDatasetIndex datasetIndex,
-        const hashing::HashFunction &hashFunction)
+        unique_ptr<hashing::HashFunction> hashFunction)
         : binaryDataset(std::move(datasetIndex)),
           numElementiDistintiEffettivi(binaryDataset.info.distinct_per_partition),
           seed(binaryDataset.info.seed),
-          hashFunction(hashFunction) {
+          hashFunction(std::move(hashFunction)) {
+        if (this->hashFunction == nullptr) {
+            throw std::invalid_argument("EvaluationFramework requires a non-null hash function");
+        }
     }
 
     std::size_t EvaluationFramework::getNumElementiDistintiEffettivi() const noexcept {
