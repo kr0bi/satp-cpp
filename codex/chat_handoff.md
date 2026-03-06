@@ -400,13 +400,14 @@ The previous aggregator file `src/satp/simulation/EvaluationFramework.tpp` has b
 `src/satp/simulation/EvaluationFramework.h` now directly includes the modular implementation files:
 
 - `satp/simulation/evaluationFramework/Detail.h`
-- `satp/simulation/evaluationFramework/Common.tpp`
+- `satp/simulation/evaluationFramework/Context.h`
 - `satp/simulation/evaluationFramework/modes/normal/Core.tpp`
 - `satp/simulation/evaluationFramework/modes/normal/Csv.tpp`
 - `satp/simulation/evaluationFramework/modes/streaming/Core.tpp`
 - `satp/simulation/evaluationFramework/modes/streaming/Csv.tpp`
 - `satp/simulation/evaluationFramework/modes/merge/Core.tpp`
 - `satp/simulation/evaluationFramework/modes/merge/Csv.tpp`
+- `satp/simulation/evaluationFramework/Facade.tpp`
 
 This removes one extra indirection and keeps all mode-specific responsibilities in the dedicated `evaluationFramework/` tree.
 
