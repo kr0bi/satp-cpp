@@ -7,10 +7,14 @@
 #include <utility>
 #include <vector>
 
+#include "satp/algorithms/AlgorithmCatalog.h"
 #include "satp/cli/CliTypes.h"
 #include "satp/cli/PathUtils.h"
 #include "satp/cli/executor/Output.h"
+#include "satp/cli/executor/ProgressBarAdapter.h"
+#include "satp/simulation/CsvResultWriter.h"
 #include "satp/simulation/EvaluationFramework.h"
+#include "satp/simulation/MergeSummary.h"
 
 using namespace std;
 
@@ -19,6 +23,17 @@ namespace satp::cli::executor {
         AlgorithmRunSpec spec;
         function<void(const AlgorithmRunSpec &)> run;
     };
+
+    [[nodiscard]] inline satp::evaluation::CsvRunDescriptor makeCsvRunDescriptor(
+        const AlgorithmRunSpec &spec,
+        const satp::evaluation::EvaluationMetadata &metadata) {
+        return {
+            satp::algorithms::catalog::getNameBy(spec.algorithmId),
+            spec.params,
+            metadata,
+            spec.rseTheoretical
+        };
+    }
 
     template<typename Algo, typename... CtorArgs>
     void runSingleAlgorithm(satp::evaluation::EvaluationFramework &bench,
@@ -34,45 +49,24 @@ namespace satp::cli::executor {
             spec.hashName,
             mode);
         filesystem::create_directories(csvPath.parent_path());
-
+        const auto descriptor = makeCsvRunDescriptor(spec, bench.metadata());
+        ProgressBarAdapter progressAdapter;
+        const auto progress = progressAdapter.callbacks();
         if (mode == RunMode::Streaming) {
-            const auto series = bench.evaluateStreamingToCsv<Algo>(
-                csvPath,
-                ctx.runs,
-                ctx.sampleSize,
-                spec.params,
-                spec.rseTheoretical,
-                forward<CtorArgs>(ctorArgs)...);
-
+            const auto series = bench.evaluateStreaming<Algo>(progress, std::forward<CtorArgs>(ctorArgs)...);
+            satp::evaluation::CsvResultWriter::appendStreaming(csvPath, descriptor, series);
             if (series.empty()) {
                 cout << algorithmLogPrefix(spec) << "[stream] csv=" << csvPath.string()
                           << "  no data\n";
                 return;
             }
-
             printStreamingSummary(spec, csvPath, series.back());
             return;
         }
-
-        if (mode == RunMode::Merge) {
-            const auto stats = bench.evaluateMergePairsToCsv<Algo>(
-                csvPath,
-                ctx.runs,
-                ctx.sampleSize,
-                spec.params,
-                forward<CtorArgs>(ctorArgs)...);
-            printMergeSummary(spec, csvPath, stats);
-            return;
-        }
-
-        const auto stats = bench.evaluateToCsv<Algo>(
-            csvPath,
-            ctx.runs,
-            ctx.sampleSize,
-            spec.params,
-            spec.rseTheoretical,
-            forward<CtorArgs>(ctorArgs)...);
-        printNormalSummary(spec, csvPath, stats);
+        const auto points = bench.evaluateMergePairs<Algo>(progress, std::forward<CtorArgs>(ctorArgs)...);
+        satp::evaluation::CsvResultWriter::appendMergePairs(csvPath, descriptor, points);
+        const auto stats = satp::evaluation::summarizeMergePairs(points);
+        printMergeSummary(spec, csvPath, stats);
     }
 
     template<typename Algo, typename... CtorArgs>
@@ -87,12 +81,12 @@ namespace satp::cli::executor {
                          CtorArgs &&... ctorArgs) {
         jobs.push_back({
             {
-                move(algorithmId),
-                move(params),
-                move(hashName),
+                std::move(algorithmId),
+                std::move(params),
+                std::move(hashName),
                 rseTheoretical
             },
-            [&bench, &ctx, mode, ... capturedArgs = forward<CtorArgs>(ctorArgs)](
+            [&bench, &ctx, mode, ... capturedArgs = std::forward<CtorArgs>(ctorArgs)](
                 const AlgorithmRunSpec &spec) {
                 runSingleAlgorithm<Algo>(
                     bench,

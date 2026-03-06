@@ -22,10 +22,6 @@ namespace satp::cli::executor {
                          RunMode mode,
                          const string &hashName);
 
-    void printNormalSummary(const AlgorithmRunSpec &spec,
-                            const filesystem::path &csvPath,
-                            const satp::evaluation::Stats &stats);
-
     void printStreamingSummary(const AlgorithmRunSpec &spec,
                                const filesystem::path &csvPath,
                                const satp::evaluation::StreamingPointStats &lastPoint);

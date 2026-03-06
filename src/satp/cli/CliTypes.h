@@ -25,7 +25,6 @@ namespace satp::cli {
     };
 
     enum class RunMode {
-        Normal,
         Streaming,
         Merge
     };

@@ -3,8 +3,10 @@
 #include <cmath>
 #include <vector>
 
+#include "satp/simulation/EvaluationMetadata.h"
+#include "satp/simulation/evaluationFramework/AlgorithmFactory.h"
 #include "satp/simulation/evaluationFramework/Context.h"
-#include "satp/simulation/evaluationFramework/Detail.h"
+#include "satp/simulation/evaluationFramework/DatasetHelpers.h"
 
 using namespace std;
 
@@ -15,10 +17,10 @@ namespace satp::evaluation::modes::merge {
         static_assert(detail::MergeableAlgorithm<Algo>,
                       "merge::evaluate requires Algo::merge(const Algo&)");
 
-        if (context.runs < 2 || detail::scopeIsEmpty(context.runs, context.sampleSize)) return {};
+        if (context.metadata.runs < 2u || hasEmptyDataset(context.metadata)) return {};
 
-        const size_t pairCount = context.runs / 2u;
-        auto bar = detail::makeProgressBar(pairCount * context.sampleSize * 4u);
+        const size_t pairCount = context.metadata.runs / 2u;
+        detail::startProgress(context.progress, pairCount * context.metadata.sampleSize * 4u);
         satp::io::BinaryDatasetPartitionReader reader(context.binaryDataset);
 
         vector<uint32_t> partA;
@@ -32,18 +34,18 @@ namespace satp::evaluation::modes::merge {
             reader.load(idxA, partA);
             reader.load(idxB, partB);
 
-            Algo sketchA = detail::makeAlgo<Algo>(context, forward<Args>(ctorArgs)...);
-            detail::processValues(sketchA, partA, bar);
+            Algo sketchA = detail::makeAlgo<Algo>(context, std::forward<Args>(ctorArgs)...);
+            detail::processValues(sketchA, partA, context.progress);
 
-            Algo sketchB = detail::makeAlgo<Algo>(context, forward<Args>(ctorArgs)...);
-            detail::processValues(sketchB, partB, bar);
+            Algo sketchB = detail::makeAlgo<Algo>(context, std::forward<Args>(ctorArgs)...);
+            detail::processValues(sketchB, partB, context.progress);
 
             Algo merged = sketchA;
             merged.merge(sketchB);
 
-            Algo serial = detail::makeAlgo<Algo>(context, forward<Args>(ctorArgs)...);
-            detail::processValues(serial, partA, bar);
-            detail::processValues(serial, partB, bar);
+            Algo serial = detail::makeAlgo<Algo>(context, std::forward<Args>(ctorArgs)...);
+            detail::processValues(serial, partA, context.progress);
+            detail::processValues(serial, partB, context.progress);
 
             const double estimateMerge = static_cast<double>(merged.count());
             const double estimateSerial = static_cast<double>(serial.count());
@@ -59,7 +61,7 @@ namespace satp::evaluation::modes::merge {
             });
         }
 
-        detail::finishProgressBar(bar);
+        detail::finishProgress(context.progress);
         return points;
     }
 } // namespace satp::evaluation::modes::merge

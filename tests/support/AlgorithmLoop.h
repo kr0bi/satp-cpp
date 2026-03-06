@@ -1,4 +1,5 @@
 #pragma once
+
 #include <concepts>
 #include <memory>
 #include <vector>
@@ -8,20 +9,16 @@
 
 using namespace std;
 
-namespace satp::simulation {
+namespace satp::testsupport {
     template<typename T>
     concept AlgorithmLike = derived_from<T, algorithms::Algorithm>;
 
-    /**
-     * Esegue uno stream di ID su un algoritmo di cardinalità.
-     * @tparam A  una classe che implementa Algorithm (NaiveCounting, ProbabilisticCounting, …)
-     */
     template<AlgorithmLike A>
-    class Loop {
+    class AlgorithmLoop {
     public:
-        Loop(A algorithm, vector<uint32_t> ids, bool verbose = false)
-            : algorithm_(move(algorithm))
-              , ids_(move(ids))
+        AlgorithmLoop(A algorithm, vector<uint32_t> ids, bool verbose = false)
+            : algorithm_(std::move(algorithm))
+              , ids_(std::move(ids))
               , verbose_(verbose) {
         }
 
@@ -34,7 +31,7 @@ namespace satp::simulation {
             if (verbose_) {
                 bar = make_unique<util::ProgressBar>(ids_.size());
             }
-            for (uint32_t id: ids_) {
+            for (uint32_t id : ids_) {
                 algorithm_.process(id);
                 if (bar) bar->tick();
             }
@@ -48,4 +45,4 @@ namespace satp::simulation {
         vector<uint32_t> ids_;
         bool verbose_;
     };
-} // namespace satp::simulation
+} // namespace satp::testsupport

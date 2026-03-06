@@ -20,8 +20,8 @@ TEST_CASE("CLI command parser parses command tokens", "[cli][config]") {
     }
 
     {
-        const auto cmd = satp::cli::config::parseCommand("run   hllpp   ll");
-        REQUIRE(cmd.name == "run");
+        const auto cmd = satp::cli::config::parseCommand("runstream   hllpp   ll");
+        REQUIRE(cmd.name == "runstream");
         REQUIRE(cmd.args == vector<string>{"hllpp", "ll"});
     }
 
@@ -110,7 +110,6 @@ TEST_CASE("Executor output helpers expose stable labels and metrics", "[cli][exe
     using satp::cli::executor::rseLogLog;
     using satp::cli::executor::rseUnknown;
 
-    REQUIRE(string(modeLabel(RunMode::Normal)) == "normal");
     REQUIRE(string(modeLabel(RunMode::Streaming)) == "streaming");
     REQUIRE(string(modeLabel(RunMode::Merge)) == "merge");
 

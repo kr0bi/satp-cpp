@@ -69,12 +69,9 @@ namespace satp::cli::path_utils {
         const string hashDir = sanitizeForPath(hashName);
         const string nsDir = sanitizeForPath(resultsNamespace);
         const string algorithmDir = sanitizeForPath(algorithmId);
-        string fileName = "results_oneshot.csv";
-        string modeDir = "oneshot";
-        if (mode == RunMode::Streaming) {
-            fileName = "results_streaming.csv";
-            modeDir = "streaming";
-        } else if (mode == RunMode::Merge) {
+        string fileName = "results_streaming.csv";
+        string modeDir = "streaming";
+        if (mode == RunMode::Merge) {
             fileName = "results_merge.csv";
             modeDir = "merge";
         }

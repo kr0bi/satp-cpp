@@ -31,10 +31,9 @@ namespace satp::cli::config {
             << "  list                         Elenca algoritmi supportati\n"
             << "  set <param> <value>          Imposta un parametro\n"
             << "                               Parametri: " << runParamListForHelp() << '\n'
-            << "  run <algo|all>               Esegue uno o piu' algoritmi (modalita' normale)\n"
             << "  runstream <algo|all>         Esegue uno o piu' algoritmi (modalita' streaming)\n"
             << "  runmerge <algo|all>          Esegue benchmark merge a coppie (0-1,2-3,...)\n"
-            << "                               CSV automatico in results/<namespace>/<algoritmo>/<params>/\n"
+            << "                               CSV automatico in results/<namespace>/<mode>/<algoritmo>/<hash>/<params>/\n"
             << "  quit                         Esce\n";
     }
 

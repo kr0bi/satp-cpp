@@ -18,7 +18,7 @@ namespace satp::cli {
         auto ctx = config::loadDatasetRuntimeContext(cfg);
         auto runtimeHash = satp::hashing::getHashFunctionBy(cfg.hashFunctionName, ctx.seed);
         const string hashName = cfg.hashFunctionName;
-        satp::evaluation::EvaluationFramework bench(move(ctx.index), move(runtimeHash));
+        satp::evaluation::EvaluationFramework bench(std::move(ctx.index), std::move(runtimeHash));
 
         executor::printRunContext(ctx, mode, hashName);
         const auto selected = executor::collectRequestedAlgorithms(algs);

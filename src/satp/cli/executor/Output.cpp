@@ -9,20 +9,9 @@
 using namespace std;
 
 namespace satp::cli::executor {
-    namespace {
-        [[nodiscard]] bool isStreaming(const RunMode mode) {
-            return mode == RunMode::Streaming;
-        }
-
-        [[nodiscard]] bool isMerge(const RunMode mode) {
-            return mode == RunMode::Merge;
-        }
-    } // namespace
-
     const char *modeLabel(const RunMode mode) {
-        if (isStreaming(mode)) return "streaming";
-        if (isMerge(mode)) return "merge";
-        return "normal";
+        if (mode == RunMode::Streaming) return "streaming";
+        return "merge";
     }
 
     double rseHll(const uint32_t k) {
@@ -52,21 +41,6 @@ namespace satp::cli::executor {
                   << '\t' << "seed: " << ctx.seed
                   << '\t' << "hash: " << hashName << '\n'
                   << "resultsRoot: " << (ctx.repoRoot / "results" / ctx.resultsNamespace).string() << '\n';
-    }
-
-    void printNormalSummary(const AlgorithmRunSpec &spec,
-                            const filesystem::path &csvPath,
-                            const satp::evaluation::Stats &stats) {
-        cout << algorithmLogPrefix(spec) << " csv=" << csvPath.string()
-                  << "  mean=" << stats.mean
-                  << "  f0_hat=" << stats.mean
-                  << "  f0_true=" << stats.truth_mean
-                  << "  var=" << stats.variance
-                  << "  stddev=" << stats.stddev
-                  << "  bias=" << stats.bias
-                  << "  mre=" << stats.mean_relative_error
-                  << "  rmse=" << stats.rmse
-                  << "  mae=" << stats.mae << '\n';
     }
 
     void printStreamingSummary(const AlgorithmRunSpec &spec,

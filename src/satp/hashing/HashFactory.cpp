@@ -2,6 +2,7 @@
 
 #include <cctype>
 #include <stdexcept>
+#include <string>
 
 #include "satp/hashing/functions/MurmurHash3.h"
 #include "satp/hashing/functions/SipHash24.h"

@@ -21,16 +21,16 @@ namespace satp::algorithms {
         const uint32_t hash = hashFunction().hash32(id) & ((1u << lengthBitMap) - 1u);
         if (hash == 0) return;
 
-        uint32_t rightMostOneBit = countr_zero(hash);
+        uint32_t rightMostOneBit = static_cast<uint32_t>(countr_zero(hash));
         if (rightMostOneBit < lengthBitMap)
             bitmap |= 1u << rightMostOneBit;
     }
 
     uint64_t ProbabilisticCounting::count() {
-        uint32_t idxRightmostZero = countr_one(bitmap);
+        uint32_t idxRightmostZero = static_cast<uint32_t>(countr_one(bitmap));
         if (idxRightmostZero > lengthBitMap) idxRightmostZero = lengthBitMap;
         constexpr double PHI_INV = 1.0 / INV_PHI;
-        double q = ldexp(1.0, idxRightmostZero) * PHI_INV;
+        double q = ldexp(1.0, static_cast<int>(idxRightmostZero)) * PHI_INV;
         return static_cast<uint64_t>(q);
     }
 

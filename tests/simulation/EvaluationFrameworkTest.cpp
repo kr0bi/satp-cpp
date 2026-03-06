@@ -1,17 +1,16 @@
 #include <algorithm>
+#include <array>
 #include <cmath>
 #include <filesystem>
 #include <fstream>
 
 #include "catch2/catch_approx.hpp"
 #include "catch2/catch_test_macros.hpp"
-#include "satp/algorithms/HyperLogLog.h"
-#include "satp/algorithms/HyperLogLogPlusPlus.h"
-#include "satp/algorithms/LogLog.h"
 #include "satp/algorithms/NaiveCounting.h"
-#include "satp/algorithms/ProbabilisticCounting.h"
 #include "satp/hashing/HashFactory.h"
+#include "satp/simulation/CsvResultWriter.h"
 #include "satp/simulation/EvaluationFramework.h"
+#include "satp/simulation/MergeSummary.h"
 #include "satp/simulation/StreamingCheckpointBuilder.h"
 #include "TestData.h"
 
@@ -40,58 +39,20 @@ namespace {
     }
 } // namespace
 
-static void requireFiniteNonNegative(const eval::Stats &stats) {
-    REQUIRE(isfinite(stats.mean));
-    REQUIRE(isfinite(stats.variance));
-    REQUIRE(isfinite(stats.stddev));
-    REQUIRE(isfinite(stats.rmse));
-    REQUIRE(isfinite(stats.mae));
-    REQUIRE(isfinite(stats.mean_relative_error));
-    REQUIRE(isfinite(stats.bias));
-    REQUIRE(isfinite(stats.relative_bias));
-    REQUIRE(stats.variance >= 0.0);
-    REQUIRE(stats.stddev >= 0.0);
-    REQUIRE(stats.rmse >= 0.0);
-    REQUIRE(stats.mae >= 0.0);
-    REQUIRE(stats.mean_relative_error >= 0.0);
-    REQUIRE(stats.absolute_bias >= 0.0);
-    REQUIRE(abs(stats.absolute_bias - abs(stats.bias)) < 1e-12);
-}
-
-TEST_CASE("Evaluation Framework", "[eval-framework]") {
-    constexpr uint32_t K = 16;
-    constexpr uint32_t L = 16;
-    constexpr uint32_t L_LOG = 32;
-
+TEST_CASE("Evaluation Framework usa sempre i metadata del dataset", "[eval-framework][metadata]") {
     const EvaluationFrameworkFixture fixture;
+    const auto &metadata = fixture.bench.metadata();
 
-    auto hllStats = fixture.bench.evaluate<alg::HyperLogLogPlusPlus>(fixture.runs(), fixture.sampleSize(), K);
-    requireFiniteNonNegative(hllStats);
-
-    auto llStats = fixture.bench.evaluate<alg::LogLog>(fixture.runs(), fixture.sampleSize(), K, L_LOG);
-    requireFiniteNonNegative(llStats);
-
-    auto pcStats = fixture.bench.evaluate<alg::ProbabilisticCounting>(fixture.runs(), fixture.sampleSize(), L);
-    requireFiniteNonNegative(pcStats);
-}
-
-TEST_CASE("Evaluation Framework ritorna vuoto per scope richiesto nullo", "[eval-framework][scope]") {
-    const EvaluationFrameworkFixture fixture;
-
-    const auto stats = fixture.bench.evaluate<alg::NaiveCounting>(0u, fixture.sampleSize());
-    const auto streaming = fixture.bench.evaluateStreaming<alg::NaiveCounting>(fixture.runs(), 0u);
-    const auto merge = fixture.bench.evaluateMergePairs<alg::NaiveCounting>(0u, fixture.sampleSize());
-
-    REQUIRE(stats.mean == Approx(0.0).margin(1e-12));
-    REQUIRE(stats.variance == Approx(0.0).margin(1e-12));
-    REQUIRE(streaming.empty());
-    REQUIRE(merge.empty());
+    REQUIRE(metadata.runs == fixture.runs());
+    REQUIRE(metadata.sampleSize == fixture.sampleSize());
+    REQUIRE(metadata.distinctCount == fixture.dataset.distinct);
+    REQUIRE(metadata.seed == fixture.dataset.seed);
 }
 
 TEST_CASE("Evaluation Framework streaming usa F0(t) del dataset", "[eval-framework][streaming]") {
     const EvaluationFrameworkFixture fixture;
 
-    const auto series = fixture.bench.evaluateStreaming<alg::NaiveCounting>(fixture.runs(), fixture.sampleSize());
+    const auto series = fixture.bench.evaluateStreaming<alg::NaiveCounting>();
     const auto expectedCheckpoints = eval::StreamingCheckpointBuilder::build(
         fixture.sampleSize(),
         eval::EvaluationFramework::DEFAULT_STREAMING_CHECKPOINTS);
@@ -131,6 +92,26 @@ TEST_CASE("Evaluation Framework streaming usa F0(t) del dataset", "[eval-framewo
     REQUIRE(last.mean == Approx(static_cast<double>(fixture.dataset.distinct)).margin(1e-12));
 }
 
+TEST_CASE("Evaluation Framework streaming notifica il progresso tramite callback", "[eval-framework][streaming][progress]") {
+    const EvaluationFrameworkFixture fixture;
+
+    size_t startedWith = 0;
+    size_t advancedTicks = 0;
+    size_t finishCalls = 0;
+    const eval::ProgressCallbacks progress{
+        [&](const size_t totalTicks) { startedWith = totalTicks; },
+        [&](const size_t ticks) { advancedTicks += ticks; },
+        [&]() { ++finishCalls; }
+    };
+
+    const auto series = fixture.bench.evaluateStreaming<alg::NaiveCounting>(progress);
+
+    REQUIRE_FALSE(series.empty());
+    REQUIRE(startedWith == fixture.runs() * fixture.sampleSize());
+    REQUIRE(advancedTicks == fixture.runs() * fixture.sampleSize());
+    REQUIRE(finishCalls == 1u);
+}
+
 TEST_CASE("Streaming checkpoint builder usa fasi percentuali e termina a n", "[eval-framework][streaming]") {
     constexpr size_t n = 10'000'000u;
     constexpr size_t maxPoints = eval::EvaluationFramework::DEFAULT_STREAMING_CHECKPOINTS;
@@ -165,9 +146,7 @@ TEST_CASE("Streaming checkpoint builder usa fasi percentuali e termina a n", "[e
 TEST_CASE("Evaluation Framework merge pairs: Naive merge equivale al seriale", "[eval-framework][merge]") {
     const EvaluationFrameworkFixture fixture;
 
-    const auto points = fixture.bench.evaluateMergePairs<alg::NaiveCounting>(
-        fixture.runs(),
-        fixture.sampleSize());
+    const auto points = fixture.bench.evaluateMergePairs<alg::NaiveCounting>();
     REQUIRE(points.size() == fixture.runs() / 2u);
     REQUIRE_FALSE(points.empty());
 
@@ -181,6 +160,26 @@ TEST_CASE("Evaluation Framework merge pairs: Naive merge equivale al seriale", "
     }
 }
 
+TEST_CASE("Evaluation Framework merge notifica il progresso tramite callback", "[eval-framework][merge][progress]") {
+    const EvaluationFrameworkFixture fixture;
+
+    size_t startedWith = 0;
+    size_t advancedTicks = 0;
+    size_t finishCalls = 0;
+    const eval::ProgressCallbacks progress{
+        [&](const size_t totalTicks) { startedWith = totalTicks; },
+        [&](const size_t ticks) { advancedTicks += ticks; },
+        [&]() { ++finishCalls; }
+    };
+
+    const auto points = fixture.bench.evaluateMergePairs<alg::NaiveCounting>(progress);
+
+    REQUIRE(points.size() == fixture.runs() / 2u);
+    REQUIRE(startedWith == (fixture.runs() / 2u) * fixture.sampleSize() * 4u);
+    REQUIRE(advancedTicks == (fixture.runs() / 2u) * fixture.sampleSize() * 4u);
+    REQUIRE(finishCalls == 1u);
+}
+
 TEST_CASE("Evaluation Framework merge pairs CSV", "[eval-framework][merge][csv]") {
     namespace fs = filesystem;
 
@@ -191,11 +190,14 @@ TEST_CASE("Evaluation Framework merge pairs CSV", "[eval-framework][merge][csv]"
         fs::remove(csvPath);
     }
 
-    const auto stats = fixture.bench.evaluateMergePairsToCsv<alg::NaiveCounting>(
-        csvPath,
-        fixture.runs(),
-        fixture.sampleSize(),
-        "naive");
+    const auto points = fixture.bench.evaluateMergePairs<alg::NaiveCounting>();
+    const eval::CsvRunDescriptor descriptor{
+        "Naive",
+        "naive",
+        fixture.bench.metadata()
+    };
+    eval::CsvResultWriter::appendMergePairs(csvPath, descriptor, points);
+    const auto stats = eval::summarizeMergePairs(points);
 
     REQUIRE(stats.pair_count == fixture.runs() / 2u);
     REQUIRE(stats.delta_merge_serial_abs_mean == Approx(0.0).margin(1e-12));

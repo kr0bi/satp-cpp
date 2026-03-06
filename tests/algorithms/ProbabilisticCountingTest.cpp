@@ -3,8 +3,8 @@
 
 #include "satp/hashing/HashFactory.h"
 #include "satp/algorithms/ProbabilisticCounting.h"
-#include "satp/simulation/Loop.h"
 #include "TestData.h"
+#include "support/AlgorithmLoop.h"
 
 using namespace std;
 
@@ -22,7 +22,7 @@ TEST_CASE("ProbabilisticCounting stima ~1000 distinti su 10000 campioni", "[prob
     auto NUMBER_OF_UNIQUE_ELEMENTS = dataset.distinct;
 
     satp::algorithms::ProbabilisticCounting pc(L, defaultHash());
-    satp::simulation::Loop loop(move(pc), move(dataset.values));
+    satp::testsupport::AlgorithmLoop loop(std::move(pc), std::move(dataset.values));
 
     auto estimate = loop.process();
 

@@ -14,7 +14,6 @@ using namespace std;
 namespace satp::cli {
     namespace {
         [[nodiscard]] optional<RunMode> runModeByCommand(const string_view commandName) {
-            if (commandName == "run") return RunMode::Normal;
             if (commandName == "runstream") return RunMode::Streaming;
             if (commandName == "runmerge") return RunMode::Merge;
             return nullopt;
@@ -22,8 +21,7 @@ namespace satp::cli {
 
         [[nodiscard]] const char *runUsageByMode(const RunMode mode) {
             if (mode == RunMode::Streaming) return "Uso: runstream <algo|all>";
-            if (mode == RunMode::Merge) return "Uso: runmerge <algo|all>";
-            return "Uso: run <algo|all>";
+            return "Uso: runmerge <algo|all>";
         }
     } // namespace
 

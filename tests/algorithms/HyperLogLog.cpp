@@ -4,8 +4,8 @@
 #include "satp/hashing/HashFactory.h"
 #include "satp/algorithms/HyperLogLog.h"
 #include "satp/algorithms/HyperLogLogPlusPlus.h"
-#include "satp/simulation/Loop.h"
 #include "TestData.h"
+#include "support/AlgorithmLoop.h"
 
 using namespace std;
 
@@ -23,7 +23,7 @@ TEST_CASE("HyperLogLog stima ~1000 distinti su 10000 campioni", "[hyperloglog-co
     auto NUMBER_OF_UNIQUE_ELEMENTS = dataset.distinct;
 
     satp::algorithms::HyperLogLog hll(K, 32, defaultHash());
-    satp::simulation::Loop loop(move(hll), move(dataset.values));
+    satp::testsupport::AlgorithmLoop loop(std::move(hll), std::move(dataset.values));
 
     auto estimate = loop.process();
 
@@ -45,7 +45,7 @@ TEST_CASE("HyperLogLog++ stima ~1000 distinti su 10000 campioni", "[hyperloglogp
     auto NUMBER_OF_UNIQUE_ELEMENTS = dataset.distinct;
 
     satp::algorithms::HyperLogLogPlusPlus hllpp(K, defaultHash());
-    satp::simulation::Loop loop(move(hllpp), move(dataset.values));
+    satp::testsupport::AlgorithmLoop loop(std::move(hllpp), std::move(dataset.values));
 
     auto estimate = loop.process();
 
@@ -80,12 +80,12 @@ TEST_CASE("HyperLogLog++ supporta i limiti p=4 e p=18", "[hyperloglogpp-params]"
     auto dataset = satp::testdata::loadDataset();
 
     satp::algorithms::HyperLogLogPlusPlus hllppMin(4, defaultHash());
-    satp::simulation::Loop loopMin(move(hllppMin), dataset.values);
+    satp::testsupport::AlgorithmLoop loopMin(std::move(hllppMin), dataset.values);
     const auto estimateMin = loopMin.process();
     REQUIRE(estimateMin > 0);
 
     satp::algorithms::HyperLogLogPlusPlus hllppMax(18, defaultHash());
-    satp::simulation::Loop loopMax(move(hllppMax), dataset.values);
+    satp::testsupport::AlgorithmLoop loopMax(std::move(hllppMax), dataset.values);
     const auto estimateMax = loopMax.process();
     REQUIRE(estimateMax > 0);
 }

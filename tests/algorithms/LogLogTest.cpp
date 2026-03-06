@@ -3,8 +3,8 @@
 #include <stdexcept>
 #include "satp/hashing/HashFactory.h"
 #include "satp/algorithms/LogLog.h"
-#include "satp/simulation/Loop.h"
 #include "TestData.h"
+#include "support/AlgorithmLoop.h"
 
 using namespace std;
 
@@ -23,7 +23,7 @@ TEST_CASE("LogLog stima ~1000 distinti su 10000 campioni", "[log-count]") {
     auto NUMBER_OF_UNIQUE_ELEMENTS = dataset.distinct;
 
     satp::algorithms::LogLog loglog(K, L, defaultHash());
-    satp::simulation::Loop loop(move(loglog), move(dataset.values));
+    satp::testsupport::AlgorithmLoop loop(std::move(loglog), std::move(dataset.values));
 
     auto estimate = loop.process();
 
