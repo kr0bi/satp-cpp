@@ -144,7 +144,7 @@ namespace satp::algorithms {
             throw runtime_error("HLL++ merge internal error: register size mismatch");
         }
 
-        for (std::size_t i = 0; i < registers.size(); ++i) {
+        for (size_t i = 0; i < registers.size(); ++i) {
             addNormalRegister(static_cast<uint32_t>(i), rhs.registers[i]);
         }
     }
@@ -343,7 +343,7 @@ namespace satp::algorithms {
         nearest.reserve(neighbors);
 
         for (const auto &[rawPoint, biasPoint]: table) {
-            const double dist = std::abs(rawPoint - raw);
+            const double dist = abs(rawPoint - raw);
             if (nearest.size() < neighbors) {
                 nearest.emplace_back(dist, biasPoint);
                 continue;
@@ -371,7 +371,7 @@ namespace satp::algorithms {
         if (zeros <= 0.0) {
             return buckets;
         }
-        return buckets * std::log(buckets / zeros);
+        return buckets * log(buckets / zeros);
     }
 
     uint8_t HyperLogLogPlusPlus::rho(uint64_t value, uint32_t width) {

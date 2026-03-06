@@ -17,34 +17,36 @@
 #include "satp/simulation/StreamingCheckpointBuilder.h"
 #include "TestData.h"
 
+using namespace std;
+
 
 namespace eval = satp::evaluation;
 namespace alg = satp::algorithms;
 using Catch::Approx;
 
 static void requireFiniteNonNegative(const eval::Stats &stats) {
-    REQUIRE(std::isfinite(stats.mean));
-    REQUIRE(std::isfinite(stats.variance));
-    REQUIRE(std::isfinite(stats.stddev));
-    REQUIRE(std::isfinite(stats.rmse));
-    REQUIRE(std::isfinite(stats.mae));
-    REQUIRE(std::isfinite(stats.mean_relative_error));
-    REQUIRE(std::isfinite(stats.bias));
-    REQUIRE(std::isfinite(stats.relative_bias));
+    REQUIRE(isfinite(stats.mean));
+    REQUIRE(isfinite(stats.variance));
+    REQUIRE(isfinite(stats.stddev));
+    REQUIRE(isfinite(stats.rmse));
+    REQUIRE(isfinite(stats.mae));
+    REQUIRE(isfinite(stats.mean_relative_error));
+    REQUIRE(isfinite(stats.bias));
+    REQUIRE(isfinite(stats.relative_bias));
     REQUIRE(stats.variance >= 0.0);
     REQUIRE(stats.stddev >= 0.0);
     REQUIRE(stats.rmse >= 0.0);
     REQUIRE(stats.mae >= 0.0);
     REQUIRE(stats.mean_relative_error >= 0.0);
     REQUIRE(stats.absolute_bias >= 0.0);
-    REQUIRE(std::abs(stats.absolute_bias - std::abs(stats.bias)) < 1e-12);
+    REQUIRE(abs(stats.absolute_bias - abs(stats.bias)) < 1e-12);
 }
 
 TEST_CASE("Evaluation Framework", "[eval-framework]") {
         // --------------- parametri del benchmark ---------------------------
-        constexpr std::uint32_t K = 16; // registri LogLog
-        constexpr std::uint32_t L = 16; // bitmap ProbabilisticCounting
-        constexpr std::uint32_t L_LOG = 32; // bitmap LogLog
+        constexpr uint32_t K = 16; // registri LogLog
+        constexpr uint32_t L = 16; // bitmap ProbabilisticCounting
+        constexpr uint32_t L_LOG = 32; // bitmap LogLog
 
         // --------------- dataset da file ----------------------------------
         eval::EvaluationFramework bench(satp::testdata::datasetPath(), satp::hashing::getHashFunctionBy());
@@ -52,11 +54,11 @@ TEST_CASE("Evaluation Framework", "[eval-framework]") {
         const auto SAMPLE_SIZE = dataset.elements_per_partition;
         const auto RUNS = dataset.partition_count;
 
-        std::cout << "Ground‑truth distinct = " << bench.getNumElementiDistintiEffettivi() << '\n';
+        cout << "Ground‑truth distinct = " << bench.getNumElementiDistintiEffettivi() << '\n';
 
         // -------- valutazione HyperLogLog ----------------------------------
         auto hllStats = bench.evaluate<alg::HyperLogLogPlusPlus>(RUNS, SAMPLE_SIZE, K);
-        std::cout << "[HyperLogLog]  mean=" << hllStats.mean
+        cout << "[HyperLogLog]  mean=" << hllStats.mean
                         << "  var=" << hllStats.variance
                         << "  bias=" << hllStats.bias << '\n';
         requireFiniteNonNegative(hllStats);
@@ -64,7 +66,7 @@ TEST_CASE("Evaluation Framework", "[eval-framework]") {
         // -------- valutazione LogLog ---------------------------------------
         auto llStats = bench.evaluate<alg::LogLog>(RUNS, SAMPLE_SIZE, K, L_LOG);
 
-        std::cout << "[LogLog]  mean=" << llStats.mean
+        cout << "[LogLog]  mean=" << llStats.mean
                         << "  var=" << llStats.variance
                         << "  bias=" << llStats.bias << '\n';
         requireFiniteNonNegative(llStats);
@@ -72,7 +74,7 @@ TEST_CASE("Evaluation Framework", "[eval-framework]") {
         // -------- valutazione ProbabilisticCounting ------------------------
         auto pcStats = bench.evaluate<alg::ProbabilisticCounting>(RUNS, SAMPLE_SIZE, L);
 
-        std::cout << "[PC]      mean=" << pcStats.mean
+        cout << "[PC]      mean=" << pcStats.mean
                         << "  var=" << pcStats.variance
                         << "  bias=" << pcStats.bias << '\n';
         requireFiniteNonNegative(pcStats);
@@ -96,14 +98,14 @@ TEST_CASE("Evaluation Framework streaming usa F0(t) del dataset", "[eval-framewo
         const auto &point = series[i];
         const size_t expectedIndex = expectedCheckpoints[i];
 
-        REQUIRE(std::isfinite(point.mean));
-        REQUIRE(std::isfinite(point.truth_mean));
-        REQUIRE(std::isfinite(point.variance));
-        REQUIRE(std::isfinite(point.stddev));
-        REQUIRE(std::isfinite(point.rmse));
-        REQUIRE(std::isfinite(point.mae));
-        REQUIRE(std::isfinite(point.bias));
-        REQUIRE(std::isfinite(point.mean_relative_error));
+        REQUIRE(isfinite(point.mean));
+        REQUIRE(isfinite(point.truth_mean));
+        REQUIRE(isfinite(point.variance));
+        REQUIRE(isfinite(point.stddev));
+        REQUIRE(isfinite(point.rmse));
+        REQUIRE(isfinite(point.mae));
+        REQUIRE(isfinite(point.bias));
+        REQUIRE(isfinite(point.mean_relative_error));
         REQUIRE(point.number_of_elements_processed >= 1);
         REQUIRE(point.number_of_elements_processed <= sampleSize);
         REQUIRE(point.number_of_elements_processed == expectedIndex);
@@ -125,8 +127,8 @@ TEST_CASE("Evaluation Framework streaming usa F0(t) del dataset", "[eval-framewo
 }
 
 TEST_CASE("Streaming checkpoint builder usa fasi percentuali e termina a n", "[eval-framework][streaming]") {
-    constexpr std::size_t n = 10'000'000u;
-    constexpr std::size_t maxPoints = eval::EvaluationFramework::DEFAULT_STREAMING_CHECKPOINTS;
+    constexpr size_t n = 10'000'000u;
+    constexpr size_t maxPoints = eval::EvaluationFramework::DEFAULT_STREAMING_CHECKPOINTS;
 
     const auto checkpoints = eval::StreamingCheckpointBuilder::build(n, maxPoints);
 
@@ -135,21 +137,21 @@ TEST_CASE("Streaming checkpoint builder usa fasi percentuali e termina a n", "[e
     REQUIRE(checkpoints.back() == n);
     REQUIRE(checkpoints.size() <= maxPoints);
 
-    for (std::size_t i = 1; i < checkpoints.size(); ++i) {
+    for (size_t i = 1; i < checkpoints.size(); ++i) {
         REQUIRE(checkpoints[i] > checkpoints[i - 1]);
     }
 
     // First phase (dense) covers 0.1% of n; there should be many early checkpoints.
-    const std::size_t phase1End = static_cast<std::size_t>(std::ceil(static_cast<double>(n) * 1e-3));
-    const std::size_t phase2End = static_cast<std::size_t>(std::ceil(static_cast<double>(n) * 1e-1));
-    const std::size_t inPhase1 = static_cast<std::size_t>(std::count_if(
+    const size_t phase1End = static_cast<size_t>(ceil(static_cast<double>(n) * 1e-3));
+    const size_t phase2End = static_cast<size_t>(ceil(static_cast<double>(n) * 1e-1));
+    const size_t inPhase1 = static_cast<size_t>(count_if(
         checkpoints.begin(),
         checkpoints.end(),
-        [phase1End](const std::size_t v) { return v <= phase1End; }));
-    const std::size_t inPhase12 = static_cast<std::size_t>(std::count_if(
+        [phase1End](const size_t v) { return v <= phase1End; }));
+    const size_t inPhase12 = static_cast<size_t>(count_if(
         checkpoints.begin(),
         checkpoints.end(),
-        [phase2End](const std::size_t v) { return v <= phase2End; }));
+        [phase2End](const size_t v) { return v <= phase2End; }));
 
     REQUIRE(inPhase1 >= maxPoints / 4u);
     REQUIRE(inPhase12 >= maxPoints / 2u);
@@ -166,17 +168,17 @@ TEST_CASE("Evaluation Framework merge pairs: Naive merge equivale al seriale", "
     REQUIRE_FALSE(points.empty());
 
     for (const auto &point : points) {
-        REQUIRE(std::isfinite(point.estimate_merge));
-        REQUIRE(std::isfinite(point.estimate_serial));
-        REQUIRE(std::isfinite(point.delta_merge_serial_abs));
-        REQUIRE(std::isfinite(point.delta_merge_serial_rel));
+        REQUIRE(isfinite(point.estimate_merge));
+        REQUIRE(isfinite(point.estimate_serial));
+        REQUIRE(isfinite(point.delta_merge_serial_abs));
+        REQUIRE(isfinite(point.delta_merge_serial_rel));
         REQUIRE(point.delta_merge_serial_abs == Approx(0.0).margin(1e-12));
         REQUIRE(point.delta_merge_serial_rel == Approx(0.0).margin(1e-12));
     }
 }
 
 TEST_CASE("Evaluation Framework merge pairs CSV", "[eval-framework][merge][csv]") {
-    namespace fs = std::filesystem;
+    namespace fs = filesystem;
 
     eval::EvaluationFramework bench(satp::testdata::datasetPath(), satp::hashing::getHashFunctionBy());
     const auto dataset = satp::testdata::loadDataset();
@@ -198,12 +200,12 @@ TEST_CASE("Evaluation Framework merge pairs CSV", "[eval-framework][merge][csv]"
     REQUIRE(stats.delta_merge_serial_rmse == Approx(0.0).margin(1e-12));
 
     REQUIRE(fs::exists(csvPath));
-    std::ifstream in(csvPath);
+    ifstream in(csvPath);
     REQUIRE(in.good());
-    std::string header;
-    std::getline(in, header);
-    REQUIRE(header.find("estimate_merge") != std::string::npos);
-    REQUIRE(header.find("estimate_serial") != std::string::npos);
+    string header;
+    getline(in, header);
+    REQUIRE(header.find("estimate_merge") != string::npos);
+    REQUIRE(header.find("estimate_serial") != string::npos);
 
     fs::remove(csvPath);
 }

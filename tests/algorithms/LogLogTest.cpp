@@ -6,6 +6,8 @@
 #include "satp/simulation/Loop.h"
 #include "TestData.h"
 
+using namespace std;
+
 namespace {
     const satp::hashing::HashFunction &defaultHash() {
         static const auto hash = satp::hashing::getHashFunctionBy();
@@ -14,14 +16,14 @@ namespace {
 }
 
 TEST_CASE("LogLog stima ~1000 distinti su 10000 campioni", "[log-count]") {
-    constexpr std::uint32_t L = 32;
-    constexpr std::uint32_t K = 10;
+    constexpr uint32_t L = 32;
+    constexpr uint32_t K = 10;
 
     auto dataset = satp::testdata::loadDataset();
     auto NUMBER_OF_UNIQUE_ELEMENTS = dataset.distinct;
 
     satp::algorithms::LogLog loglog(K, L, defaultHash());
-    satp::simulation::Loop loop(std::move(loglog), std::move(dataset.values));
+    satp::simulation::Loop loop(move(loglog), move(dataset.values));
 
     auto estimate = loop.process();
 
@@ -29,7 +31,7 @@ TEST_CASE("LogLog stima ~1000 distinti su 10000 campioni", "[log-count]") {
     WARN("Elementi = " << NUMBER_OF_UNIQUE_ELEMENTS);
 
     const double m = double(1u << K);
-    const double RSE = 1.30 / std::sqrt(m);
+    const double RSE = 1.30 / sqrt(m);
     WARN("RSE = " << RSE);
 
     REQUIRE(estimate >= NUMBER_OF_UNIQUE_ELEMENTS * (1.0 - 4 * RSE));
@@ -37,18 +39,18 @@ TEST_CASE("LogLog stima ~1000 distinti su 10000 campioni", "[log-count]") {
 }
 
 TEST_CASE("LogLog valida parametri", "[loglog-params]") {
-    REQUIRE_THROWS_AS(satp::algorithms::LogLog(0, 32, defaultHash()), std::invalid_argument);
-    REQUIRE_THROWS_AS(satp::algorithms::LogLog(3, 32, defaultHash()), std::invalid_argument);
-    REQUIRE_THROWS_AS(satp::algorithms::LogLog(17, 32, defaultHash()), std::invalid_argument);
-    REQUIRE_THROWS_AS(satp::algorithms::LogLog(5, 31, defaultHash()), std::invalid_argument);
-    REQUIRE_THROWS_AS(satp::algorithms::LogLog(5, 33, defaultHash()), std::invalid_argument);
+    REQUIRE_THROWS_AS(satp::algorithms::LogLog(0, 32, defaultHash()), invalid_argument);
+    REQUIRE_THROWS_AS(satp::algorithms::LogLog(3, 32, defaultHash()), invalid_argument);
+    REQUIRE_THROWS_AS(satp::algorithms::LogLog(17, 32, defaultHash()), invalid_argument);
+    REQUIRE_THROWS_AS(satp::algorithms::LogLog(5, 31, defaultHash()), invalid_argument);
+    REQUIRE_THROWS_AS(satp::algorithms::LogLog(5, 33, defaultHash()), invalid_argument);
     REQUIRE_NOTHROW(satp::algorithms::LogLog(4, 32, defaultHash()));
     REQUIRE_NOTHROW(satp::algorithms::LogLog(16, 32, defaultHash()));
 }
 
 TEST_CASE("LogLog merge: seriale, commutativita', idempotenza", "[loglog][merge]") {
-    constexpr std::uint32_t K = 10;
-    constexpr std::uint32_t L = 32;
+    constexpr uint32_t K = 10;
+    constexpr uint32_t L = 32;
     const auto partA = satp::testdata::loadPartition(0);
     const auto partB = satp::testdata::loadPartition(1);
 
@@ -81,6 +83,6 @@ TEST_CASE("LogLog merge valida compatibilita' parametri", "[loglog][merge][param
     satp::algorithms::LogLog a(10, 32, defaultHash());
     satp::algorithms::LogLog bK(11, 32, defaultHash());
     satp::algorithms::LogLog bL(10, 32, defaultHash());
-    REQUIRE_THROWS_AS(a.merge(bK), std::invalid_argument);
+    REQUIRE_THROWS_AS(a.merge(bK), invalid_argument);
     REQUIRE_NOTHROW(a.merge(bL));
 }

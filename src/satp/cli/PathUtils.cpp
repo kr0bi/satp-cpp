@@ -2,8 +2,10 @@
 
 #include <stdexcept>
 
+using namespace std;
+
 namespace satp::cli::path_utils {
-    std::string sanitizeForPath(std::string value) {
+    string sanitizeForPath(string value) {
         for (char &c : value) {
             const bool keep = (c >= 'a' && c <= 'z') ||
                               (c >= 'A' && c <= 'Z') ||
@@ -11,7 +13,7 @@ namespace satp::cli::path_utils {
             if (!keep) c = '_';
         }
 
-        std::string out;
+        string out;
         out.reserve(value.size());
         bool prevUnderscore = false;
         for (const char c : value) {
@@ -29,9 +31,9 @@ namespace satp::cli::path_utils {
         return out.empty() ? "default" : out;
     }
 
-    std::optional<std::filesystem::path> tryFindRepoRoot(const std::filesystem::path &start) {
-        namespace fs = std::filesystem;
-        if (start.empty()) return std::nullopt;
+    optional<filesystem::path> tryFindRepoRoot(const filesystem::path &start) {
+        namespace fs = filesystem;
+        if (start.empty()) return nullopt;
 
         fs::path path = fs::absolute(start);
         if (fs::is_regular_file(path)) path = path.parent_path();
@@ -44,30 +46,30 @@ namespace satp::cli::path_utils {
             path = path.parent_path();
         }
 
-        return std::nullopt;
+        return nullopt;
     }
 
-    std::filesystem::path detectRepoRoot(const std::filesystem::path &datasetPath) {
+    filesystem::path detectRepoRoot(const filesystem::path &datasetPath) {
         if (auto fromDataset = tryFindRepoRoot(datasetPath)) {
             return *fromDataset;
         }
-        if (auto fromCwd = tryFindRepoRoot(std::filesystem::current_path())) {
+        if (auto fromCwd = tryFindRepoRoot(filesystem::current_path())) {
             return *fromCwd;
         }
-        throw std::runtime_error("Impossibile individuare la root della repository");
+        throw runtime_error("Impossibile individuare la root della repository");
     }
 
-    std::filesystem::path buildResultCsvPath(const std::filesystem::path &repoRoot,
-                                             const std::string &resultsNamespace,
-                                             const std::string &algorithmName,
-                                             const std::string &params,
-                                             const std::string &hashName,
+    filesystem::path buildResultCsvPath(const filesystem::path &repoRoot,
+                                             const string &resultsNamespace,
+                                             const string &algorithmName,
+                                             const string &params,
+                                             const string &hashName,
                                              const RunMode mode) {
-        const std::string paramsDir = sanitizeForPath(params);
-        const std::string hashDir = sanitizeForPath(hashName);
-        const std::string nsDir = sanitizeForPath(resultsNamespace);
-        std::string fileName = "results_oneshot.csv";
-        std::string modeDir = "oneshot";
+        const string paramsDir = sanitizeForPath(params);
+        const string hashDir = sanitizeForPath(hashName);
+        const string nsDir = sanitizeForPath(resultsNamespace);
+        string fileName = "results_oneshot.csv";
+        string modeDir = "oneshot";
         if (mode == RunMode::Streaming) {
             fileName = "results_streaming.csv";
             modeDir = "streaming";

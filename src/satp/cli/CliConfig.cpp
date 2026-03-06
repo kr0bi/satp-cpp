@@ -9,24 +9,26 @@
 #include "satp/hashing/HashFactory.h"
 #include "satp/io/BinaryDatasetIO.h"
 
+using namespace std;
+
 namespace satp::cli::config {
     namespace {
-        bool parseU32(const std::string &raw, std::uint32_t &out) {
+        bool parseU32(const string &raw, uint32_t &out) {
             try {
-                std::size_t idx = 0;
-                const unsigned long value = std::stoul(raw, &idx);
-                if (idx != raw.size() || value > std::numeric_limits<std::uint32_t>::max()) {
+                size_t idx = 0;
+                const unsigned long value = stoul(raw, &idx);
+                if (idx != raw.size() || value > numeric_limits<uint32_t>::max()) {
                     return false;
                 }
-                out = static_cast<std::uint32_t>(value);
+                out = static_cast<uint32_t>(value);
                 return true;
-            } catch (const std::exception &) {
+            } catch (const exception &) {
                 return false;
             }
         }
 
-        [[nodiscard]] const std::array<const char *, 4> &supportedHashFunctionNames() {
-            static const std::array<const char *, 4> names{
+        [[nodiscard]] const array<const char *, 4> &supportedHashFunctionNames() {
+            static const array<const char *, 4> names{
                 "splitmix64",
                 "xxhash64",
                 "murmurhash3",
@@ -36,19 +38,19 @@ namespace satp::cli::config {
         }
     } // namespace
 
-    Command parseCommand(const std::string &line) {
-        std::istringstream iss(line);
+    Command parseCommand(const string &line) {
+        istringstream iss(line);
         Command cmd;
         iss >> cmd.name;
-        for (std::string token; iss >> token;) {
+        for (string token; iss >> token;) {
             cmd.args.push_back(token);
         }
         return cmd;
     }
 
     bool setParam(RunConfig &cfg,
-                  const std::string &param,
-                  const std::string &value) {
+                  const string &param,
+                  const string &value) {
         if (param == "datasetPath") {
             cfg.datasetPath = value;
             return true;
@@ -63,7 +65,7 @@ namespace satp::cli::config {
                 // to validate/normalize the hash function name.
                 const auto hash = hashing::getHashFunctionBy(value, 0u);
                 cfg.hashFunctionName = hash->name();
-            } catch (const std::exception &) {
+            } catch (const exception &) {
                 return false;
             }
             return true;
@@ -75,7 +77,7 @@ namespace satp::cli::config {
     }
 
     void printHelp() {
-        std::cout
+        cout
             << "Comandi disponibili:\n"
             << "  help                         Mostra questo help\n"
             << "  show                         Stampa i parametri correnti\n"
@@ -90,7 +92,7 @@ namespace satp::cli::config {
     }
 
     void printAlgorithms() {
-        std::cout
+        cout
             << "Algoritmi:\n"
             << "  hllpp  (HyperLogLog++)\n"
             << "  hll    (HyperLogLog)\n"
@@ -98,11 +100,11 @@ namespace satp::cli::config {
             << "  pc     (ProbabilisticCounting)\n"
             << "Hash functions:\n";
         for (const auto *name : supportedHashFunctionNames()) {
-            std::cout << "  " << name << '\n';
+            cout << "  " << name << '\n';
         }
     }
 
-    std::optional<DatasetView> readDatasetView(const std::string &datasetPath) {
+    optional<DatasetView> readDatasetView(const string &datasetPath) {
         try {
             const auto index = satp::io::indexBinaryDataset(datasetPath);
             return DatasetView{
@@ -110,8 +112,8 @@ namespace satp::cli::config {
                 index.info.partition_count,
                 index.info.seed
             };
-        } catch (const std::exception &) {
-            return std::nullopt;
+        } catch (const exception &) {
+            return nullopt;
         }
     }
 
@@ -121,7 +123,7 @@ namespace satp::cli::config {
             view = *loaded;
         }
 
-        std::cout
+        cout
             << "Parametri correnti:\n"
             << "  datasetPath   = " << cfg.datasetPath << '\n'
             << "  resultsNs     = " << cfg.resultsNamespace << '\n'

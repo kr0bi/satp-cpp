@@ -10,19 +10,21 @@
 
 #include "satp/simulation/Stats.h"
 
+using namespace std;
+
 namespace satp::evaluation {
     class CsvResultWriter {
     public:
-        static void appendNormal(const std::filesystem::path &csvPath,
-                                 const std::string &algorithmName,
-                                 const std::string &algorithmParams,
-                                 std::size_t runs,
-                                 std::size_t sampleSize,
-                                 std::size_t f0,
-                                 std::uint32_t seed,
+        static void appendNormal(const filesystem::path &csvPath,
+                                 const string &algorithmName,
+                                 const string &algorithmParams,
+                                 size_t runs,
+                                 size_t sampleSize,
+                                 size_t f0,
+                                 uint32_t seed,
                                  double rseTheoretical,
                                  const Stats &stats) {
-            std::ofstream out = openAppend(csvPath);
+            ofstream out = openAppend(csvPath);
             writeRecord(out, algorithmName, algorithmParams, "normal", runs, sampleSize,
                         sampleSize, f0, seed, stats.truth_mean, stats.mean,
                         stats.variance, stats.stddev, rseTheoretical, stats.rse_observed,
@@ -30,16 +32,16 @@ namespace satp::evaluation {
                         stats.mean_relative_error, stats.rmse, stats.mae);
         }
 
-        static void appendStreaming(const std::filesystem::path &csvPath,
-                                    const std::string &algorithmName,
-                                    const std::string &algorithmParams,
-                                    std::size_t runs,
-                                    std::size_t sampleSize,
-                                    std::size_t f0,
-                                    std::uint32_t seed,
+        static void appendStreaming(const filesystem::path &csvPath,
+                                    const string &algorithmName,
+                                    const string &algorithmParams,
+                                    size_t runs,
+                                    size_t sampleSize,
+                                    size_t f0,
+                                    uint32_t seed,
                                     double rseTheoretical,
-                                    const std::vector<StreamingPointStats> &series) {
-            std::ofstream out = openAppend(csvPath);
+                                    const vector<StreamingPointStats> &series) {
+            ofstream out = openAppend(csvPath);
             for (const auto &point : series) {
                 writeRecord(out, algorithmName, algorithmParams, "streaming", runs, sampleSize,
                             point.number_of_elements_processed, f0, seed, point.truth_mean,
@@ -50,14 +52,14 @@ namespace satp::evaluation {
             }
         }
 
-        static void appendMergePairs(const std::filesystem::path &csvPath,
-                                     const std::string &algorithmName,
-                                     const std::string &algorithmParams,
-                                     std::size_t pairs,
-                                     std::size_t sampleSize,
-                                     std::uint32_t seed,
-                                     const std::vector<MergePairPoint> &points) {
-            std::ofstream out = openAppendMerge(csvPath);
+        static void appendMergePairs(const filesystem::path &csvPath,
+                                     const string &algorithmName,
+                                     const string &algorithmParams,
+                                     size_t pairs,
+                                     size_t sampleSize,
+                                     uint32_t seed,
+                                     const vector<MergePairPoint> &points) {
+            ofstream out = openAppendMerge(csvPath);
             for (const auto &point : points) {
                 out << escapeCsvField(algorithmName) << ','
                     << escapeCsvField(algorithmParams) << ','
@@ -74,11 +76,11 @@ namespace satp::evaluation {
         }
 
     private:
-        static std::string escapeCsvField(const std::string &value) {
-            const bool needsQuotes = value.find_first_of(",\"\n\r") != std::string::npos;
+        static string escapeCsvField(const string &value) {
+            const bool needsQuotes = value.find_first_of(",\"\n\r") != string::npos;
             if (!needsQuotes) return value;
 
-            std::string out;
+            string out;
             out.reserve(value.size() + 2);
             out.push_back('"');
             for (const char c : value) {
@@ -93,10 +95,10 @@ namespace satp::evaluation {
             return out;
         }
 
-        static void writeHeaderIfNeeded(const std::filesystem::path &csvPath,
-                                        std::ofstream &out) {
+        static void writeHeaderIfNeeded(const filesystem::path &csvPath,
+                                        ofstream &out) {
             const bool writeHeader =
-                !std::filesystem::exists(csvPath) || std::filesystem::file_size(csvPath) == 0;
+                !filesystem::exists(csvPath) || filesystem::file_size(csvPath) == 0;
             if (!writeHeader) return;
 
             out << "algorithm,params,mode,runs,sample_size,number_of_elements_processed,f0,seed,"
@@ -105,41 +107,41 @@ namespace satp::evaluation {
                    "mean_relative_error,rmse,mae\n";
         }
 
-        static std::ofstream openAppend(const std::filesystem::path &csvPath) {
-            std::ofstream out(csvPath, std::ios::app);
-            if (!out) throw std::runtime_error("Impossibile aprire il file CSV");
-            out << std::setprecision(10);
+        static ofstream openAppend(const filesystem::path &csvPath) {
+            ofstream out(csvPath, ios::app);
+            if (!out) throw runtime_error("Impossibile aprire il file CSV");
+            out << setprecision(10);
             writeHeaderIfNeeded(csvPath, out);
             return out;
         }
 
-        static void writeMergeHeaderIfNeeded(const std::filesystem::path &csvPath,
-                                             std::ofstream &out) {
+        static void writeMergeHeaderIfNeeded(const filesystem::path &csvPath,
+                                             ofstream &out) {
             const bool writeHeader =
-                !std::filesystem::exists(csvPath) || std::filesystem::file_size(csvPath) == 0;
+                !filesystem::exists(csvPath) || filesystem::file_size(csvPath) == 0;
             if (!writeHeader) return;
 
             out << "algorithm,params,mode,pairs,sample_size,pair_index,seed,"
                    "estimate_merge,estimate_serial,delta_merge_serial_abs,delta_merge_serial_rel\n";
         }
 
-        static std::ofstream openAppendMerge(const std::filesystem::path &csvPath) {
-            std::ofstream out(csvPath, std::ios::app);
-            if (!out) throw std::runtime_error("Impossibile aprire il file CSV merge");
-            out << std::setprecision(10);
+        static ofstream openAppendMerge(const filesystem::path &csvPath) {
+            ofstream out(csvPath, ios::app);
+            if (!out) throw runtime_error("Impossibile aprire il file CSV merge");
+            out << setprecision(10);
             writeMergeHeaderIfNeeded(csvPath, out);
             return out;
         }
 
-        static void writeRecord(std::ofstream &out,
-                                const std::string &algorithmName,
-                                const std::string &algorithmParams,
+        static void writeRecord(ofstream &out,
+                                const string &algorithmName,
+                                const string &algorithmParams,
                                 const char *mode,
-                                std::size_t runs,
-                                std::size_t sampleSize,
-                                std::size_t elementIndex,
-                                std::size_t f0,
-                                std::uint32_t seed,
+                                size_t runs,
+                                size_t sampleSize,
+                                size_t elementIndex,
+                                size_t f0,
+                                uint32_t seed,
                                 double truthMean,
                                 double estimateMean,
                                 double variance,

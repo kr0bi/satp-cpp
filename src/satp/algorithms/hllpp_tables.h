@@ -4,11 +4,13 @@
 #include <utility>
 #include <vector>
 
+using namespace std;
+
 namespace satp::algorithms::hllpp_tables {
-    inline constexpr std::size_t MIN_K = 4;
-    inline constexpr std::size_t MAX_K = 18;
+    inline constexpr size_t MIN_K = 4;
+    inline constexpr size_t MAX_K = 18;
 
-    extern const std::vector<std::pair<double, double> > &table_for_k(std::size_t k);
+    extern const vector<pair<double, double> > &table_for_k(size_t k);
 
-    extern std::uint32_t threshold_for_k(std::size_t k);
+    extern uint32_t threshold_for_k(size_t k);
 } // namespace satp::algorithms::hllpp_tables

@@ -14,61 +14,61 @@
 namespace satp::evaluation {
     class EvaluationFramework {
     public:
-        static constexpr std::size_t DEFAULT_STREAMING_CHECKPOINTS = 200u;
+        static constexpr size_t DEFAULT_STREAMING_CHECKPOINTS = 200u;
 
         explicit EvaluationFramework(
-            const std::filesystem::path &filePath,
+            const filesystem::path &filePath,
             unique_ptr<hashing::HashFunction> hashFunction);
         explicit EvaluationFramework(
             io::BinaryDatasetIndex datasetIndex,
             unique_ptr<hashing::HashFunction> hashFunction);
 
         template<typename Algo, typename... Args>
-        [[nodiscard]] Stats evaluate(std::size_t runs,
-                                     std::size_t sampleSize,
+        [[nodiscard]] Stats evaluate(size_t runs,
+                                     size_t sampleSize,
                                      Args &&... ctorArgs) const;
 
         template<typename Algo, typename... Args>
-        [[nodiscard]] Stats evaluateToCsv(const std::filesystem::path &csvPath,
-                                          std::size_t runs,
-                                          std::size_t sampleSize,
-                                          const std::string &algorithmParams,
+        [[nodiscard]] Stats evaluateToCsv(const filesystem::path &csvPath,
+                                          size_t runs,
+                                          size_t sampleSize,
+                                          const string &algorithmParams,
                                           double rseTheoretical,
                                           Args &&... ctorArgs) const;
 
         template<typename Algo, typename... Args>
-        [[nodiscard]] std::vector<StreamingPointStats> evaluateStreaming(std::size_t runs,
-                                                                         std::size_t sampleSize,
+        [[nodiscard]] vector<StreamingPointStats> evaluateStreaming(size_t runs,
+                                                                         size_t sampleSize,
                                                                          Args &&... ctorArgs) const;
 
         template<typename Algo, typename... Args>
-        [[nodiscard]] std::vector<StreamingPointStats> evaluateStreamingToCsv(
-            const std::filesystem::path &csvPath,
-            std::size_t runs,
-            std::size_t sampleSize,
-            const std::string &algorithmParams,
+        [[nodiscard]] vector<StreamingPointStats> evaluateStreamingToCsv(
+            const filesystem::path &csvPath,
+            size_t runs,
+            size_t sampleSize,
+            const string &algorithmParams,
             double rseTheoretical,
             Args &&... ctorArgs) const;
 
         template<typename Algo, typename... Args>
-        [[nodiscard]] std::vector<MergePairPoint> evaluateMergePairs(std::size_t runs,
-                                                                     std::size_t sampleSize,
+        [[nodiscard]] vector<MergePairPoint> evaluateMergePairs(size_t runs,
+                                                                     size_t sampleSize,
                                                                      Args &&... ctorArgs) const;
 
         template<typename Algo, typename... Args>
         [[nodiscard]] MergePairStats evaluateMergePairsToCsv(
-            const std::filesystem::path &csvPath,
-            std::size_t runs,
-            std::size_t sampleSize,
-            const std::string &algorithmParams,
+            const filesystem::path &csvPath,
+            size_t runs,
+            size_t sampleSize,
+            const string &algorithmParams,
             Args &&... ctorArgs) const;
 
-        [[nodiscard]] std::size_t getNumElementiDistintiEffettivi() const noexcept;
+        [[nodiscard]] size_t getNumElementiDistintiEffettivi() const noexcept;
 
     private:
         struct EvaluationScope {
-            std::size_t runs = 0;
-            std::size_t sampleSize = 0;
+            size_t runs = 0;
+            size_t sampleSize = 0;
         };
 
         [[nodiscard]] EvaluationScope datasetScope() const noexcept;
@@ -77,16 +77,18 @@ namespace satp::evaluation {
         [[nodiscard]] Stats evaluateFromBinary(Args &&... ctorArgs) const;
 
         template<typename Algo, typename... Args>
-        [[nodiscard]] std::vector<StreamingPointStats> evaluateStreamingFromBinary(Args &&... ctorArgs) const;
+        [[nodiscard]] vector<StreamingPointStats> evaluateStreamingFromBinary(Args &&... ctorArgs) const;
 
         template<typename Algo, typename... Args>
         [[nodiscard]] Algo makeAlgo(Args &&... ctorArgs) const;
 
         io::BinaryDatasetIndex binaryDataset;
-        std::size_t numElementiDistintiEffettivi = 0;
-        std::uint32_t seed = 0;
+        size_t numElementiDistintiEffettivi = 0;
+        uint32_t seed = 0;
         unique_ptr<hashing::HashFunction> hashFunction;
     };
 } // namespace satp::evaluation
 
 #include "satp/simulation/EvaluationFramework.tpp"
+
+using namespace std;

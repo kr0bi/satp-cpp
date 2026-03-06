@@ -7,19 +7,21 @@
 
 #include "satp/io/BinaryDatasetIO.h"
 
+using namespace std;
+
 namespace satp::cli {
     struct RunConfig {
-        std::string datasetPath = "dataset.bin";
-        std::string resultsNamespace = "legacy";
-        std::string hashFunctionName = "splitmix64";
-        std::uint32_t k = 16;    // registers for HLL/LogLog
-        std::uint32_t l = 16;    // bitmap size for PC
-        std::uint32_t lLog = 32; // bitmap size for LogLog internals
+        string datasetPath = "dataset.bin";
+        string resultsNamespace = "legacy";
+        string hashFunctionName = "splitmix64";
+        uint32_t k = 16;    // registers for HLL/LogLog
+        uint32_t l = 16;    // bitmap size for PC
+        uint32_t lLog = 32; // bitmap size for LogLog internals
     };
 
     struct Command {
-        std::string name;
-        std::vector<std::string> args;
+        string name;
+        vector<string> args;
     };
 
     enum class RunMode {
@@ -29,26 +31,26 @@ namespace satp::cli {
     };
 
     struct DatasetView {
-        std::size_t sampleSize = 0;
-        std::size_t runs = 0;
-        std::uint32_t seed = 0;
+        size_t sampleSize = 0;
+        size_t runs = 0;
+        uint32_t seed = 0;
     };
 
     struct DatasetRuntimeContext {
         io::BinaryDatasetIndex index;
-        std::size_t sampleSize = 0;
-        std::size_t runs = 0;
-        std::uint32_t seed = 0;
-        std::string resultsNamespace;
-        std::filesystem::path repoRoot;
+        size_t sampleSize = 0;
+        size_t runs = 0;
+        uint32_t seed = 0;
+        string resultsNamespace;
+        filesystem::path repoRoot;
     };
 
     struct AlgorithmRunSpec {
-        std::string key;
-        std::string displayTag;
-        std::string algorithmName;
-        std::string params;
-        std::string hashName;
+        string key;
+        string displayTag;
+        string algorithmName;
+        string params;
+        string hashName;
         double rseTheoretical = 0.0;
     };
 } // namespace satp::cli

@@ -5,19 +5,21 @@
 
 #include "satp/cli/CliTypes.h"
 
+using namespace std;
+
 namespace satp::cli::config {
-    [[nodiscard]] Command parseCommand(const std::string &line);
+    [[nodiscard]] Command parseCommand(const string &line);
 
     [[nodiscard]] bool setParam(RunConfig &cfg,
-                                const std::string &param,
-                                const std::string &value);
+                                const string &param,
+                                const string &value);
 
     void printHelp();
     void printAlgorithms();
     void printConfig(const RunConfig &cfg);
 
-    [[nodiscard]] std::optional<DatasetView> readDatasetView(
-        const std::string &datasetPath);
+    [[nodiscard]] optional<DatasetView> readDatasetView(
+        const string &datasetPath);
 
     [[nodiscard]] DatasetRuntimeContext loadDatasetRuntimeContext(
         const RunConfig &cfg);

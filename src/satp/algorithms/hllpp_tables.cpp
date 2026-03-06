@@ -4,6 +4,8 @@
 #include <stdexcept>
 #include <mutex>
 
+using namespace std;
+
 using namespace satp::algorithms::hllpp_tables;
 
 namespace {
@@ -814,68 +816,68 @@ namespace {
 
     struct Row {
         const double *raw;
-        std::size_t nRaw;
+        size_t nRaw;
         const double *bias;
-        std::size_t nBias;
+        size_t nBias;
     };
 
     static const Row ROWS[] = {
-        {RAW_04, std::size(RAW_04), BIAS_04, std::size(BIAS_04)},
-        {RAW_05, std::size(RAW_05), BIAS_05, std::size(BIAS_05)},
-        {RAW_06, std::size(RAW_06), BIAS_06, std::size(BIAS_06)},
-        {RAW_07, std::size(RAW_07), BIAS_07, std::size(BIAS_07)},
-        {RAW_08, std::size(RAW_08), BIAS_08, std::size(BIAS_08)},
-        {RAW_09, std::size(RAW_09), BIAS_09, std::size(BIAS_09)},
-        {RAW_10, std::size(RAW_10), BIAS_10, std::size(BIAS_10)},
-        {RAW_11, std::size(RAW_11), BIAS_11, std::size(BIAS_11)},
-        {RAW_12, std::size(RAW_12), BIAS_12, std::size(BIAS_12)},
-        {RAW_13, std::size(RAW_13), BIAS_13, std::size(BIAS_13)},
-        {RAW_14, std::size(RAW_14), BIAS_14, std::size(BIAS_14)},
-        {RAW_15, std::size(RAW_15), BIAS_15, std::size(BIAS_15)},
-        {RAW_16, std::size(RAW_16), BIAS_16, std::size(BIAS_16)},
-        {RAW_17, std::size(RAW_17), BIAS_17, std::size(BIAS_17)},
-        {RAW_18, std::size(RAW_18), BIAS_18, std::size(BIAS_18)},
+        {RAW_04, size(RAW_04), BIAS_04, size(BIAS_04)},
+        {RAW_05, size(RAW_05), BIAS_05, size(BIAS_05)},
+        {RAW_06, size(RAW_06), BIAS_06, size(BIAS_06)},
+        {RAW_07, size(RAW_07), BIAS_07, size(BIAS_07)},
+        {RAW_08, size(RAW_08), BIAS_08, size(BIAS_08)},
+        {RAW_09, size(RAW_09), BIAS_09, size(BIAS_09)},
+        {RAW_10, size(RAW_10), BIAS_10, size(BIAS_10)},
+        {RAW_11, size(RAW_11), BIAS_11, size(BIAS_11)},
+        {RAW_12, size(RAW_12), BIAS_12, size(BIAS_12)},
+        {RAW_13, size(RAW_13), BIAS_13, size(BIAS_13)},
+        {RAW_14, size(RAW_14), BIAS_14, size(BIAS_14)},
+        {RAW_15, size(RAW_15), BIAS_15, size(BIAS_15)},
+        {RAW_16, size(RAW_16), BIAS_16, size(BIAS_16)},
+        {RAW_17, size(RAW_17), BIAS_17, size(BIAS_17)},
+        {RAW_18, size(RAW_18), BIAS_18, size(BIAS_18)},
 
     };
 
-    static constexpr std::uint32_t THRESHOLDS[] = {
+    static constexpr uint32_t THRESHOLDS[] = {
         10u, 20u, 40u, 80u, 220u,
         400u, 900u, 1800u, 3100u, 6500u,
         11500u, 20000u, 50000u, 120000u, 350000u
     };
 
-    static std::once_flag init_flag;
-    static std::vector<std::vector<std::pair<double, double> > > TABLES;
+    static once_flag init_flag;
+    static vector<vector<pair<double, double> > > TABLES;
 
     static void build_tables() {
-        const std::size_t rows = std::size(ROWS); // 15
+        const size_t rows = size(ROWS); // 15
         TABLES.resize(rows);
 
-        for (std::size_t r = 0; r < rows; ++r) {
+        for (size_t r = 0; r < rows; ++r) {
             const auto &row = ROWS[r];
-            const std::size_t len = std::min(row.nRaw, row.nBias); // zip fino al min
+            const size_t len = min(row.nRaw, row.nBias); // zip fino al min
             auto &vec = TABLES[r];
             vec.reserve(len);
 
-            for (std::size_t i = 0; i < len; ++i)
+            for (size_t i = 0; i < len; ++i)
                 vec.emplace_back(row.raw[i], row.bias[i]);
         }
     }
 } // unnamed namespace
 
 // ----------- 2.  API visibile dall’esterno ---------------------------
-const std::vector<std::pair<double, double> > &
-satp::algorithms::hllpp_tables::table_for_k(std::size_t k) {
-    std::call_once(init_flag, build_tables);
+const vector<pair<double, double> > &
+satp::algorithms::hllpp_tables::table_for_k(size_t k) {
+    call_once(init_flag, build_tables);
 
     if (k < MIN_K || k > MAX_K)
-        throw std::out_of_range{"bias table: K out of range"};
+        throw out_of_range{"bias table: K out of range"};
 
     return TABLES[k - MIN_K];
 }
 
-std::uint32_t satp::algorithms::hllpp_tables::threshold_for_k(std::size_t k) {
+uint32_t satp::algorithms::hllpp_tables::threshold_for_k(size_t k) {
     if (k < MIN_K || k > MAX_K)
-        throw std::out_of_range{"threshold table: K out of range"};
+        throw out_of_range{"threshold table: K out of range"};
     return THRESHOLDS[k - MIN_K];
 }

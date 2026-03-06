@@ -6,9 +6,11 @@
 #include "satp/ProgressBar.h"
 #include "satp/algorithms/Algorithm.h"
 
+using namespace std;
+
 namespace satp::simulation {
     template<typename T>
-    concept AlgorithmLike = std::derived_from<T, algorithms::Algorithm>;
+    concept AlgorithmLike = derived_from<T, algorithms::Algorithm>;
 
     /**
      * Esegue uno stream di ID su un algoritmo di cardinalità.
@@ -17,22 +19,22 @@ namespace satp::simulation {
     template<AlgorithmLike A>
     class Loop {
     public:
-        Loop(A algorithm, std::vector<std::uint32_t> ids, bool verbose = false)
-            : algorithm_(std::move(algorithm))
-              , ids_(std::move(ids))
+        Loop(A algorithm, vector<uint32_t> ids, bool verbose = false)
+            : algorithm_(move(algorithm))
+              , ids_(move(ids))
               , verbose_(verbose) {
         }
 
-        std::uint64_t process() {
+        uint64_t process() {
             if (verbose_) {
-                std::cerr << "\nAlgorithm: " << algorithm_.getName() << '\n';
+                cerr << "\nAlgorithm: " << algorithm_.getName() << '\n';
             }
 
-            std::unique_ptr<util::ProgressBar> bar;
+            unique_ptr<util::ProgressBar> bar;
             if (verbose_) {
-                bar = std::make_unique<util::ProgressBar>(ids_.size());
+                bar = make_unique<util::ProgressBar>(ids_.size());
             }
-            for (std::uint32_t id: ids_) {
+            for (uint32_t id: ids_) {
                 algorithm_.process(id);
                 if (bar) bar->tick();
             }
@@ -43,7 +45,7 @@ namespace satp::simulation {
 
     private:
         A algorithm_;
-        std::vector<std::uint32_t> ids_;
+        vector<uint32_t> ids_;
         bool verbose_;
     };
 } // namespace satp::simulation

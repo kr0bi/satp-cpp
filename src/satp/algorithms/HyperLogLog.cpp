@@ -109,7 +109,7 @@ namespace satp::algorithms {
         }
 
         for (uint32_t i = 0; i < numberOfBuckets; ++i) {
-            bitmap[i] = std::max(bitmap[i], other.bitmap[i]);
+            bitmap[i] = max(bitmap[i], other.bitmap[i]);
         }
 
         sumInversePowers = 0.0;

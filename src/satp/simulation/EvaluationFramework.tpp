@@ -14,14 +14,16 @@
 #include "satp/simulation/ErrorAccumulator.h"
 #include "satp/simulation/StreamingCheckpointBuilder.h"
 
+using namespace std;
+
 namespace satp::evaluation {
     namespace detail {
         template<typename Algo>
         concept MergeableAlgorithm = requires(Algo a, const Algo &b) {
-            { a.merge(b) } -> std::same_as<void>;
+            { a.merge(b) } -> same_as<void>;
         };
 
-        inline MergePairStats summarizeMergePairs(const std::vector<MergePairPoint> &points) {
+        inline MergePairStats summarizeMergePairs(const vector<MergePairPoint> &points) {
             if (points.empty()) return {};
 
             MergePairStats out{};
@@ -39,7 +41,7 @@ namespace satp::evaluation {
                 absSum += point.delta_merge_serial_abs;
                 relSum += point.delta_merge_serial_rel;
                 sqAbsSum += point.delta_merge_serial_abs * point.delta_merge_serial_abs;
-                absMax = std::max(absMax, point.delta_merge_serial_abs);
+                absMax = max(absMax, point.delta_merge_serial_abs);
             }
 
             const double n = static_cast<double>(points.size());
@@ -48,33 +50,33 @@ namespace satp::evaluation {
             out.delta_merge_serial_abs_mean = absSum / n;
             out.delta_merge_serial_abs_max = absMax;
             out.delta_merge_serial_rel_mean = relSum / n;
-            out.delta_merge_serial_rmse = std::sqrt(sqAbsSum / n);
+            out.delta_merge_serial_rmse = sqrt(sqAbsSum / n);
             return out;
         }
     } // namespace detail
 
     template<typename Algo, typename... Args>
     Algo EvaluationFramework::makeAlgo(Args &&... ctorArgs) const {
-        static_assert(std::constructible_from<Algo, Args..., const hashing::HashFunction &>,
+        static_assert(constructible_from<Algo, Args..., const hashing::HashFunction &>,
                       "Algorithm must be constructible with (..., const hashing::HashFunction&)");
-        return Algo(std::forward<Args>(ctorArgs)..., *hashFunction);
+        return Algo(forward<Args>(ctorArgs)..., *hashFunction);
     }
 
     template<typename Algo, typename... Args>
-    Stats EvaluationFramework::evaluate(std::size_t runs,
-                                        std::size_t sampleSize,
+    Stats EvaluationFramework::evaluate(size_t runs,
+                                        size_t sampleSize,
                                         Args &&... ctorArgs) const {
         if (runs == 0 || sampleSize == 0) return {};
         (void) runs;
         (void) sampleSize;
-        return evaluateFromBinary<Algo>(std::forward<Args>(ctorArgs)...);
+        return evaluateFromBinary<Algo>(forward<Args>(ctorArgs)...);
     }
 
     template<typename Algo, typename... Args>
-    Stats EvaluationFramework::evaluateToCsv(const std::filesystem::path &csvPath,
-                                             std::size_t runs,
-                                             std::size_t sampleSize,
-                                             const std::string &algorithmParams,
+    Stats EvaluationFramework::evaluateToCsv(const filesystem::path &csvPath,
+                                             size_t runs,
+                                             size_t sampleSize,
+                                             const string &algorithmParams,
                                              const double rseTheoretical,
                                              Args &&... ctorArgs) const {
         (void) runs;
@@ -82,7 +84,7 @@ namespace satp::evaluation {
 
         Algo algo = makeAlgo<Algo>(ctorArgs...);
         const auto scope = datasetScope();
-        const Stats stats = evaluateFromBinary<Algo>(std::forward<Args>(ctorArgs)...);
+        const Stats stats = evaluateFromBinary<Algo>(forward<Args>(ctorArgs)...);
         CsvResultWriter::appendNormal(
             csvPath,
             algo.getName(),
@@ -97,21 +99,21 @@ namespace satp::evaluation {
     }
 
     template<typename Algo, typename... Args>
-    std::vector<StreamingPointStats> EvaluationFramework::evaluateStreaming(std::size_t runs,
-                                                                            std::size_t sampleSize,
+    vector<StreamingPointStats> EvaluationFramework::evaluateStreaming(size_t runs,
+                                                                            size_t sampleSize,
                                                                             Args &&... ctorArgs) const {
         if (runs == 0 || sampleSize == 0) return {};
         (void) runs;
         (void) sampleSize;
-        return evaluateStreamingFromBinary<Algo>(std::forward<Args>(ctorArgs)...);
+        return evaluateStreamingFromBinary<Algo>(forward<Args>(ctorArgs)...);
     }
 
     template<typename Algo, typename... Args>
-    std::vector<StreamingPointStats> EvaluationFramework::evaluateStreamingToCsv(
-        const std::filesystem::path &csvPath,
-        std::size_t runs,
-        std::size_t sampleSize,
-        const std::string &algorithmParams,
+    vector<StreamingPointStats> EvaluationFramework::evaluateStreamingToCsv(
+        const filesystem::path &csvPath,
+        size_t runs,
+        size_t sampleSize,
+        const string &algorithmParams,
         const double rseTheoretical,
         Args &&... ctorArgs) const {
         (void) runs;
@@ -119,7 +121,7 @@ namespace satp::evaluation {
 
         Algo algo = makeAlgo<Algo>(ctorArgs...);
         const auto scope = datasetScope();
-        auto series = evaluateStreamingFromBinary<Algo>(std::forward<Args>(ctorArgs)...);
+        auto series = evaluateStreamingFromBinary<Algo>(forward<Args>(ctorArgs)...);
         CsvResultWriter::appendStreaming(
             csvPath,
             algo.getName(),
@@ -134,8 +136,8 @@ namespace satp::evaluation {
     }
 
     template<typename Algo, typename... Args>
-    std::vector<MergePairPoint> EvaluationFramework::evaluateMergePairs(std::size_t runs,
-                                                                        std::size_t sampleSize,
+    vector<MergePairPoint> EvaluationFramework::evaluateMergePairs(size_t runs,
+                                                                        size_t sampleSize,
                                                                         Args &&... ctorArgs) const {
         static_assert(detail::MergeableAlgorithm<Algo>,
                       "evaluateMergePairs requires Algo::merge(const Algo&)");
@@ -147,28 +149,28 @@ namespace satp::evaluation {
         const auto scope = datasetScope();
         if (scope.runs < 2 || scope.sampleSize == 0) return {};
 
-        const std::size_t pairCount = scope.runs / 2u;
-        satp::util::ProgressBar bar{pairCount * scope.sampleSize * 4u, std::cout, 50, 10'000};
+        const size_t pairCount = scope.runs / 2u;
+        satp::util::ProgressBar bar{pairCount * scope.sampleSize * 4u, cout, 50, 10'000};
         satp::io::BinaryDatasetPartitionReader reader(binaryDataset);
 
-        std::vector<std::uint32_t> partA;
-        std::vector<std::uint32_t> partB;
-        std::vector<MergePairPoint> points;
+        vector<uint32_t> partA;
+        vector<uint32_t> partB;
+        vector<MergePairPoint> points;
         points.reserve(pairCount);
 
-        for (std::size_t pairIndex = 0; pairIndex < pairCount; ++pairIndex) {
-            const std::size_t idxA = 2u * pairIndex;
-            const std::size_t idxB = idxA + 1u;
+        for (size_t pairIndex = 0; pairIndex < pairCount; ++pairIndex) {
+            const size_t idxA = 2u * pairIndex;
+            const size_t idxB = idxA + 1u;
             reader.load(idxA, partA);
             reader.load(idxB, partB);
 
-            Algo sketchA = makeAlgo<Algo>(std::forward<Args>(ctorArgs)...);
+            Algo sketchA = makeAlgo<Algo>(forward<Args>(ctorArgs)...);
             for (const auto value : partA) {
                 sketchA.process(value);
                 bar.tick();
             }
 
-            Algo sketchB = makeAlgo<Algo>(std::forward<Args>(ctorArgs)...);
+            Algo sketchB = makeAlgo<Algo>(forward<Args>(ctorArgs)...);
             for (const auto value : partB) {
                 sketchB.process(value);
                 bar.tick();
@@ -177,7 +179,7 @@ namespace satp::evaluation {
             Algo merged = sketchA;
             merged.merge(sketchB);
 
-            Algo serial = makeAlgo<Algo>(std::forward<Args>(ctorArgs)...);
+            Algo serial = makeAlgo<Algo>(forward<Args>(ctorArgs)...);
             for (const auto value : partA) {
                 serial.process(value);
                 bar.tick();
@@ -189,7 +191,7 @@ namespace satp::evaluation {
 
             const double estimateMerge = static_cast<double>(merged.count());
             const double estimateSerial = static_cast<double>(serial.count());
-            const double deltaAbs = std::abs(estimateMerge - estimateSerial);
+            const double deltaAbs = abs(estimateMerge - estimateSerial);
             const double deltaRel = (estimateSerial != 0.0) ? (deltaAbs / estimateSerial) : 0.0;
 
             points.push_back({
@@ -202,20 +204,20 @@ namespace satp::evaluation {
         }
 
         bar.finish();
-        std::cout.flush();
+        cout.flush();
         return points;
     }
 
     template<typename Algo, typename... Args>
     MergePairStats EvaluationFramework::evaluateMergePairsToCsv(
-        const std::filesystem::path &csvPath,
-        std::size_t runs,
-        std::size_t sampleSize,
-        const std::string &algorithmParams,
+        const filesystem::path &csvPath,
+        size_t runs,
+        size_t sampleSize,
+        const string &algorithmParams,
         Args &&... ctorArgs) const {
         Algo algo = makeAlgo<Algo>(ctorArgs...);
         const auto scope = datasetScope();
-        const auto points = evaluateMergePairs<Algo>(runs, sampleSize, std::forward<Args>(ctorArgs)...);
+        const auto points = evaluateMergePairs<Algo>(runs, sampleSize, forward<Args>(ctorArgs)...);
         CsvResultWriter::appendMergePairs(
             csvPath,
             algo.getName(),
@@ -232,16 +234,16 @@ namespace satp::evaluation {
         const auto scope = datasetScope();
         if (scope.runs == 0 || scope.sampleSize == 0) return {};
 
-        satp::util::ProgressBar bar{scope.runs * scope.sampleSize, std::cout, 50, 10'000};
+        satp::util::ProgressBar bar{scope.runs * scope.sampleSize, cout, 50, 10'000};
         satp::io::BinaryDatasetPartitionReader reader(binaryDataset);
 
-        std::vector<std::uint32_t> partitionValues;
+        vector<uint32_t> partitionValues;
         ErrorAccumulator accumulator;
         const double truth = static_cast<double>(numElementiDistintiEffettivi);
 
-        for (std::size_t run = 0; run < scope.runs; ++run) {
+        for (size_t run = 0; run < scope.runs; ++run) {
             reader.load(run, partitionValues);
-            Algo algo = makeAlgo<Algo>(std::forward<Args>(ctorArgs)...);
+            Algo algo = makeAlgo<Algo>(forward<Args>(ctorArgs)...);
 
             for (const auto value : partitionValues) {
                 algo.process(value);
@@ -252,12 +254,12 @@ namespace satp::evaluation {
         }
 
         bar.finish();
-        std::cout.flush();
+        cout.flush();
         return accumulator.toStats();
     }
 
     template<typename Algo, typename... Args>
-    std::vector<StreamingPointStats> EvaluationFramework::evaluateStreamingFromBinary(Args &&... ctorArgs) const {
+    vector<StreamingPointStats> EvaluationFramework::evaluateStreamingFromBinary(Args &&... ctorArgs) const {
         const auto scope = datasetScope();
         if (scope.runs == 0 || scope.sampleSize == 0) return {};
 
@@ -265,36 +267,36 @@ namespace satp::evaluation {
             scope.sampleSize,
             DEFAULT_STREAMING_CHECKPOINTS);
 
-        satp::util::ProgressBar bar{scope.runs * scope.sampleSize, std::cout, 50, 10'000};
+        satp::util::ProgressBar bar{scope.runs * scope.sampleSize, cout, 50, 10'000};
         satp::io::BinaryDatasetPartitionReader reader(binaryDataset);
 
-        std::vector<ErrorAccumulator> accumulators(checkpointPositions.size());
-        std::vector<std::uint32_t> partitionValues;
-        std::vector<std::uint8_t> partitionTruthBits;
+        vector<ErrorAccumulator> accumulators(checkpointPositions.size());
+        vector<uint32_t> partitionValues;
+        vector<uint8_t> partitionTruthBits;
 
-        for (std::size_t run = 0; run < scope.runs; ++run) {
+        for (size_t run = 0; run < scope.runs; ++run) {
             reader.loadWithTruthBits(run, partitionValues, partitionTruthBits);
             if (partitionValues.size() != scope.sampleSize) {
-                throw std::runtime_error("Invalid binary dataset: partition size mismatch while streaming");
+                throw runtime_error("Invalid binary dataset: partition size mismatch while streaming");
             }
             if (partitionTruthBits.size() != (scope.sampleSize + 7u) / 8u) {
-                throw std::runtime_error("Invalid binary dataset: truth bitset size mismatch while streaming");
+                throw runtime_error("Invalid binary dataset: truth bitset size mismatch while streaming");
             }
 
-            Algo algo = makeAlgo<Algo>(std::forward<Args>(ctorArgs)...);
-            std::uint64_t truthPrefix = 0;
-            std::size_t checkpointIndex = 0;
+            Algo algo = makeAlgo<Algo>(forward<Args>(ctorArgs)...);
+            uint64_t truthPrefix = 0;
+            size_t checkpointIndex = 0;
 
-            for (std::size_t t = 0; t < scope.sampleSize; ++t) {
+            for (size_t t = 0; t < scope.sampleSize; ++t) {
                 algo.process(partitionValues[t]);
 
-                const std::uint8_t byte = partitionTruthBits[t >> 3u];
+                const uint8_t byte = partitionTruthBits[t >> 3u];
                 const bool isNew = ((byte >> (t & 7u)) & 0x1u) != 0;
                 if (isNew) {
                     ++truthPrefix;
                 }
 
-                const std::size_t elementIndex = t + 1u;
+                const size_t elementIndex = t + 1u;
                 if (checkpointIndex < checkpointPositions.size()
                     && elementIndex == checkpointPositions[checkpointIndex]) {
                     accumulators[checkpointIndex].add(
@@ -308,11 +310,11 @@ namespace satp::evaluation {
         }
 
         bar.finish();
-        std::cout.flush();
+        cout.flush();
 
-        std::vector<StreamingPointStats> out;
+        vector<StreamingPointStats> out;
         out.reserve(checkpointPositions.size());
-        for (std::size_t i = 0; i < checkpointPositions.size(); ++i) {
+        for (size_t i = 0; i < checkpointPositions.size(); ++i) {
             out.push_back(accumulators[i].toStreamingPoint(checkpointPositions[i]));
         }
         return out;

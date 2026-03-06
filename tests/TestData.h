@@ -6,17 +6,19 @@
 
 #include "satp/io/BinaryDatasetIO.h"
 
+using namespace std;
+
 namespace satp::testdata {
     struct LoadedDataset {
-        std::vector<std::uint32_t> values;
-        std::size_t elements_per_partition = 0;
-        std::size_t distinct = 0;
-        std::size_t partition_count = 0;
-        std::uint32_t seed = 0;
+        vector<uint32_t> values;
+        size_t elements_per_partition = 0;
+        size_t distinct = 0;
+        size_t partition_count = 0;
+        uint32_t seed = 0;
     };
 
-    inline std::filesystem::path datasetPath() {
-        return std::filesystem::path(__FILE__).parent_path() / "data" / "dataset_n_2000_d_1000_p_3_s_5489.bin";
+    inline filesystem::path datasetPath() {
+        return filesystem::path(__FILE__).parent_path() / "data" / "dataset_n_2000_d_1000_p_3_s_5489.bin";
     }
 
     inline LoadedDataset loadDataset() {
@@ -30,9 +32,9 @@ namespace satp::testdata {
         return out;
     }
 
-    inline std::vector<std::uint32_t> loadPartition(const std::size_t partitionIndex) {
+    inline vector<uint32_t> loadPartition(const size_t partitionIndex) {
         const auto index = satp::io::indexBinaryDataset(datasetPath());
-        std::vector<std::uint32_t> out;
+        vector<uint32_t> out;
         satp::io::loadBinaryPartition(index, partitionIndex, out);
         return out;
     }

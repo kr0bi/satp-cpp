@@ -6,20 +6,22 @@
 
 #include "satp/cli/CliTypes.h"
 
+using namespace std;
+
 namespace satp::cli::path_utils {
-    [[nodiscard]] std::string sanitizeForPath(std::string value);
+    [[nodiscard]] string sanitizeForPath(string value);
 
-    [[nodiscard]] std::optional<std::filesystem::path> tryFindRepoRoot(
-        const std::filesystem::path &start);
+    [[nodiscard]] optional<filesystem::path> tryFindRepoRoot(
+        const filesystem::path &start);
 
-    [[nodiscard]] std::filesystem::path detectRepoRoot(
-        const std::filesystem::path &datasetPath);
+    [[nodiscard]] filesystem::path detectRepoRoot(
+        const filesystem::path &datasetPath);
 
-    [[nodiscard]] std::filesystem::path buildResultCsvPath(
-        const std::filesystem::path &repoRoot,
-        const std::string &resultsNamespace,
-        const std::string &algorithmName,
-        const std::string &params,
-        const std::string &hashName,
+    [[nodiscard]] filesystem::path buildResultCsvPath(
+        const filesystem::path &repoRoot,
+        const string &resultsNamespace,
+        const string &algorithmName,
+        const string &params,
+        const string &hashName,
         RunMode mode);
 } // namespace satp::cli::path_utils

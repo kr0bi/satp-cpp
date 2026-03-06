@@ -2,6 +2,8 @@
 
 #include <cstddef>
 
+using namespace std;
+
 namespace satp::evaluation {
     struct Stats {
         double mean = 0.0;
@@ -18,7 +20,7 @@ namespace satp::evaluation {
     };
 
     struct StreamingPointStats {
-        std::size_t number_of_elements_processed = 0; // 1-based index t
+        size_t number_of_elements_processed = 0; // 1-based index t
         double mean = 0.0; // \bar{\hat{F}_0(t)}
         double variance = 0.0;
         double bias = 0.0;
@@ -33,7 +35,7 @@ namespace satp::evaluation {
     };
 
     struct MergePairPoint {
-        std::size_t pair_index = 0;
+        size_t pair_index = 0;
         double estimate_merge = 0.0;
         double estimate_serial = 0.0;
         double delta_merge_serial_abs = 0.0;
@@ -41,7 +43,7 @@ namespace satp::evaluation {
     };
 
     struct MergePairStats {
-        std::size_t pair_count = 0;
+        size_t pair_count = 0;
         double estimate_merge_mean = 0.0;
         double estimate_serial_mean = 0.0;
         double delta_merge_serial_abs_mean = 0.0;
