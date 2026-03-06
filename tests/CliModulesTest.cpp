@@ -5,10 +5,11 @@
 
 #include "catch2/catch_test_macros.hpp"
 
-#include "satp/cli/config/CommandParser.h"
-#include "satp/cli/config/RunConfigParams.h"
-#include "satp/cli/executor/Output.h"
-#include "satp/cli/executor/Selection.h"
+#include "satp/cli/Cli.h"
+#include "satp/cli/detail/config/CommandParser.h"
+#include "satp/cli/detail/config/RunParameters.h"
+#include "satp/cli/detail/execution/AlgorithmSelection.h"
+#include "satp/cli/detail/execution/RunReporter.h"
 
 using namespace std;
 

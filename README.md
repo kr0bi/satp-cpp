@@ -12,13 +12,25 @@ C++ project that implements and evaluates probabilistic algorithms for estimatin
 
 ## Project layout
 - `src/satp/algorithms/`: implementations of the counting algorithms
-- `src/satp/simulation/`: simulation modules (`framework`, `streaming`, `merge`, `metrics`, `results`)
-- `src/satp/io/`: dataset I/O helpers
+- `src/satp/hashing/`: hash functions used by the sketches
+- `src/satp/cli/Cli.h`: coordinator of the interactive benchmark CLI
+- `src/satp/dataset/Dataset.h`: coordinator of binary dataset indexing and partition loading
+- `src/satp/simulation/Simulation.h`: coordinator of the experiment framework
+- `src/satp/*/detail/`: internal files grouped by sub-responsibility
 - `main.cpp`: benchmark-style executable
 - `tests/`: Catch2 unit tests
 
 ## Dataset format
 The dataset file is binary and compressed per partition (`zlib`). The framework indexes partition metadata and loads/decompresses one partition at a time.
+
+## Architectural flow
+The main runtime flow is:
+
+`Cli.h -> Dataset.h -> Simulation.h`
+
+- `Cli` parses commands, loads dataset/runtime config, and orchestrates output paths and progress reporting.
+- `Dataset` exposes partition-level reads and metadata from the binary dataset.
+- `Simulation` runs streaming or merge experiments and emits in-memory statistics/CSV rows.
 
 ## Generate datasets (Python)
 ```sh
@@ -88,6 +100,7 @@ bias,absolute_bias,relative_bias,mean_relative_error,rmse,mae
 - Tests use the fixed dataset at `tests/data/dataset_n_2000_d_1000_p_3_s_5489.bin`.
 - HLL/LogLog constructors validate parameter ranges (k/L) and have tests for invalid values.
 - In binary mode, the evaluation framework reads `runs`, `sampleSize`, and `seed` directly from the dataset metadata.
+- The streaming checkpoint planner now enforces an exact checkpoint budget and keeps coverage on both the early and late parts of the stream.
 
 ## Hash robustness analysis (scientific reproducibility)
 Current hashing is deterministic (splitmix64), so results are reproducible for a fixed dataset. If you want to study robustness to different hash functions/seeds, introduce a configurable hash seed (e.g., `splitmix64(id ^ seed)`), log it in the CSV, and optionally centralize hashing in the framework.
@@ -96,11 +109,12 @@ Current hashing is deterministic (splitmix64), so results are reproducible for a
 ### Completato
 - [x] Refactor del dataset su file unico per configurazione (`dataset_n_{n}_d_{d}_p_{p}_s_{seed}.bin`).
 - [x] Formato binario compresso per partizione (`zlib`) con caricamento di una sola partizione alla volta.
-- [x] Modalita' `normal`, `streaming` e `merge` integrate nel framework.
+- [x] Modalita' `streaming` e `merge` integrate nel framework.
 - [x] Operazione di merge implementata e valutata in CSV dedicato (`results_merge.csv`).
-- [x] Output CSV standardizzati e salvati automaticamente in `results/<namespace>/<mode>/<AlgorithmName>/<params>/`.
+- [x] Output CSV standardizzati e salvati automaticamente in `results/<namespace>/<mode>/<AlgorithmName>/<hash>/<params>/`.
 - [x] Orchestrazione batch con sweep completo dei parametri (`scripts/orchestrate_benchmarks.py --full`).
 - [x] Pipeline notebook per grafici e analisi sperimentale (streaming + merge).
+- [x] Moduli `cli`, `dataset` e `simulation` riorganizzati con un coordinatore pubblico e helper in `detail/`.
 
 ### Da fare (priorita')
 1. Fare refactoring e pulire il codice e la repository, in modo che sia chiaro cosa fa ogni componente.

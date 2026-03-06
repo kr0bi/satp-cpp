@@ -101,11 +101,8 @@ def run_benchmarks(main_bin: Path,
 
 def append_run_modes(commands: list[str],
                      algo: str,
-                     run_oneshot: bool,
                      run_streaming: bool,
                      run_merge: bool) -> None:
-    if run_oneshot:
-        commands.append(f"run {algo}")
     if run_streaming:
         commands.append(f"runstream {algo}")
     if run_merge:
@@ -115,7 +112,6 @@ def append_run_modes(commands: list[str],
 def build_standard_commands(k: int,
                             l: int,
                             l_log: int,
-                            run_oneshot: bool,
                             run_streaming: bool,
                             run_merge: bool) -> list[str]:
     commands = [
@@ -123,8 +119,6 @@ def build_standard_commands(k: int,
         f"set l {l}",
         f"set lLog {l_log}",
     ]
-    if run_oneshot:
-        commands.append("run all")
     if run_streaming:
         commands.append("runstream all")
     if run_merge:
@@ -133,7 +127,6 @@ def build_standard_commands(k: int,
 
 
 def build_full_commands(base_l: int,
-                        run_oneshot: bool,
                         run_streaming: bool,
                         run_merge: bool) -> list[str]:
     commands: list[str] = []
@@ -145,7 +138,7 @@ def build_full_commands(base_l: int,
             f"set l {base_l}",
             f"set lLog {PAPER_LLOG}",
         ])
-        append_run_modes(commands, "hllpp", run_oneshot, run_streaming, run_merge)
+        append_run_modes(commands, "hllpp", run_streaming, run_merge)
 
     # HLL: k in [4,16], L fixed at 32
     for k in HLL_K_DOMAIN:
@@ -154,7 +147,7 @@ def build_full_commands(base_l: int,
             f"set l {base_l}",
             f"set lLog {PAPER_LLOG}",
         ])
-        append_run_modes(commands, "hll", run_oneshot, run_streaming, run_merge)
+        append_run_modes(commands, "hll", run_streaming, run_merge)
 
     # LogLog: k in [4,16], L fixed at 32
     for k in LL_K_DOMAIN:
@@ -163,7 +156,7 @@ def build_full_commands(base_l: int,
             f"set l {base_l}",
             f"set lLog {PAPER_LLOG}",
         ])
-        append_run_modes(commands, "ll", run_oneshot, run_streaming, run_merge)
+        append_run_modes(commands, "ll", run_streaming, run_merge)
 
     # Probabilistic Counting: L in [1,31]
     for l in PC_L_DOMAIN:
@@ -172,7 +165,7 @@ def build_full_commands(base_l: int,
             f"set l {l}",
             f"set lLog {PAPER_LLOG}",
         ])
-        append_run_modes(commands, "pc", run_oneshot, run_streaming, run_merge)
+        append_run_modes(commands, "pc", run_streaming, run_merge)
 
     return commands
 
@@ -191,8 +184,8 @@ def compute_distincts(n: int, ratios: list[float]) -> list[int]:
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description=(
-            "Generate dataset matrix and run SATP benchmarks (oneshot/streaming/merge). "
-            "Results are written directly to results/<namespace>/<mode>/<algorithm>/<params>/."
+            "Generate dataset matrix and run SATP benchmarks (streaming/merge). "
+            "Results are written directly to results/<namespace>/<mode>/<algorithm>/<hash>/<params>/."
         )
     )
     parser.add_argument("--repo-root", type=Path, default=Path(__file__).resolve().parents[1])
@@ -213,8 +206,6 @@ def parse_args() -> argparse.Namespace:
                         help="Disable dataset generation progress output")
     parser.add_argument("--skip-generate", action="store_true",
                         help="Use only already-existing datasets")
-    parser.add_argument("--skip-oneshot", action="store_true",
-                        help="Skip normal mode (run all)")
     parser.add_argument("--skip-streaming", action="store_true",
                         help="Skip streaming mode (runstream all)")
     parser.add_argument("--skip-merge", action="store_true",
@@ -245,7 +236,7 @@ def main() -> None:
     if not generator.exists():
         raise FileNotFoundError(f"Generator script not found: {generator}")
 
-    if args.skip_oneshot and args.skip_streaming and args.skip_merge:
+    if args.skip_streaming and args.skip_merge:
         raise ValueError("All benchmark modes are skipped: nothing to run")
 
     if args.clean_results:
@@ -270,7 +261,7 @@ def main() -> None:
     print(f"[results] {repo_root / 'results' / args.results_namespace}")
     print(
         f"[params] hashFunction={args.hash_function} k={args.k} l={args.l} lLog={args.l_log} "
-        f"oneshot={not args.skip_oneshot} streaming={not args.skip_streaming} merge={not args.skip_merge} "
+        f"streaming={not args.skip_streaming} merge={not args.skip_merge} "
         f"full={args.full}"
     )
     if args.full:
@@ -303,7 +294,6 @@ def main() -> None:
         if args.full:
             commands = build_full_commands(
                 base_l=args.l,
-                run_oneshot=not args.skip_oneshot,
                 run_streaming=not args.skip_streaming,
                 run_merge=not args.skip_merge,
             )
@@ -313,7 +303,6 @@ def main() -> None:
                 k=args.k,
                 l=args.l,
                 l_log=args.l_log,
-                run_oneshot=not args.skip_oneshot,
                 run_streaming=not args.skip_streaming,
                 run_merge=not args.skip_merge,
             )

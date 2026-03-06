@@ -1,6 +1,6 @@
 #include "catch2/catch_test_macros.hpp"
 #include "TestData.h"
-#include "satp/io/BinaryDatasetIO.h"
+#include "satp/dataset/Dataset.h"
 
 #include <unordered_set>
 
@@ -13,9 +13,9 @@ TEST_CASE("Caricamento dataset da file", "[dataset]") {
     REQUIRE(dataset.partition_count == 3u);
     REQUIRE(dataset.values.size() == dataset.elements_per_partition);
 
-    const auto index = satp::io::indexBinaryDataset(satp::testdata::datasetPath());
+    const auto index = satp::dataset::indexBinaryDataset(satp::testdata::datasetPath());
     vector<uint8_t> truthBits;
-    satp::io::loadBinaryPartitionTruthBits(index, 0, truthBits);
+    satp::dataset::loadBinaryPartitionTruthBits(index, 0, truthBits);
     REQUIRE(truthBits.size() == (dataset.elements_per_partition + 7u) / 8u);
 
     unordered_set<uint32_t> seen;

@@ -4,7 +4,7 @@
 #include <filesystem>
 #include <vector>
 
-#include "satp/io/BinaryDatasetIO.h"
+#include "satp/dataset/Dataset.h"
 
 using namespace std;
 
@@ -23,8 +23,8 @@ namespace satp::testdata {
 
     inline LoadedDataset loadDataset() {
         LoadedDataset out;
-        const auto index = satp::io::indexBinaryDataset(datasetPath());
-        satp::io::loadBinaryPartition(index, 0, out.values);
+        const auto index = satp::dataset::indexBinaryDataset(datasetPath());
+        satp::dataset::loadBinaryPartition(index, 0, out.values);
         out.elements_per_partition = index.info.elements_per_partition;
         out.distinct = index.info.distinct_per_partition;
         out.partition_count = index.info.partition_count;
@@ -33,9 +33,9 @@ namespace satp::testdata {
     }
 
     inline vector<uint32_t> loadPartition(const size_t partitionIndex) {
-        const auto index = satp::io::indexBinaryDataset(datasetPath());
+        const auto index = satp::dataset::indexBinaryDataset(datasetPath());
         vector<uint32_t> out;
-        satp::io::loadBinaryPartition(index, partitionIndex, out);
+        satp::dataset::loadBinaryPartition(index, partitionIndex, out);
         return out;
     }
 } // namespace satp::testdata

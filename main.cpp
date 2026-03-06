@@ -1,6 +1,6 @@
-#include "satp/cli/BenchmarkCli.h"
+#include "satp/cli/Cli.h"
 
 int main() {
-    satp::cli::BenchmarkCli app;
+    satp::cli::Cli app;
     return app.run();
 }

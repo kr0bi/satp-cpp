@@ -7,10 +7,7 @@
 #include "catch2/catch_test_macros.hpp"
 #include "satp/algorithms/NaiveCounting.h"
 #include "satp/hashing/HashFactory.h"
-#include "satp/simulation/framework/EvaluationFramework.h"
-#include "satp/simulation/merge/MergeSummary.h"
-#include "satp/simulation/results/CsvResultWriter.h"
-#include "satp/simulation/streaming/StreamingCheckpointBuilder.h"
+#include "satp/simulation/Simulation.h"
 #include "TestData.h"
 
 using namespace std;
@@ -52,7 +49,7 @@ TEST_CASE("Evaluation Framework streaming usa F0(t) del dataset", "[eval-framewo
     const EvaluationFrameworkFixture fixture;
 
     const auto series = fixture.bench.evaluateStreaming<alg::NaiveCounting>();
-    const auto expectedCheckpoints = eval::StreamingCheckpointBuilder::build(
+    const auto expectedCheckpoints = eval::CheckpointPlanner::build(
         fixture.sampleSize(),
         eval::EvaluationFramework::DEFAULT_STREAMING_CHECKPOINTS);
 
@@ -111,35 +108,49 @@ TEST_CASE("Evaluation Framework streaming notifica il progresso tramite callback
     REQUIRE(finishCalls == 1u);
 }
 
-TEST_CASE("Streaming checkpoint builder usa fasi percentuali e termina a n", "[eval-framework][streaming]") {
+TEST_CASE("Checkpoint planner rispetta il budget e copre l'intero stream", "[eval-framework][streaming]") {
     constexpr size_t n = 10'000'000u;
     constexpr size_t maxPoints = eval::EvaluationFramework::DEFAULT_STREAMING_CHECKPOINTS;
 
-    const auto checkpoints = eval::StreamingCheckpointBuilder::build(n, maxPoints);
+    const auto checkpoints = eval::CheckpointPlanner::build(n, maxPoints);
 
     REQUIRE_FALSE(checkpoints.empty());
     REQUIRE(checkpoints.front() == 1u);
     REQUIRE(checkpoints.back() == n);
-    REQUIRE(checkpoints.size() <= maxPoints);
+    REQUIRE(checkpoints.size() == maxPoints);
 
     for (size_t i = 1; i < checkpoints.size(); ++i) {
         REQUIRE(checkpoints[i] > checkpoints[i - 1]);
     }
 
-    // First phase (dense) covers 0.1% of n; there should be many early checkpoints.
-    const size_t phase1End = static_cast<size_t>(ceil(static_cast<double>(n) * 1e-3));
-    const size_t phase2End = static_cast<size_t>(ceil(static_cast<double>(n) * 1e-1));
-    const size_t inPhase1 = static_cast<size_t>(count_if(
+    const size_t earlyRangeEnd = static_cast<size_t>(ceil(static_cast<double>(n) * 1e-2));
+    const size_t lateRangeStart = static_cast<size_t>(ceil(static_cast<double>(n) * 1e-1));
+    const size_t earlyPoints = static_cast<size_t>(count_if(
         checkpoints.begin(),
         checkpoints.end(),
-        [phase1End](const size_t v) { return v <= phase1End; }));
-    const size_t inPhase12 = static_cast<size_t>(count_if(
+        [earlyRangeEnd](const size_t value) { return value <= earlyRangeEnd; }));
+    const size_t latePoints = static_cast<size_t>(count_if(
         checkpoints.begin(),
         checkpoints.end(),
-        [phase2End](const size_t v) { return v <= phase2End; }));
+        [lateRangeStart](const size_t value) { return value >= lateRangeStart; }));
 
-    REQUIRE(inPhase1 >= maxPoints / 4u);
-    REQUIRE(inPhase12 >= maxPoints / 2u);
+    REQUIRE(earlyPoints >= maxPoints / 5u);
+    REQUIRE(latePoints >= maxPoints / 4u);
+}
+
+TEST_CASE("Checkpoint planner non sfora il budget su stream piccoli o budget piccoli", "[eval-framework][streaming]") {
+    const auto tinyBudget = eval::CheckpointPlanner::build(1001u, 2u);
+    REQUIRE(tinyBudget == vector<size_t>{1u, 1001u});
+
+    const auto verySmallBudget = eval::CheckpointPlanner::build(10'000'000u, 3u);
+    REQUIRE(verySmallBudget.size() == 3u);
+    REQUIRE(verySmallBudget.front() == 1u);
+    REQUIRE(verySmallBudget.back() == 10'000'000u);
+
+    const auto moderateStream = eval::CheckpointPlanner::build(1'000u, 200u);
+    REQUIRE(moderateStream.size() == 200u);
+    REQUIRE(moderateStream.front() == 1u);
+    REQUIRE(moderateStream.back() == 1'000u);
 }
 
 TEST_CASE("Evaluation Framework merge pairs: Naive merge equivale al seriale", "[eval-framework][merge]") {

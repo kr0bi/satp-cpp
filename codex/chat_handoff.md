@@ -80,19 +80,17 @@ Dataset naming convention in use:
 
 Implemented in `EvaluationFramework` / CLI:
 
-1. **normal (oneshot)**  
-   one final estimate per run/partition, aggregate metrics across runs.
-
-2. **streaming**  
+1. **streaming**  
    metrics at checkpoints over prefixes; truth from embedded bitset (`F_0(t)`).
 
-3. **merge**  
+2. **merge**  
    pairwise merge vs serial comparison on pairs `(0,1), (2,3), ...`.
 
 Important behavior:
 
 - `runs`, `sample_size`, and `seed` are derived from dataset metadata.
-- Legacy manual assumptions were removed.
+- single-run / oneshot mode was removed from framework and CLI.
+- progress reporting is injected via callbacks; the framework core does not own the console progress bar.
 
 ---
 
@@ -100,7 +98,7 @@ Important behavior:
 
 Column naming was normalized (notably typo fix from `f0_heat_mean_t` to `f0_hat_mean_t`).
 
-Shared normal/streaming schema:
+Streaming schema:
 
 `algorithm,params,mode,runs,sample_size,number_of_elements_processed,f0,seed,f0_mean_t,f0_hat_mean_t,variance,stddev,rse_theoretical,rse_observed,bias,absolute_bias,relative_bias,mean_relative_error,rmse,mae`
 
@@ -125,7 +123,7 @@ Main scripts:
 
 - `scripts/generate_partitioned_dataset_bin.py` (uniform/shuffled legacy flow)
 - `scripts/generate_prefix_constant_rho_dataset_bin.py` (special protocol for Type A/B analyses)
-- `scripts/orchestrate_benchmarks.py` (dataset matrix + benchmark runs)
+- `scripts/orchestrate_benchmarks.py` (dataset matrix + streaming/merge benchmark runs)
 - `scripts/generate_prefix_constant_rho_set.sh` (batch generation helper)
 
 Tests:
@@ -227,11 +225,10 @@ Build/tests status after tooling cleanup:
 
 User requested:
 
-- Keep CSV files as they are (**do not touch CSV data now**).
-- Do hygiene + tooling only.
-- Do **not** freeze/remove legacy at this step.
-- Postpone code refactor.
-- Do not add a quality-gate pipeline now.
+- Keep `using namespace std;`.
+- Always derive experiment scope (`runs`, `sample_size`, `seed`) from dataset metadata.
+- Leave `algorithms/` and `hashing/` untouched unless a compile fix requires otherwise.
+- Refactor for readability first: smaller files, clear boundaries, and explicit module coordinators.
 
 ---
 
@@ -262,7 +259,8 @@ python3 -m unittest discover -s scripts/tests -v
 Orchestration:
 
 ```bash
-python3 scripts/orchestrate_benchmarks.py --skip-generate --skip-oneshot
+python3 scripts/orchestrate_benchmarks.py --skip-generate --skip-streaming
+python3 scripts/orchestrate_benchmarks.py --skip-generate --skip-merge
 ```
 
 Dataset generation (prefix-constant-rho):
@@ -307,25 +305,36 @@ This section captures what changed after the original handoff above.
   - `-Wunqualified-std-cast-call` for `move`/`forward` calls
 - This is expected with current style choice.
 
-### 14.3 Sector-based refactor done in `io`
+### 14.3 Sector-based refactor done in dataset loading
 
-Refactor in `src/satp/io/BinaryDatasetIO.h`:
+The old `src/satp/io/` module has since been replaced by `src/satp/dataset/`.
 
-- Added shared helpers in `detail`:
-  - `partitionEntryOrThrow`
-  - `seekChecked`
-  - `loadValuesInto`
-  - `loadTruthBitsInto`
-- Free functions and `BinaryDatasetPartitionReader` now reuse these helpers.
-- Goal achieved: reduced duplication in values/truth loading code paths.
+Current dataset module:
 
-### 14.4 Sector-based refactor done in `cli`
+- public coordinator: `src/satp/dataset/Dataset.h`
+- public detail API: `DatasetTypes.h`, `DatasetAccess.h`
+- binary parsing split across `detail/binary/*`
 
-Refactor in `src/satp/cli/AlgorithmExecutor.cpp`:
+Goal achieved:
 
-- Introduced `runIfSelected(...)` to reduce repeated execution blocks.
-- Consolidated params-string building (`kParam`, `kAndLLogParam`, `lParam`).
-- Result: less duplication with unchanged functional behavior.
+- removed the single huge dataset header
+- split indexing, decompression, endian parsing, and partition loading by responsibility
+- clarified the module boundary used by CLI and simulation
+
+### 14.4 Sector-based refactor done in CLI
+
+The old flat CLI layout was replaced by a coordinator + detail structure:
+
+- public coordinator: `src/satp/cli/Cli.h`
+- helpers under:
+  - `src/satp/cli/detail/config/`
+  - `src/satp/cli/detail/execution/`
+  - `src/satp/cli/detail/paths/`
+
+Goal achieved:
+
+- only one public file remains at module root
+- command parsing, runtime loading, execution orchestration, reporting, and result paths are separated
 
 ### 14.5 Centralized canonical algorithm ID registry
 
@@ -393,55 +402,47 @@ Validation check performed after section 14:
 
 ## 16) Delta Update (2026-03-06, latest)
 
-### 16.1 EvaluationFramework modularization finalized
+### 16.1 Simulation framework refactor landed
 
-The previous aggregator file `src/satp/simulation/EvaluationFramework.tpp` has been removed.
+Current active structure:
 
-`src/satp/simulation/EvaluationFramework.h` now directly includes the modular implementation files:
+- public coordinator: `src/satp/simulation/Simulation.h`
+- internal submodules:
+  - `src/satp/simulation/detail/framework/`
+  - `src/satp/simulation/detail/streaming/`
+  - `src/satp/simulation/detail/merge/`
+  - `src/satp/simulation/detail/metrics/`
+  - `src/satp/simulation/detail/results/`
 
-- `satp/simulation/evaluationFramework/Detail.h`
-- `satp/simulation/evaluationFramework/Context.h`
-- `satp/simulation/evaluationFramework/modes/normal/Core.tpp`
-- `satp/simulation/evaluationFramework/modes/normal/Csv.tpp`
-- `satp/simulation/evaluationFramework/modes/streaming/Core.tpp`
-- `satp/simulation/evaluationFramework/modes/streaming/Csv.tpp`
-- `satp/simulation/evaluationFramework/modes/merge/Core.tpp`
-- `satp/simulation/evaluationFramework/modes/merge/Csv.tpp`
-- `satp/simulation/evaluationFramework/Facade.tpp`
+Important changes:
 
-This removes one extra indirection and keeps all mode-specific responsibilities in the dedicated `evaluationFramework/` tree.
+- `normal/oneshot` mode was removed.
+- `EvaluationFramework` is now a thin facade over `streaming` and `merge`.
+- CSV writing is outside the computational core.
+- progress reporting is callback-based and adapted by CLI (`ProgressReporter`), not hard-coded in the framework.
+- test-only loop helpers were moved out of `src/`.
+- internal names were cleaned up (`CheckpointPlanner`, `Statistics`, `DatasetTraversal`, `SketchFactory`, `EvaluationContext`).
 
-### 16.2 Verification status after removal
+### 16.2 Verification status after refactor
 
 - build: OK
-- tests: **37/37 passed**
-- no residual references to `EvaluationFramework.tpp` in `src/` or `tests/`
+- tests: **40/40 passed**
 
 ### 16.3 Note on warnings
 
 The build still shows the previously known `-Wunqualified-std-cast-call` warnings (`move`/`forward`) caused by the adopted `using namespace std;` style choice. Functional behavior is unchanged.
 
-### 16.4 EvaluationFramework facade refactor
+### 16.4 Checkpoint planning note
 
-`EvaluationFramework` was further slimmed down:
+The old checkpoint generator was too front-loaded and could exceed the requested budget on small cases.
 
-- the class now acts as a thin facade
-- mode logic (`normal`, `streaming`, `merge`) is implemented as free functions under `satp::evaluation::modes::*`
-- runtime metadata is passed through a dedicated `detail::EvaluationContext`
-- the old member-template helpers tied to the class (`makeAlgo`, `evaluateFromBinary`, `evaluateStreamingFromBinary`, dataset-scope struct) were removed
+Current `CheckpointPlanner` now:
 
-New modular files:
+- guarantees an exact checkpoint budget when `sampleSize > maxCheckpoints`
+- preserves endpoint coverage (`t=1`, `t=n`)
+- keeps dense early coverage without starving the tail of the stream
 
-- `src/satp/simulation/evaluationFramework/Context.h`
-- `src/satp/simulation/evaluationFramework/Facade.tpp`
+Methodological caveat:
 
-Helper cleanup:
-
-- `src/satp/simulation/evaluationFramework/Common.tpp` was removed
-- `Detail.h` now contains only shared evaluation helpers (progress, stream truth-bit helpers, merge summary)
-
-Testing:
-
-- `tests/simulation/EvaluationFrameworkTest.cpp` now uses a small shared fixture
-- added explicit contract test for zero requested scope returning empty results
-- current status after this refactor: **38/38 passed**
+- these remain checkpoints on stream position `t`, not on target cardinality `F_0(t)`
+- for future Type B or heterogeneous-merge studies, a second planner keyed on `F_0(t)` may still be useful
