@@ -286,3 +286,105 @@ If continuing here, first check:
    - new algorithm implementation (CMS/Bloom), or
    - controlled heterogeneous merge experiments.
 
+---
+
+## 14) Delta Update (2026-03-06)
+
+This section captures what changed after the original handoff above.
+
+### 14.1 Hash runtime wiring (CLI -> factory -> framework)
+
+- `RunConfig.hashFunctionName` now has explicit default `"splitmix64"`.
+- `AlgorithmExecutor` now instantiates hash via:
+  - `satp::hashing::getHashFunctionBy(cfg.hashFunctionName, ctx.seed)`
+- `HashFactory` handles empty/blank name as default hash (`SplitMix64`).
+- CLI hash parsing canonicalizes the configured name using factory output (`hash->name()`).
+
+### 14.2 "using namespace std" standardization pass
+
+- A broad style pass removed `std::` qualifiers across many C++ files and inserted `using namespace std;`.
+- Build/tests still pass, but Clang emits many warnings:
+  - `-Wunqualified-std-cast-call` for `move`/`forward` calls
+- This is expected with current style choice.
+
+### 14.3 Sector-based refactor done in `io`
+
+Refactor in `src/satp/io/BinaryDatasetIO.h`:
+
+- Added shared helpers in `detail`:
+  - `partitionEntryOrThrow`
+  - `seekChecked`
+  - `loadValuesInto`
+  - `loadTruthBitsInto`
+- Free functions and `BinaryDatasetPartitionReader` now reuse these helpers.
+- Goal achieved: reduced duplication in values/truth loading code paths.
+
+### 14.4 Sector-based refactor done in `cli`
+
+Refactor in `src/satp/cli/AlgorithmExecutor.cpp`:
+
+- Introduced `runIfSelected(...)` to reduce repeated execution blocks.
+- Consolidated params-string building (`kParam`, `kAndLLogParam`, `lParam`).
+- Result: less duplication with unchanged functional behavior.
+
+### 14.5 Centralized canonical algorithm ID registry
+
+Introduced central catalog:
+
+- `src/satp/algorithms/AlgorithmCatalog.h`
+- `src/satp/algorithms/AlgorithmCatalog.cpp`
+
+Public API was simplified by user request to exactly two methods:
+
+1. `getNameBy(string_view id)`
+2. `getIdsOfSupportedAlgorithms()`
+
+Current canonical supported benchmark IDs:
+
+- `hllpp`
+- `hll`
+- `ll`
+- `pc`
+
+Also available in `getNameBy`: `naive` (for algorithm name resolution).
+
+### 14.6 Uniform usage of canonical IDs
+
+- All implemented algorithms now resolve their display name via catalog `getNameBy(id)`:
+  - `HyperLogLog`, `HyperLogLog++`, `LogLog`, `ProbabilisticCounting`, `NaiveCounting`.
+- CLI `list` command now prints algorithms from catalog IDs + names.
+- `AlgorithmRunSpec` simplified: now stores `algorithmId` (not separate key/tag/name trio).
+- Executor log prefix now uses unified format:
+  - `[<id>|<extended name>]`
+- Result path builder now uses `algorithmId` directory component.
+
+Important behavior note:
+
+- CLI algorithm selection is now based on canonical IDs (and `all`), aligned with simplified catalog API.
+
+### 14.7 Tests and status
+
+- Added test: `tests/AlgorithmCatalogTest.cpp`
+- Current status:
+  - CMake build: OK
+  - CTest: **32/32 passed**
+
+### 14.8 Working tree status (not committed)
+
+As of this update, there are local modifications/new files related to:
+
+- Algorithm catalog introduction
+- CLI/Path/RunSpec alignment to canonical IDs
+- IO and CLI refactors mentioned above
+
+Always run `git status` before continuing/committing.
+
+---
+
+## 15) Delta Check (2026-03-06, later)
+
+Validation check performed after section 14:
+
+- no additional source-code or notebook changes were detected
+- only `codex/chat_handoff.md` is currently modified in the working tree
+- section 14 remains the latest technical delta to carry forward
