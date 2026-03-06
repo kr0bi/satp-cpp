@@ -5,7 +5,9 @@
 #include <string>
 #include <string_view>
 
-#include "satp/cli/CliConfig.h"
+#include "satp/cli/config/CommandParser.h"
+#include "satp/cli/config/Printer.h"
+#include "satp/cli/config/RunConfigParams.h"
 
 using namespace std;
 
