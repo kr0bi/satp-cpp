@@ -118,9 +118,10 @@ Current hashing is deterministic (splitmix64), so results are reproducible for a
 
 ### Da fare (priorita')
 1. Fare refactoring e pulire il codice e la repository, in modo che sia chiaro cosa fa ogni componente.
-2. Fare esperimenti sul degrado del merge in condizioni non ottimali (ad esempio funzioni di hash differenti o parametri differenti).
-3. Implementare Count-Min Sketch, Bloom Filter e Ring Bloom Filter.
-4. Aggiungere ulteriori grafici per gli algoritmi attuali.
+2. Implementare il piano sperimentale sul merge eterogeneo con HyperLogLog++ come riferimento: baseline omogeneo, hash/seed mismatch, mismatch di precisione (`reject` vs `reduce-then-merge`) e amplificazione su topologie di merge. Roadmap operativa: `codex/merge_heterogeneous_roadmap.md`.
+3. Estendere framework, CLI e CSV per esperimenti dedicati di merge eterogeneo (`valid`, `recoverable`, `invalid`) con confronto rispetto a baseline omogeneo e unione esatta.
+4. Implementare Count-Min Sketch, Bloom Filter e Ring Bloom Filter.
+5. Aggiungere ulteriori grafici per gli algoritmi attuali.
 
 ### Opzionali
 1. Aggiungere test sulla dimensione degli sketch e analisi queste infomrazioni
