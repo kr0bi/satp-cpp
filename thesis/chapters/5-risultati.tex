@@ -4,23 +4,22 @@
 In questo capitolo sono riportati i risultati sperimentali ottenuti con il
 framework descritto nel Capitolo~\ref{chp:implementazione}.
 
-L'analisi \`e partita con il creare una base su cui poi fare degli esperimenti.
-La prima cosa che si \`e verificata \`e che gli algoritmi fossero stabili rispetto al seed utilizzato, in modo tale da poter utilizzare un unico seed per gli esperimenti successivi. Poiché ripetere
-gli esperimenti anche per ogni possibile seed scelto, era estremamente costoso a livello di spazio e tempo.
-Inizialmente si \`e analizzato come si comportassero le implementazioni degli algoritmi di sketching tra di loro a parit\`a di parametri, ove possibili, verificando quello che lo stato dell'arte assumesse.
-La verifica \`e stata fatta controllando come si comportassero gli algoritmi per il calcolo del numero di elementi distinti in determinate condizioni.
-Al fine di fare questa verifica, si \`e generato un dataset che avesse delle caratteristiche adatte affinch\'e dato un prefisso della stream di dati, si potesse sempre sapere quanti elementi unici ci fossero.
-Successivamente, ci si \`e mossi alla ricerca di gap all'interno della letteratura attuale.
-Al momento, non ci sono molti articoli scientifici che analizzano il merge tra sketches in situazioni non ottimali, come per esempio, parametri differenti utilizzati.
-
+L'organizzazione del capitolo segue la progressione effettiva del lavoro.
+Si parte dalle condizioni sperimentali e dalle verifiche preliminari necessarie
+per costruire una baseline affidabile; si passa poi ai risultati in modalità
+\texttt{streaming} sul dataset a prefisso costante infine si
+presenta il controllo sul merge omogeneo e si introduce il piano degli
+esperimenti sul merge eterogeneo, che costituisce la direzione successiva della
+tesi.
 
 \section{Ambiente di test}
+
 I risultati sperimentali sono stati ottenuti su un notebook Apple MacBook Pro
 13'' (2020) con processore Apple M1 (Apple Silicon), 16 GB di RAM, SSD NVMe da
 512 GB e macOS Sequoia 15.7.2.
 
-L'esecuzione è avvenuta in locale su singola macchina.
-La toolchain utilizzata è:
+L'esecuzione è avvenuta in locale su singola macchina. La toolchain utilizzata
+è:
 \begin{itemize}
     \item CMake 4.2.3;
     \item Apple Clang 17.0.0 (\texttt{clang-1700.0.13.5});
@@ -29,9 +28,9 @@ La toolchain utilizzata è:
 
 \section{Setup sperimentale}
 
-\subsection{Dataset usati nella campagna}
+\subsection{Analisi della modalit\`a di \texttt{streaming}}
 
-Per questa campagna è stato usato il namespace:
+Per questa analisi è stato usata la seguente configurazione:
 \codepath{datasets/prefix_constant_rho/}, con file:
 \begin{center}
 \small
@@ -50,61 +49,32 @@ n=10^7,\qquad p=50,\qquad seed=21041998,\qquad
 
 I risultati corrispondenti sono nei CSV:
 \codepath{results/prefix_constant_rho/streaming/.../results_streaming.csv},
-uno per algoritmo.
+uno per algoritmo. Il protocollo di generazione del dataset
+\texttt{prefix\_constant\_rho} e le sue proprietà teoriche sono stati discussi
+nel Capitolo~\ref{chp:implementazione}; in questo capitolo si considerano solo
+gli esiti sperimentali ottenuti su tale famiglia di dataset.
 
-\subsection{Come sono generati i dataset}
+\subsection{Metriche osservate}
 
-I dataset sono generati con
-\codepath{scripts/generate_prefix_constant_rho_dataset_bin.py}.  
-La proprietà imposta è:
-\[
-n \bmod d = 0.
-\]
-Con tale vincolo, ogni blocco di \(\rho=n/d\) elementi contiene esattamente una
-nuova prima occorrenza; quindi:
-\[
-F_0(j\cdot \rho)=j.
-\]
+Le grandezze principali osservate nella modalità \texttt{streaming} sono:
+\begin{itemize}
+    \item \(F_0(t)\) reale, esportato come \texttt{f0\_mean\_t};
+    \item stima media \(\hat{F}_0(t)\), esportata come \texttt{f0\_hat\_mean\_t};
+    \item dispersione della stima, usata per costruire bande \(\mu \pm \sigma\);
+    \item errore relativo medio agli endpoint, usato come sintesi comparativa tra algoritmi.
+\end{itemize}
 
-Questa costruzione separa in modo controllato l'effetto del numero di
-ripetizioni medie dalla crescita della cardinalità reale lungo i prefissi.
+Per la modalità \texttt{merge}, invece, il controllo corrente usa:
+\begin{itemize}
+    \item \texttt{delta\_merge\_serial\_abs};
+    \item \texttt{delta\_merge\_serial\_rel};
+\end{itemize}
+cioè lo scostamento tra stima ottenuta via merge e stima ottenuta in modalità
+seriale sul medesimo dominio.
 
-\paragraph{Esempio:}
-Un esempio minimale è:
-\[
-n=20,\qquad d=5,\qquad p=2,\qquad seed=42,\qquad \rho=\frac{n}{d}=4.
-\]
+\subsection{Lettura dei grafici}
 
-Per costruzione, in ogni partizione compare una nuova prima occorrenza ogni
-\(\rho=4\) elementi; quindi \(F_0(4)=1\), \(F_0(8)=2\), \(F_0(12)=3\),
-\(F_0(16)=4\), \(F_0(20)=5\).  
-Un prefisso logico possibile (prima della compressione binaria) è:
-\begin{center}
-\small
-\begin{tabular}{|c|c|c|c|}
-\hline
-\(t\) & \(x_t\) & \(b_t\) & \(F_0(t)\) \\
-\hline
-1 & \(a\) & 1 & 1 \\
-2 & \(a\) & 0 & 1 \\
-3 & \(a\) & 0 & 1 \\
-4 & \(a\) & 0 & 1 \\
-5 & \(b\) & 1 & 2 \\
-6 & \(a\) & 0 & 2 \\
-7 & \(b\) & 0 & 2 \\
-8 & \(a\) & 0 & 2 \\
-9 & \(c\) & 1 & 3 \\
-10 & \(a\) & 0 & 3 \\
-11 & \(c\) & 0 & 3 \\
-12 & \(b\) & 0 & 3 \\
-\hline
-\end{tabular}
-\end{center}
-
-\section{Perché due famiglie di grafici}
-
-Sono stati costruiti due insiemi di grafici perché rispondono a due domande
-diverse:
+I grafici dell'analisi sono di due tipi.
 \begin{itemize}
     \item \textbf{Type A}: a parità di \(\rho\), come cambia la stima quando
     cresce la cardinalità reale \(F_0(t)\)?
@@ -113,39 +83,20 @@ diverse:
     \(\rho_t=t/F_0(t)\)?
 \end{itemize}
 
-In entrambi i casi sono mostrate media e dispersione, così da osservare sia
-\emph{bias} sia \emph{robustezza}, come discusso nel
-Capitolo~\ref{chp:background}.
-
-\section{Come sono stati costruiti i grafici}
-
-I grafici sono prodotti dai notebook:
-\begin{itemize}
-    \item \codepath{notebooks/16_ch5_typeA_prefix_constant_rho.ipynb};
-    \item \codepath{notebooks/17_ch5_typeA_prefix_constant_rho_no_pc.ipynb};
-    \item \codepath{notebooks/18_ch5_typeA_prefix_constant_rho_hll_hllpp.ipynb};
-    \item \codepath{notebooks/19_ch5_typeB_prefix_constant_rho.ipynb}.
-\end{itemize}
-
-\paragraph{Type A}
-Ascissa \(x=F_0(t)\) reale (\texttt{f0\_mean\_t}), ordinata
-\(y=\hat{F}_0(t)\) media (\texttt{f0\_hat\_mean\_t}), pannelli per \(\rho\).
-
-\paragraph{Type B}
-Per ogni target
+Nel Type A l'ascissa è \(x=F_0(t)\) reale (\texttt{f0\_mean\_t}) e l'ordinata
+è \(y=\hat{F}_0(t)\) media (\texttt{f0\_hat\_mean\_t}), con pannelli separati
+per \(\rho\). Nel Type B, per ogni target
 \[
 F_0^{\ast} \in \{1000,2000,5000,10000,20000,50000,100000\},
 \]
-viene estratto (per interpolazione lineare sui checkpoint) il punto
-corrispondente per ogni algoritmo e ogni \(\rho\), e si rappresenta:
+si estrae per interpolazione lineare sui checkpoint il punto corrispondente e
+si rappresenta:
 \[
 x=\rho_t=\frac{t}{F_0(t)},\qquad y=\hat{F}_0.
 \]
 
-\paragraph{Bande di dispersione}
-Nei grafici lineari la banda è \(\mu\pm \sigma\).  
-Nei grafici log-log è usata una banda moltiplicativa coerente con la scala
-logaritmica:
+Nei grafici lineari la banda di dispersione è \(\mu\pm \sigma\). Nei grafici
+log-log è usata una banda moltiplicativa coerente con la scala logaritmica:
 \[
 \sigma_{\log}=\sqrt{\log\!\left(1+\left(\frac{\sigma}{\mu}\right)^2\right)},
 \qquad
@@ -154,132 +105,198 @@ logaritmica:
 \text{high}=\mu e^{\sigma_{\log}}.
 \]
 
-\section{Risultati Type A}
+\section{Verifiche preliminari}
 
-Le Figure~\ref{fig:typeA-all-linear}--\ref{fig:typeA-hllpp-loglog}
-mostrano l'andamento di \(\hat{F}_0(t)\) rispetto a \(F_0(t)\), per tutti i
-valori di \(\rho\), in scala lineare e log-log.
+\subsection{Stabilità rispetto al seed}
 
-\begin{figure}[htbp]
+La prima verifica preliminare consiste nel controllare quanto gli algoritmi
+siano stabili rispetto al seed, in modo da poter fissare un unico seed nella
+campagna principale senza dover ripetere tutti gli esperimenti su più seed con
+costo proibitivo in termini di tempo e spazio.
+
+Questa sottosezione raccoglie quindi il controllo di stabilità usato per
+giustificare la scelta di \texttt{seed=21041998} come riferimento della
+campagna \texttt{prefix\_constant\_rho}. Qui andranno riportati i confronti tra
+seed diversi e la motivazione quantitativa della scelta finale.
+
+\subsection{Coerenza delle implementazioni a parità di parametri}
+
+Una seconda verifica preliminare consiste nel confrontare le implementazioni
+degli algoritmi a parità di parametri, dove il confronto è semanticamente
+sensato, in modo da verificare che l'andamento osservato sia coerente con le
+assunzioni dello stato dell'arte prima di passare a scenari di merge più
+complessi.
+
+Questa sottosezione funge da ponte tra la fase di validazione del framework e
+la lettura dei risultati veri e propri: l'obiettivo non è ancora cercare il
+degrado del merge, ma costruire una baseline sperimentale affidabile.
+
+\section{Risultati \texttt{streaming}}
+
+\subsection{Risultati Type A}
+
+Le Figure~\ref{fig:typeA-all-pair}, \ref{fig:typeA-no-pc-pair} e
+\ref{fig:typeA-hllpp-pair} mostrano l'andamento di \(\hat{F}_0(t)\) rispetto a
+\(F_0(t)\), per tutti i valori di \(\rho\), in scala lineare e log-log.
+
+\begin{figure}[p]
     \centering
-    \includegraphics[width=0.96\textwidth]{figures/results/typeA_prefix_constant_rho_linear.png}
-    \caption{Type A, tutti gli algoritmi, scala lineare.}
-    \label{fig:typeA-all-linear}
+    \begin{subfigure}[t]{0.49\textwidth}
+        \centering
+        \includegraphics[width=\linewidth]{figures/results/typeA_prefix_constant_rho_linear.png}
+        \caption{Scala lineare.}
+        \label{fig:typeA-all-linear}
+    \end{subfigure}
+    \hfill
+    \begin{subfigure}[t]{0.49\textwidth}
+        \centering
+        \includegraphics[width=\linewidth]{figures/results/typeA_prefix_constant_rho_loglog.png}
+        \caption{Scala log-log.}
+        \label{fig:typeA-all-loglog}
+    \end{subfigure}
+    \caption{Type A, tutti gli algoritmi.}
+    \label{fig:typeA-all-pair}
 \end{figure}
 
-\begin{figure}[htbp]
+\begin{figure}[p]
     \centering
-    \includegraphics[width=0.96\textwidth]{figures/results/typeA_prefix_constant_rho_loglog.png}
-    \caption{Type A, tutti gli algoritmi, scala log-log.}
-    \label{fig:typeA-all-loglog}
+    \begin{subfigure}[t]{0.49\textwidth}
+        \centering
+        \includegraphics[width=\linewidth]{figures/results/typeA_prefix_constant_rho_no_pc_linear.png}
+        \caption{Scala lineare.}
+        \label{fig:typeA-no-pc-linear}
+    \end{subfigure}
+    \hfill
+    \begin{subfigure}[t]{0.49\textwidth}
+        \centering
+        \includegraphics[width=\linewidth]{figures/results/typeA_prefix_constant_rho_no_pc_loglog.png}
+        \caption{Scala log-log.}
+        \label{fig:typeA-no-pc-loglog}
+    \end{subfigure}
+    \caption{Type A, senza Probabilistic Counting.}
+    \label{fig:typeA-no-pc-pair}
 \end{figure}
 
-\begin{figure}[htbp]
+\begin{figure}[p]
     \centering
-    \includegraphics[width=0.96\textwidth]{figures/results/typeA_prefix_constant_rho_no_pc_linear.png}
-    \caption{Type A, senza Probabilistic Counting, scala lineare.}
-    \label{fig:typeA-no-pc-linear}
+    \begin{subfigure}[t]{0.49\textwidth}
+        \centering
+        \includegraphics[width=\linewidth]{figures/results/typeA_prefix_constant_rho_hll_hllpp_linear.png}
+        \caption{Scala lineare.}
+        \label{fig:typeA-hllpp-linear}
+    \end{subfigure}
+    \hfill
+    \begin{subfigure}[t]{0.49\textwidth}
+        \centering
+        \includegraphics[width=\linewidth]{figures/results/typeA_prefix_constant_rho_hll_hllpp_loglog.png}
+        \caption{Scala log-log.}
+        \label{fig:typeA-hllpp-loglog}
+    \end{subfigure}
+    \caption{Type A, confronto HyperLogLog e HyperLogLog++.}
+    \label{fig:typeA-hllpp-pair}
 \end{figure}
 
-\begin{figure}[htbp]
+\subsection{Risultati Type B}
+
+Le Figure~\ref{fig:typeB-all-pair}, \ref{fig:typeB-no-pc-pair} e
+\ref{fig:typeB-hllpp-pair} mostrano la stima in funzione delle ripetizioni
+medie effettive \(\rho_t\), a cardinalità target \(F_0^{\ast}\) fissata.
+
+\begin{figure}[p]
     \centering
-    \includegraphics[width=0.96\textwidth]{figures/results/typeA_prefix_constant_rho_no_pc_loglog.png}
-    \caption{Type A, senza Probabilistic Counting, scala log-log.}
-    \label{fig:typeA-no-pc-loglog}
+    \begin{subfigure}[t]{0.49\textwidth}
+        \centering
+        \includegraphics[width=\linewidth]{figures/results/typeB_prefix_constant_rho_all_linear.png}
+        \caption{Scala lineare.}
+        \label{fig:typeB-all-linear}
+    \end{subfigure}
+    \hfill
+    \begin{subfigure}[t]{0.49\textwidth}
+        \centering
+        \includegraphics[width=\linewidth]{figures/results/typeB_prefix_constant_rho_all_loglog.png}
+        \caption{Scala log-log.}
+        \label{fig:typeB-all-loglog}
+    \end{subfigure}
+    \caption{Type B, tutti gli algoritmi.}
+    \label{fig:typeB-all-pair}
 \end{figure}
 
-\begin{figure}[htbp]
+\begin{figure}[p]
     \centering
-    \includegraphics[width=0.96\textwidth]{figures/results/typeA_prefix_constant_rho_hll_hllpp_linear.png}
-    \caption{Type A, confronto HyperLogLog e HyperLogLog++, scala lineare.}
-    \label{fig:typeA-hllpp-linear}
+    \begin{subfigure}[t]{0.49\textwidth}
+        \centering
+        \includegraphics[width=\linewidth]{figures/results/typeB_prefix_constant_rho_no_pc_linear.png}
+        \caption{Scala lineare.}
+        \label{fig:typeB-no-pc-linear}
+    \end{subfigure}
+    \hfill
+    \begin{subfigure}[t]{0.49\textwidth}
+        \centering
+        \includegraphics[width=\linewidth]{figures/results/typeB_prefix_constant_rho_no_pc_loglog.png}
+        \caption{Scala log-log.}
+        \label{fig:typeB-no-pc-loglog}
+    \end{subfigure}
+    \caption{Type B, senza Probabilistic Counting.}
+    \label{fig:typeB-no-pc-pair}
 \end{figure}
 
-\begin{figure}[htbp]
+\begin{figure}[p]
     \centering
-    \includegraphics[width=0.96\textwidth]{figures/results/typeA_prefix_constant_rho_hll_hllpp_loglog.png}
-    \caption{Type A, confronto HyperLogLog e HyperLogLog++, scala log-log.}
-    \label{fig:typeA-hllpp-loglog}
+    \begin{subfigure}[t]{0.49\textwidth}
+        \centering
+        \includegraphics[width=\linewidth]{figures/results/typeB_prefix_constant_rho_hll_hllpp_linear.png}
+        \caption{Scala lineare.}
+        \label{fig:typeB-hllpp-linear}
+    \end{subfigure}
+    \hfill
+    \begin{subfigure}[t]{0.49\textwidth}
+        \centering
+        \includegraphics[width=\linewidth]{figures/results/typeB_prefix_constant_rho_hll_hllpp_loglog.png}
+        \caption{Scala log-log.}
+        \label{fig:typeB-hllpp-loglog}
+    \end{subfigure}
+    \caption{Type B, confronto HyperLogLog e HyperLogLog++.}
+    \label{fig:typeB-hllpp-pair}
 \end{figure}
 
-\noindent
-Dai CSV endpoint (\(t=n\)) si osserva:
+\subsection{Risultati ottenuti}
+
+Le osservazioni principali emerse dai grafici e dai risultati ottenuti sono:
 \begin{itemize}
-    \item HyperLogLog e HyperLogLog++ risultano quasi sovrapposti in questo
-    setup (\(\mathrm{MRE}\) media \(\approx 0.00618\) per entrambi);
-    \item LogLog è leggermente meno accurato (\(\mathrm{MRE}\) media
-    \(\approx 0.00708\));
-    \item Probabilistic Counting è nettamente meno accurato
-    (\(\mathrm{MRE}\) media \(\approx 0.770\)).
-\end{itemize}
-
-\section{Risultati Type B}
-
-Le Figure~\ref{fig:typeB-all-linear}--\ref{fig:typeB-hllpp-loglog}
-mostrano la stima in funzione delle ripetizioni medie effettive \(\rho_t\), a
-cardinalità target \(F_0^{\ast}\) fissata.
-
-\begin{figure}[htbp]
-    \centering
-    \includegraphics[width=0.96\textwidth]{figures/results/typeB_prefix_constant_rho_all_linear.png}
-    \caption{Type B, tutti gli algoritmi, scala lineare.}
-    \label{fig:typeB-all-linear}
-\end{figure}
-
-\begin{figure}[htbp]
-    \centering
-    \includegraphics[width=0.96\textwidth]{figures/results/typeB_prefix_constant_rho_all_loglog.png}
-    \caption{Type B, tutti gli algoritmi, scala log-log.}
-    \label{fig:typeB-all-loglog}
-\end{figure}
-
-\begin{figure}[htbp]
-    \centering
-    \includegraphics[width=0.96\textwidth]{figures/results/typeB_prefix_constant_rho_no_pc_linear.png}
-    \caption{Type B, senza Probabilistic Counting, scala lineare.}
-    \label{fig:typeB-no-pc-linear}
-\end{figure}
-
-\begin{figure}[htbp]
-    \centering
-    \includegraphics[width=0.96\textwidth]{figures/results/typeB_prefix_constant_rho_no_pc_loglog.png}
-    \caption{Type B, senza Probabilistic Counting, scala log-log.}
-    \label{fig:typeB-no-pc-loglog}
-\end{figure}
-
-\begin{figure}[htbp]
-    \centering
-    \includegraphics[width=0.96\textwidth]{figures/results/typeB_prefix_constant_rho_hll_hllpp_linear.png}
-    \caption{Type B, confronto HyperLogLog e HyperLogLog++, scala lineare.}
-    \label{fig:typeB-hllpp-linear}
-\end{figure}
-
-\begin{figure}[htbp]
-    \centering
-    \includegraphics[width=0.96\textwidth]{figures/results/typeB_prefix_constant_rho_hll_hllpp_loglog.png}
-    \caption{Type B, confronto HyperLogLog e HyperLogLog++, scala log-log.}
-    \label{fig:typeB-hllpp-loglog}
-\end{figure}
-
-\noindent
-Le osservazioni principali sono:
-\begin{itemize}
-    \item HyperLogLog++ è il più accurato anche in questa vista
-    (\(\mathrm{MRE}\) media su \(F_0^{\ast}\) e \(\rho\) \(\approx 3.3\cdot 10^{-4}\));
-    \item HyperLogLog segue con errore medio più alto ma contenuto
+    \item HyperLogLog e HyperLogLog++ risultano quasi sovrapposti nel Type A
+    agli estremi (\(\mathrm{MRE}\) media \(\approx 0.00618\) per entrambi);
+    \item LogLog è leggermente meno accurato nel Type A
+    (\(\mathrm{MRE}\) media \(\approx 0.00708\));
+    \item HyperLogLog++ è l'algoritmo più accurato nel Type B
+    (\(\mathrm{MRE}\) media su \(F_0^{\ast}\) e \(\rho\)
+    \(\approx 3.3\cdot 10^{-4}\));
+    \item HyperLogLog segue con errore medio più alto ma ancora contenuto
     (\(\approx 2.0\cdot 10^{-3}\));
-    \item Probabilistic Counting mantiene errori elevati
+    \item Probabilistic Counting è nettamente il meno robusto nella configurazione
+    attuale, sia agli estremi del Type A
+    (\(\mathrm{MRE}\) media \(\approx 0.770\)) sia nel Type B
     (\(\mathrm{MRE}\) media \(\approx 0.352\));
-    \item LogLog mostra forte instabilità per target piccoli (\(F_0^{\ast}=1000,2000\)),
-    che domina la media globale del Type B.
+    \item LogLog mostra inoltre forte instabilità per target piccoli
+    (\(F_0^{\ast}=1000,2000\)) nel Type B, che domina la media globale.
 \end{itemize}
 
-\section{Risultati merge}
+\section{Controllo sul merge omogeneo}
 
-La modalità merge è analizzata con confronto \emph{merge vs seriale} su coppie
-di partizioni. Le Figure~\ref{fig:best-merge-box} e
-\ref{fig:best-merge-nonzero} e la Tabella~\ref{tab:best-merge-summary}
-riportano delta nulli nel dominio testato.
+\subsection{Setup del confronto \emph{merge vs seriale}}
+
+Il merge attuale del framework è ancora analizzato solo in condizioni omogenee:
+stesso algoritmo, stessi parametri e stesso contesto di hashing. In questa
+fase il merge non viene ancora usato per studiare eterogeneità, ma come
+controllo di correttezza del framework dopo il refactor.
+
+Il confronto adottato è quindi \emph{merge vs seriale} su coppie di partizioni:
+la stima ottenuta fondendo due sketch viene confrontata con la stima ottenuta
+processando serialmente lo stesso dominio unito.
+
+\subsection{Risultati del baseline omogeneo}
+
+Le Figure~\ref{fig:best-merge-box} e \ref{fig:best-merge-nonzero} e la
+Tabella~\ref{tab:best-merge-summary} riportano delta nulli nel dominio testato.
 
 \begin{figure}[htbp]
     \centering
@@ -317,28 +334,83 @@ riportano delta nulli nel dominio testato.
     \label{tab:best-merge-summary}
 \end{table}
 
-\section{Discussione}
+\subsection{Interpretazione}
 
-I risultati ottenuti con i dataset \texttt{prefix\_constant\_rho} mostrano che:
+Nel dominio analizzato, il baseline omogeneo conferma che il merge implementato
+è coerente con la semantica attesa degli sketch compatibili: non si osservano
+scostamenti rispetto al caso seriale. Questo risultato è importante perché
+fornisce il punto di controllo necessario prima di introdurre eterogeneità di
+hash o di precisione.
+
+\section{Verso il merge eterogeneo}
+
+\subsection{Motivazione e gap nella letteratura}
+
+Dopo aver costruito una baseline affidabile per la modalità \texttt{streaming} e
+aver verificato il comportamento corretto del merge omogeneo, il passo
+successivo consiste nello studiare il merge in condizioni non ideali. In
+letteratura il merge è spesso trattato assumendo omogeneità completa del
+contesto locale; risultano invece molto meno analizzati i casi in cui due
+sketch sono prodotti con hash differenti, seed differenti o parametri
+incompatibili.
+
+\subsection{Domanda di ricerca}
+
+La domanda guida del seguito della tesi è la seguente:
+\begin{quote}
+quando il merge di sketch di cardinalità HLL-like è semanticamente valido sotto
+eterogeneità di hash e precisione, quanto errore introduce quando non lo è, e
+quali trasformazioni sono sufficienti per recuperare i casi sanabili?
+\end{quote}
+
+\subsection{Modello di compatibilità}
+
+Seguendo il piano operativo definito in
+\codepath{codex/merge_heterogeneous_roadmap.md}, i casi di merge eterogeneo
+saranno classificati in tre categorie:
 \begin{itemize}
-    \item i grafici Type A evidenziano il comportamento della stima al crescere
-    della cardinalità reale, mantenendo controllato il rapporto \(n/d\);
-    \item i grafici Type B isolano la dipendenza dalle ripetizioni medie
-    effettive a cardinalità target fissata;
-    \item HyperLogLog++ e HyperLogLog sono molto vicini nel setup corrente, con
-    vantaggio sistematico di HyperLogLog++ nei target piccoli del Type B;
-    \item Probabilistic Counting resta il meno robusto tra gli algoritmi
-    implementati;
-    \item il merge, nelle configurazioni compatibili analizzate, è coerente con
-    la semantica attesa (nessuno scostamento rispetto al seriale).
+    \item \texttt{valid}: il merge è semanticamente corretto senza trasformazioni;
+    \item \texttt{recoverable}: il merge non è corretto direttamente, ma può
+    essere ricondotto a un caso valido tramite normalizzazione;
+    \item \texttt{invalid}: il merge rompe il contratto semantico dello sketch e
+    non deve essere interpretato come operazione corretta.
 \end{itemize}
 
-\section{TODOs}
-\begin{itemize}
-    \item estendere Type B con ulteriori target \(F_0^{\ast}\) e con più semi per
-    stimare intervalli di confidenza empirici;
-    \item aggiungere grafici analoghi per Count-Min Sketch e Bloom Filter dopo
-    l'implementazione;
-    \item completare la campagna merge includendo casi con parametri differenti
-    (stessa famiglia algoritmica) e confronto del degrado.
-\end{itemize}
+\subsection{Asse 1: hash mismatch}
+
+Il primo asse sperimentale riguarda la costruzione di sketch locali con hash
+diverse oppure con seed diverse. Questo è il caso più naturale per studiare la
+rottura del merge \emph{register-wise}, perché cambia la semantica con cui gli
+elementi sono proiettati nei registri.
+
+\subsection{Asse 2: precision mismatch}
+
+Il secondo asse riguarda sketch della stessa famiglia costruiti con precisioni
+diverse. Nel caso di HLL++, il punto non è soltanto misurare il degrado di un
+\emph{naive merge}, ma distinguere chiaramente tra casi da rigettare, casi
+formalmente non sicuri e casi potenzialmente recuperabili tramite una strategia
+di riduzione alla precisione più bassa.
+
+\subsection{Asse 3: topology amplification}
+
+Il terzo asse riguarda l'accumulo dell'errore lungo più livelli di merge. Una
+volta stabilito il comportamento pairwise, sarà quindi necessario verificare se
+e come l'errore si amplifica in topologie come \texttt{balanced\_tree} o
+\texttt{left\_deep\_chain}.
+
+\subsection{HyperLogLog++ come riferimento}
+
+L'algoritmo di riferimento per questa parte della tesi sarà HyperLogLog++.
+L'obiettivo non è implementare nuove famiglie come UltraLogLog o ExaLogLog, ma
+usare HLL++ come baseline principale per studiare compatibilità, degrado e
+normalizzazione del merge sotto eterogeneità controllata.
+
+\section{Sintesi del capitolo}
+
+Il capitolo è costruito attorno a tre livelli. Il primo è la baseline
+\texttt{streaming} su \texttt{prefix\_constant\_rho}, che consente di
+confrontare gli algoritmi su un dominio con cardinalità reale nota in ogni
+prefisso. Il secondo è il controllo sul merge omogeneo, necessario per validare
+il framework prima di introdurre condizioni non ideali. Il terzo è l'apertura
+agli esperimenti di merge eterogeneo, che costituiscono il passo successivo del
+lavoro e il contributo principale verso cui converge la roadmap della tesi.
