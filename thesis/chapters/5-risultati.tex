@@ -284,32 +284,65 @@ Le osservazioni principali emerse dai grafici e dai risultati ottenuti sono:
 
 \subsection{Setup del confronto \emph{merge vs seriale}}
 
-Il merge attuale del framework è ancora analizzato solo in condizioni omogenee:
-stesso algoritmo, stessi parametri e stesso contesto di hashing. In questa
-fase il merge non viene ancora usato per studiare eterogeneità, ma come
-controllo di correttezza del framework dopo il refactor.
+Il primo controllo sperimentale
+sul merge è stato eseguito in condizioni strettamente omogenee:
+\begin{itemize}
+    \item algoritmo fissato a HyperLogLog++;
+    \item stessa hash nei due sketch locali;
+    \item stessa precisione \(k\) nei due sketch locali;
+    \item stesso seed e stesso contesto di dataset.
+\end{itemize}
 
-Il confronto adottato è quindi \emph{merge vs seriale} su coppie di partizioni:
-la stima ottenuta fondendo due sketch viene confrontata con la stima ottenuta
+Il confronto adottato è \emph{merge vs seriale} su coppie di partizioni: la
+stima ottenuta fondendo due sketch viene confrontata con la stima ottenuta
 processando serialmente lo stesso dominio unito.
+
+La matrice minima usata in questa fase è:
+\[
+\rho \in \{1,10,100\},\qquad
+k \in \{10,14,18\},
+\]
+con le seguenti funzioni di hash
+\[
+\{\texttt{splitmix64},\texttt{xxhash64},\texttt{murmurhash3},\texttt{siphash24}\}.
+\]
+
+Poiché \(n=10^7\), i tre valori di \(\rho\) corrispondono ai dataset con:
+\[
+d \in \{10^7,10^6,10^5\}.
+\]
+
+Per ogni configurazione \((\rho,\texttt{hash},k)\) sono stati analizzati 25
+coppie di partizioni, per un totale di 36 configurazioni e 900 merge pairwise.
 
 \subsection{Risultati del baseline omogeneo}
 
-Le Figure~\ref{fig:best-merge-box} e \ref{fig:best-merge-nonzero} e la
-Tabella~\ref{tab:best-merge-summary} riportano delta nulli nel dominio testato.
+Le Figure~\ref{fig:hllpp-homogeneous-merge-heatmaps} e la
+Tabella~\ref{tab:hllpp-homogeneous-merge-summary} mostrano che, in tutto il
+dominio testato, il baseline omogeneo di HyperLogLog++ produce sempre:
+\[
+\Delta_{abs}=0,\qquad \Delta_{rel}=0.
+\]
 
 \begin{figure}[htbp]
     \centering
-    \includegraphics[width=0.76\textwidth]{figures/results/best_merge_delta_abs_by_algorithm.png}
-    \caption{Distribuzione di \codepath{delta\_merge\_serial\_abs}.}
-    \label{fig:best-merge-box}
-\end{figure}
+    \begin{subfigure}[t]{0.96\textwidth}
+        \centering
+        \includegraphics[width=\linewidth]{figures/results/merge_hpp_homogeneous_delta_rel_max_heatmap.png}
+        \caption{Massimo di \codepath{delta\_merge\_serial\_rel} per \(\rho\), hash e \(k\).}
+        \label{fig:hllpp-homogeneous-merge-delta-rel-max}
+    \end{subfigure}
 
-\begin{figure}[htbp]
-    \centering
-    \includegraphics[width=0.76\textwidth]{figures/results/best_merge_nonzero_delta_counts.png}
-    \caption{Conteggio dei casi con delta non nullo nel confronto merge vs seriale.}
-    \label{fig:best-merge-nonzero}
+    \vspace{0.8em}
+
+    \begin{subfigure}[t]{0.96\textwidth}
+        \centering
+        \includegraphics[width=\linewidth]{figures/results/merge_hpp_homogeneous_nonzero_pairs_heatmap.png}
+        \caption{Numero di pair con delta non nullo per \(\rho\), hash e \(k\).}
+        \label{fig:hllpp-homogeneous-merge-nonzero-pairs}
+    \end{subfigure}
+    \caption{Baseline omogeneo del merge di HyperLogLog++ nella \emph{Phase 0}.}
+    \label{fig:hllpp-homogeneous-merge-heatmaps}
 \end{figure}
 
 \begin{table}[htbp]
@@ -317,30 +350,33 @@ Tabella~\ref{tab:best-merge-summary} riportano delta nulli nel dominio testato.
     \small
     \setlength{\tabcolsep}{6pt}
     \renewcommand{\arraystretch}{1.12}
-    \begin{tabular}{|l|r|r|r|r|r|}
+    \begin{tabular}{|r|r|r|r|r|r|r|}
         \hline
-        Algoritmo & Righe & Media \(\Delta_{abs}\) & Max \(\Delta_{abs}\) & Media \(\Delta_{rel}\) & Max \(\Delta_{rel}\) \\
+        \(\rho\) & \(d\) & Configurazioni & Pair totali & Pair con delta \(\neq 0\) & Max \(\Delta_{abs}\) & Max \(\Delta_{rel}\) \\
         \hline
-        HyperLogLog & 500 & 0 & 0 & 0 & 0 \\
+        1 & \(10^7\) & 12 & 300 & 0 & 0 & 0 \\
         \hline
-        HyperLogLog++ & 500 & 0 & 0 & 0 & 0 \\
+        10 & \(10^6\) & 12 & 300 & 0 & 0 & 0 \\
         \hline
-        LogLog & 500 & 0 & 0 & 0 & 0 \\
-        \hline
-        Probabilistic Counting & 500 & 0 & 0 & 0 & 0 \\
+        100 & \(10^5\) & 12 & 300 & 0 & 0 & 0 \\
         \hline
     \end{tabular}
-    \caption{Confronto merge vs seriale nel dominio testato.}
-    \label{tab:best-merge-summary}
+    \caption{Riassunto del baseline omogeneo HLL++: 36 configurazioni e 900 merge pairwise, tutti con delta nullo.}
+    \label{tab:hllpp-homogeneous-merge-summary}
 \end{table}
 
 \subsection{Interpretazione}
 
-Nel dominio analizzato, il baseline omogeneo conferma che il merge implementato
-è coerente con la semantica attesa degli sketch compatibili: non si osservano
-scostamenti rispetto al caso seriale. Questo risultato è importante perché
-fornisce il punto di controllo necessario prima di introdurre eterogeneità di
-hash o di precisione.
+Nel dominio analizzato, il baseline omogeneo conferma che il merge
+\emph{register-wise} di HyperLogLog++ è perfettamente coerente con la semantica
+attesa quando hash, precisione e seed coincidono. Il risultato non mostra solo
+uno scostamento medio trascurabile, ma assenza completa di differenze tra merge
+e seriale in tutte le 900 coppie considerate.
+
+Questo chiude la \emph{Phase 0} della roadmap e fornisce il riferimento
+sperimentale necessario per i passi successivi: ogni deviazione osservata nei
+test di merge eterogeneo potrà essere attribuita all'eterogeneità introdotta,
+non a regressioni del framework o a un baseline omogeneo non verificato.
 
 \section{Verso il merge eterogeneo}
 
