@@ -1,6 +1,6 @@
 # SATP-C++ Handoff (Codex Chat Context)
 
-Generated on: **2026-03-04 01:08:02 CET**
+Generated on: **2026-03-07 CET**
 
 This file is a repository-local handoff for continuing work in another Codex session.
 It summarizes the key decisions, implementation state, workflow, and open directions from the current chat.
@@ -108,7 +108,7 @@ Merge schema:
 
 Result paths are namespace-based:
 
-- `results/<namespace>/<mode>/<algorithm>/<params>/results_<mode>.csv`
+- `results/<namespace>/<mode>/<algorithm>/<hash>/<params>/results_<mode>.csv`
 
 Namespaces currently used:
 
@@ -446,3 +446,75 @@ Methodological caveat:
 
 - these remain checkpoints on stream position `t`, not on target cardinality `F_0(t)`
 - for future Type B or heterogeneous-merge studies, a second planner keyed on `F_0(t)` may still be useful
+
+---
+
+## 17) Delta Update (2026-03-07)
+
+### 17.1 Current public module entrypoints
+
+The repository now exposes exactly one public coordinator file per active refactored module:
+
+- `src/satp/cli/Cli.h`
+- `src/satp/dataset/Dataset.h`
+- `src/satp/simulation/Simulation.h`
+
+Each module keeps helpers under `detail/`, so the filesystem now makes the main flow explicit:
+
+`Cli -> Dataset -> Simulation`
+
+### 17.2 Current internal naming after cleanup
+
+Notable names introduced/standardized:
+
+- CLI:
+  - `ExecutionCoordinator`
+  - `CliTypes`
+  - `RunParameters`
+  - `DatasetRuntime`
+  - `ResultPaths`
+  - `RunReporter`
+- Dataset:
+  - `DatasetTypes`
+  - `DatasetAccess`
+  - `PartitionReader`
+- Simulation:
+  - `CheckpointPlanner`
+  - `Statistics`
+  - `DatasetTraversal`
+  - `SketchFactory`
+  - `EvaluationContext`
+  - `EvaluationFacade`
+
+### 17.3 Verification status
+
+Verified after the final rename/cleanup pass:
+
+- `cmake --build build -j4`: OK
+- `ctest --test-dir build --output-on-failure`: **40/40 passed**
+- `python3 -m py_compile scripts/orchestrate_benchmarks.py`: OK
+
+### 17.4 Script/documentation alignment
+
+Aligned to the new codebase state:
+
+- `scripts/orchestrate_benchmarks.py` no longer references oneshot/single-run
+- `README.md` now documents the coordinator-based module layout
+- this handoff now reflects the `cli` / `dataset` / `simulation` split
+
+### 17.5 Suggested next implementation step
+
+Recommended next work is no longer structural refactor.
+
+The next useful implementation step is to model **heterogeneous merge experiments**, in this order:
+
+1. same algorithm + same params + different hash functions
+2. explicit experiment spec/result types under `simulation/detail/merge/`
+3. dedicated CSV schema for heterogeneous merge runs
+4. only after that, decide how to study merges with different params (`strict reject` vs `unsafe experimental mode`)
+
+### 17.6 Methodology note for future experiments
+
+The current checkpoint planner is now robust for analyses over stream position `t`.
+
+However, if the next campaign needs stronger Type B analysis or comparisons normalized by real cardinality, add a second planner driven by target `F_0(t)` rather than reusing `t` checkpoints for everything.
