@@ -37,9 +37,8 @@ I componenti principali e le rispettive responsabilità sono:
     \texttt{ll}, \texttt{pc});
     \item All'interno di \codepath{src/satp/algorithms/*.cpp} sono presenti le implementazioni concrete degli sketch
     (HyperLogLog++, HyperLogLog, LogLog, ProbabilisticCounting, TODO: CountMin e Bloom Filter);
-    \item \codepath{generate_partitioned_dataset_bin.py} e
-    \codepath{generate_prefix_constant_rho_dataset_bin.py}: generazione deterministica
-    dei dataset partizionati compressi;
+    \item \codepath{generate_prefix_constant_rho_dataset_bin.py}: generazione deterministica
+    del dataset partizionato compresso usato nella campagna sperimentale;
     \item \codepath{orchestrate_benchmarks.py}: esecuzione batch sulle configurazioni \((n,d,seed)\)
     e selezione dei parametri per ogni algoritmo standard o custom.
 \end{itemize}
@@ -60,8 +59,7 @@ e il verso di utilizzo tra tooling Python, coordinamento CLI e nucleo sperimenta
 
 L'esecuzione end-to-end della pipeline del framework è la seguente:
 \begin{enumerate}
-    \item vengono prima generati i dataset, chiamati \codepath{dataset_n_{n}_d_{d}_p_{p}_s_{seed}.bin}, con gli script Python
-    \codepath{scripts/generate_partitioned_dataset_bin.py} oppure
+    \item vengono prima generati i dataset, chiamati \codepath{dataset_n_{n}_d_{d}_p_{p}_s_{seed}.bin}, con
     \codepath{scripts/generate_prefix_constant_rho_dataset_bin.py};
     \item viene eseguito poi da CLI (\codepath{main.cpp}) e vengono configurati i parametri
     di sessione: \texttt{datasetPath}, \texttt{resultsNamespace}, \texttt{hashFunction},
@@ -77,8 +75,10 @@ L'esecuzione end-to-end della pipeline del framework è la seguente:
 \end{enumerate}
 
 \section{Dataset}
-I dataset generati sono sintetici significa che non c'è alcun dato reale. 
-Un dataset è composto da un'intestazione in cui sono presenti i seguenti parametri:
+I dataset usati negli esperimenti sono sintetici e seguono un unico protocollo,
+\texttt{prefix\_constant\_rho}, descritto nella Sezione~\ref{sec:prefix-constant-rho}.
+Tutti condividono il medesimo formato binario. Un dataset è composto da
+un'intestazione in cui sono presenti i seguenti parametri:
 \begin{itemize}
     \item $n$: numero di elementi per ogni partizione;
     \item $d$: numero di elementi distinti per ogni partizione;
@@ -168,13 +168,20 @@ La classe \codepath{PartitionReader} mantiene un file handle aperto e fornisce:
 
 Il costo in memoria è quindi proporzionale alla sola partizione corrente.
 
-\subsection{Esempio}
+\subsection{Esempio sul dataset \texttt{prefix\_constant\_rho}}
 
-Per rendere esplicito il formato, consideriamo un dataset con:
+Per rendere esplicito il formato sul dataset realmente usato nella campagna,
+consideriamo:
 \[
-n=8,\quad d=4,\quad p=2,\quad seed=42.
+n=20,\quad d=5,\quad p=2,\quad seed=42,\quad \rho=\frac{n}{d}=4.
 \]
-Supponiamo che, prima della compressione nella partizione 0, la stream sia:
+Nel protocollo \texttt{prefix\_constant\_rho}, ogni blocco di ampiezza \(\rho\)
+introduce esattamente una nuova prima occorrenza; quindi:
+\[
+F_0(4)=1,\quad F_0(8)=2,\quad F_0(12)=3,\quad F_0(16)=4,\quad F_0(20)=5.
+\]
+Un prefisso logico possibile della prima partizione, prima della compressione,
+è il seguente:
 
 \begin{table}[htbp]
     \centering
@@ -183,22 +190,28 @@ Supponiamo che, prima della compressione nella partizione 0, la stream sia:
         \hline
         \(t\) & valore \(x_t\) & bit \(b_t\) (prima occorrenza) & \(F_0(t)=\sum_{i=1}^{t} b_i\) \\
         \hline
-        1 & 7  & 1 & 1 \\
-        2 & 12 & 1 & 2 \\
-        3 & 3  & 1 & 3 \\
-        4 & 7  & 0 & 3 \\
-        5 & 12 & 0 & 3 \\
-        6 & 9  & 1 & 4 \\
-        7 & 7  & 0 & 4 \\
-        8 & 9  & 0 & 4 \\
+        1 & \(a\) & 1 & 1 \\
+        2 & \(a\) & 0 & 1 \\
+        3 & \(a\) & 0 & 1 \\
+        4 & \(a\) & 0 & 1 \\
+        5 & \(b\) & 1 & 2 \\
+        6 & \(a\) & 0 & 2 \\
+        7 & \(b\) & 0 & 2 \\
+        8 & \(a\) & 0 & 2 \\
+        9 & \(c\) & 1 & 3 \\
+        10 & \(a\) & 0 & 3 \\
+        11 & \(c\) & 0 & 3 \\
+        12 & \(b\) & 0 & 3 \\
         \hline
     \end{tabular}
-    \caption{Esempio logico di una partizione: valori e bit di verità.}
+    \caption{Esempio logico di un prefisso del dataset \texttt{prefix\_constant\_rho}.}
     \label{tab:dataset-example-logical}
 \end{table}
 
-In questo esempio gli elementi distinti della partizione sono \(\{7,12,3,9\}\), quindi
-\(\sum_{t=1}^{8} b_t = 4 = d\).
+In questo esempio la regola ``una nuova prima occorrenza ogni \(\rho=4\) elementi''
+è già visibile nei primi tre blocchi. Il file binario memorizza poi l'intera
+partizione come array \texttt{uint32} compresso e il relativo bitset di verità,
+sempre compresso separatamente.
 
 Il file contiene:
 \begin{itemize}
@@ -207,33 +220,23 @@ Il file contiene:
     \item payload compressi (\texttt{values} e \texttt{truth}) per ogni partizione.
 \end{itemize}
 
-Per la partizione 0:
-\begin{itemize}
-    \item \texttt{values} = array \texttt{uint32} dei valori \([7,12,3,7,12,9,7,9]\), compresso con zlib;
-    \item \texttt{truth} = bitset \([1,1,1,0,0,1,0,0]\), compresso con zlib
-    (in un byte: \texttt{0b00100111} = \texttt{0x27}, con bit in ordine LSB-first).
-\end{itemize}
+\section{Generazione del dataset \texttt{prefix\_constant\_rho}}
+\label{sec:prefix-constant-rho}
 
-\section{Generazione dataset}
-
-Nel progetto sono presenti due generatori:
-\begin{itemize}
-    \item \codepath{generate_partitioned_dataset_bin.py}, usato per dataset uniformi generali;
-    \item \codepath{generate_prefix_constant_rho_dataset_bin.py}, usato per la campagna
-    \texttt{prefix\_constant\_rho} del Capitolo~\ref{chp:risultati}.
-\end{itemize}
-
-Entrambi accettano i parametri \texttt{--n}, \texttt{--d}, \texttt{--p}, \texttt{--seed},
-\texttt{--workers}, \texttt{--progress-batch} e producono file con nomenclatura deterministica:
+Tutti i risultati riportati in questa tesi usano dataset generati con
+\codepath{scripts/generate_prefix_constant_rho_dataset_bin.py}. Lo script accetta
+i parametri \texttt{--n}, \texttt{--d}, \texttt{--p}, \texttt{--seed},
+\texttt{--workers} e \texttt{--progress-batch}, e produce file con nomenclatura
+deterministica:
 \codepath{dataset_n_{n}_d_{d}_p_{p}_s_{seed}.bin}.
 
-\subsection{Modalità \texttt{prefix\_constant\_rho}}
+\subsection{Protocollo di costruzione}
 
-Lo script \codepath{generate_prefix_constant_rho_dataset_bin.py} introduce il vincolo:
+Il vincolo strutturale imposto dal generatore è:
 \[
 n \bmod d = 0,
 \]
-in modo da fissare
+così da fissare
 \[
 \rho=\frac{n}{d}
 \]
@@ -243,16 +246,60 @@ viene forzata esattamente una nuova prima occorrenza. Ne segue che ai bordi di b
 F_0(j\cdot \rho)=j.
 \]
 
-La costruzione è:
+La costruzione di ogni partizione segue quindi questi passi:
 \begin{enumerate}
-    \item estrazione di \(d\) ID distinti nel dominio \([0,\min(n,2^{32})-1]\);
-    \item emissione della prima occorrenza di un nuovo ID all'inizio di ogni blocco;
-    \item completamento delle altre \(\rho-1\) posizioni campionando dagli ID già visti;
+    \item viene derivato un seed di partizione deterministico a partire dal
+    seed globale e dall'indice della partizione;
+    \item vengono estratti \(d\) ID distinti nel dominio
+    \([0,\min(n,2^{32})-1]\);
+    \item all'inizio di ogni blocco di lunghezza \(\rho\) viene emessa la prima
+    occorrenza di un nuovo ID;
+    \item le altre \(\rho-1\) posizioni del blocco sono completate campionando
+    uniformemente tra gli ID già osservati;
     \item costruzione del bitset di verità e compressione zlib separata di valori e bitset.
 \end{enumerate}
 
+Questo protocollo separa in modo controllato la crescita della cardinalità reale
+dal numero medio di ripetizioni: il valore finale di \(\rho=n/d\) è noto a priori,
+mentre la traiettoria prefissata di \(F_0(t)\) è verificabile esattamente tramite
+il bitset di verità.
+
 Quando \texttt{workers}>1, la generazione è parallelizzata per partizione con
 \texttt{multiprocessing}; la barra di avanzamento è emessa su \texttt{stderr}.
+La suite \codepath{scripts/tests/test_generate_prefix_constant_rho_dataset.py}
+verifica il formato binario, l'uguaglianza \(\sum_t b_t=d\), la proprietà
+\(F_0(j\cdot \rho)=j\), l'esistenza di una sola nuova prima occorrenza per
+blocco e il determinismo del file prodotto anche variando il numero di worker.
+
+\subsection{Andamento teorico di \texorpdfstring{$F_0(t)$}{F0(t)} e di \texorpdfstring{$\rho_t=t/F_0(t)$}{rho\_t=t/F0(t)}}
+
+\`E stata fatta un'analisi per visualizzare la proprietà fondamentale del dataset a partire dai checkpoint di streaming.
+Se si definisce
+\[
+\rho_t=\frac{t}{F_0(t)},
+\]
+allora \(\rho_t\) coincide esattamente con \(\rho\) solo ai multipli di
+\(\rho\), mentre all'interno del blocco varia perché il numeratore cresce e
+\(F_0(t)\) resta costante fino alla prima occorrenza successiva.
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=0.96\textwidth]{figures/results/ratio_processed_vs_distinct_streaming_linear.png}
+    \caption{Rapporto \(\rho_t=t/F_0(t)\) osservato sui checkpoint di streaming del dataset \texttt{prefix\_constant\_rho}.}
+    \label{fig:dataset-rho-ratio-linear}
+\end{figure}
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=0.96\textwidth]{figures/results/ratio_processed_vs_distinct_streaming_boundary_linear.png}
+    \caption{Rapporto \(\rho_t\) osservato solo ai bordi di blocco (\(t \bmod \rho = 0\)): per costruzione si ha \(\rho_t=\rho\).}
+    \label{fig:dataset-rho-ratio-boundary}
+\end{figure}
+
+La Figura~\ref{fig:dataset-rho-ratio-linear} mostra la traiettoria completa sui
+checkpoint del framework, mentre la Figura~\ref{fig:dataset-rho-ratio-boundary}
+restringe l'analisi ai soli punti di frontiera dei blocchi e rende esplicita
+la correttezza del protocollo teorico.
 
 \section{Interfacce comuni e hashing}
 
@@ -582,7 +629,7 @@ Il seed viene definito all'interno del dataset e viene propagato all'interno del
 La sua propagazione segue questo flusso:
 \begin{enumerate}
     \item il generatore scrive il \texttt{seed} nell'header binario in
-    \codepath{generate_partitioned_dataset_bin.py};
+    \codepath{generate_prefix_constant_rho_dataset_bin.py};
     \item il metodo \codepath{satp::dataset::indexBinaryDataset} legge il campo e lo valida nel dominio
     \texttt{uint32}, popolando \codepath{DatasetInfo.seed};
     \item il metodo \codepath{loadDatasetRuntimeContext} trasferisce il 
