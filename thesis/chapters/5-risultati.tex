@@ -1,14 +1,18 @@
-%!TEX root = ../dissertation.tex
-
 \chapter{Risultati sperimentali}
 \label{chp:risultati}
 
 In questo capitolo sono riportati i risultati sperimentali ottenuti con il
 framework descritto nel Capitolo~\ref{chp:implementazione}.
-L'analisi è focalizzata sulla modalità \emph{streaming} e sulle due viste
-analitiche introdotte nel post-processing (\emph{Type A} e \emph{Type B}).
-La modalità \emph{oneshot} non viene discussa in quanto fornisce un solo punto
-finale per run e non consente di analizzare il transitorio.
+
+L'analisi \`e partita con il creare una base su cui poi fare degli esperimenti.
+La prima cosa che si \`e verificata \`e che gli algoritmi fossero stabili rispetto al seed utilizzato, in modo tale da poter utilizzare un unico seed per gli esperimenti successivi. Poiché ripetere
+gli esperimenti anche per ogni possibile seed scelto, era estremamente costoso a livello di spazio e tempo.
+Inizialmente si \`e analizzato come si comportassero le implementazioni degli algoritmi di sketching tra di loro a parit\`a di parametri, ove possibili, verificando quello che lo stato dell'arte assumesse.
+La verifica \`e stata fatta controllando come si comportassero gli algoritmi per il calcolo del numero di elementi distinti in determinate condizioni.
+Al fine di fare questa verifica, si \`e generato un dataset che avesse delle caratteristiche adatte affinch\'e dato un prefisso della stream di dati, si potesse sempre sapere quanti elementi unici ci fossero.
+Successivamente, ci si \`e mossi alla ricerca di gap all'interno della letteratura attuale.
+Al momento, non ci sono molti articoli scientifici che analizzano il merge tra sketches in situazioni non ottimali, come per esempio, parametri differenti utilizzati.
+
 
 \section{Ambiente di test}
 I risultati sperimentali sono stati ottenuti su un notebook Apple MacBook Pro

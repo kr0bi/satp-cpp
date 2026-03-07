@@ -138,7 +138,7 @@
 \renewcommand\algorithmicthen{}
 \renewcommand\algorithmicdo{}
 \@addtoreset{algorithm}{chapter}% algorithm counter resets every chapter
-\usepackage{lscape}
+\usepackage{pdflscape}
 \renewcommand{\thealgorithm}{\thechapter.\arabic{algorithm}}% Algorithm # is <chapter>.<algorithm>
 \newcommand{\algorithmautorefname}{Algorithm}
 
