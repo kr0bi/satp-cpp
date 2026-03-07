@@ -14,6 +14,7 @@ DEFAULT_SEEDS = "21041998,42,137357,10032018,29042026"
 DEFAULT_PARTITIONS = 50
 DEFAULT_RESULTS_NAMESPACE = "prefix_constant_rho"
 DEFAULT_HASH_FUNCTION = "splitmix64"
+DEFAULT_ALGORITHMS = "all"
 
 PC_L_DOMAIN = list(range(1, 32))        # ProbabilisticCounting: L in [1,31]
 LL_K_DOMAIN = list(range(4, 17))        # LogLog: k in [4,16], L=32
@@ -33,6 +34,13 @@ def parse_csv_floats(raw: str) -> list[float]:
     values = [float(x.strip()) for x in raw.split(",") if x.strip()]
     if not values:
         raise ValueError("Empty float list")
+    return values
+
+
+def parse_csv_strings(raw: str) -> list[str]:
+    values = [x.strip() for x in raw.split(",") if x.strip()]
+    if not values:
+        raise ValueError("Empty string list")
     return values
 
 
@@ -99,6 +107,15 @@ def run_benchmarks(main_bin: Path,
     )
 
 
+def format_results_namespace(template: str,
+                             base: str,
+                             n: int,
+                             d: int,
+                             p: int,
+                             seed: int) -> str:
+    return template.format(base=base, n=n, d=d, p=p, seed=seed)
+
+
 def append_run_modes(commands: list[str],
                      algo: str,
                      run_streaming: bool,
@@ -123,6 +140,67 @@ def build_standard_commands(k: int,
         commands.append("runstream all")
     if run_merge:
         commands.append("runmerge all")
+    return commands
+
+
+def build_selected_commands(algorithms: list[str],
+                            k_values: list[int],
+                            l_values: list[int],
+                            l_log_values: list[int],
+                            run_streaming: bool,
+                            run_merge: bool) -> list[str]:
+    supported = {"hllpp", "hll", "ll", "pc"}
+    unknown = [algo for algo in algorithms if algo not in supported]
+    if unknown:
+        raise ValueError(f"Unsupported algorithm ids: {', '.join(unknown)}")
+
+    commands: list[str] = []
+    default_k = k_values[0]
+    default_l = l_values[0]
+    default_l_log = l_log_values[0]
+
+    for algo in algorithms:
+        if algo == "hllpp":
+            for k in k_values:
+                commands.extend([
+                    f"set k {k}",
+                    f"set l {default_l}",
+                    f"set lLog {default_l_log}",
+                ])
+                append_run_modes(commands, "hllpp", run_streaming, run_merge)
+            continue
+
+        if algo == "hll":
+            for k in k_values:
+                for l_log in l_log_values:
+                    commands.extend([
+                        f"set k {k}",
+                        f"set l {default_l}",
+                        f"set lLog {l_log}",
+                    ])
+                    append_run_modes(commands, "hll", run_streaming, run_merge)
+            continue
+
+        if algo == "ll":
+            for k in k_values:
+                for l_log in l_log_values:
+                    commands.extend([
+                        f"set k {k}",
+                        f"set l {default_l}",
+                        f"set lLog {l_log}",
+                    ])
+                    append_run_modes(commands, "ll", run_streaming, run_merge)
+            continue
+
+        if algo == "pc":
+            for l in l_values:
+                commands.extend([
+                    f"set k {default_k}",
+                    f"set l {l}",
+                    f"set lLog {default_l_log}",
+                ])
+                append_run_modes(commands, "pc", run_streaming, run_merge)
+
     return commands
 
 
@@ -194,8 +272,14 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--dataset-dir", type=Path, default=Path("datasets/prefix_constant_rho"))
     parser.add_argument("--results-namespace", type=str, default=DEFAULT_RESULTS_NAMESPACE,
                         help="Namespace under results/ for orchestrated outputs")
+    parser.add_argument("--results-namespace-template", type=str, default="{base}",
+                        help="Template for per-job namespace. Placeholders: {base}, {n}, {d}, {p}, {seed}")
     parser.add_argument("--hash-function", type=str, default=DEFAULT_HASH_FUNCTION,
                         help="Hash function name passed to SATP CLI (default: splitmix64)")
+    parser.add_argument("--hash-functions", default=None,
+                        help="Optional CSV of hash functions to sweep instead of a single --hash-function")
+    parser.add_argument("--algorithms", default=DEFAULT_ALGORITHMS,
+                        help="CSV of algorithm ids to run: all,hllpp,hll,ll,pc (default: all)")
     parser.add_argument("--n-values", default=DEFAULT_N_VALUES)
     parser.add_argument("--d-ratios", default=DEFAULT_D_RATIOS)
     parser.add_argument("--seeds", default=DEFAULT_SEEDS)
@@ -214,12 +298,20 @@ def parse_args() -> argparse.Namespace:
                         help="Run all valid parameter domains per algorithm")
     parser.add_argument("--k", type=int, default=16,
                         help="k parameter for HLL/HLL++/LogLog")
+    parser.add_argument("--k-values", default=None,
+                        help="Optional CSV of k values to sweep for HLL++/HLL/LogLog")
     parser.add_argument("--l", type=int, default=16,
                         help="L parameter for ProbabilisticCounting")
+    parser.add_argument("--l-values", default=None,
+                        help="Optional CSV of L values to sweep for ProbabilisticCounting")
     parser.add_argument("--l-log", type=int, default=32,
                         help="L parameter for LogLog/HLL")
+    parser.add_argument("--l-log-values", default=None,
+                        help="Optional CSV of LLog values to sweep for LogLog/HLL")
     parser.add_argument("--clean-results", action="store_true",
                         help="Delete repo_root/results before running")
+    parser.add_argument("--clean-target-results", action="store_true",
+                        help="Delete only the result namespaces targeted by this run before executing")
     return parser.parse_args()
 
 
@@ -239,6 +331,17 @@ def main() -> None:
     if args.skip_streaming and args.skip_merge:
         raise ValueError("All benchmark modes are skipped: nothing to run")
 
+    selected_algorithms = parse_csv_strings(args.algorithms)
+    hash_functions = parse_csv_strings(args.hash_functions) if args.hash_functions else [args.hash_function]
+    k_values = parse_csv_ints(args.k_values) if args.k_values else [args.k]
+    l_values = parse_csv_ints(args.l_values) if args.l_values else [args.l]
+    l_log_values = parse_csv_ints(args.l_log_values) if args.l_log_values else [args.l_log]
+
+    if "all" in selected_algorithms and len(selected_algorithms) > 1:
+        raise ValueError("'all' cannot be combined with other algorithm ids")
+    if args.full and selected_algorithms != ["all"]:
+        raise ValueError("--full currently requires --algorithms all")
+
     if args.clean_results:
         results_dir = repo_root / "results"
         if results_dir.exists():
@@ -255,14 +358,35 @@ def main() -> None:
             for seed in seeds:
                 jobs.append((n, d, seed))
 
+    target_namespaces = sorted({
+        format_results_namespace(
+            template=args.results_namespace_template,
+            base=args.results_namespace,
+            n=n,
+            d=d,
+            p=args.p,
+            seed=seed,
+        )
+        for (n, d, seed) in jobs
+    })
+
+    if args.clean_target_results:
+        for namespace in target_namespaces:
+            namespace_dir = repo_root / "results" / namespace
+            if namespace_dir.exists():
+                print(f"[clean-target] removing {namespace_dir}")
+                shutil.rmtree(namespace_dir)
+
     total = len(jobs)
     print(f"[plan] jobs={total} (n x d x seed), p={args.p}")
     print(f"[datasets] {dataset_dir}")
     print(f"[results] {repo_root / 'results' / args.results_namespace}")
+    print(f"[results-template] {args.results_namespace_template}")
     print(
-        f"[params] hashFunction={args.hash_function} k={args.k} l={args.l} lLog={args.l_log} "
-        f"streaming={not args.skip_streaming} merge={not args.skip_merge} "
-        f"full={args.full}"
+        f"[params] hashFunctions={','.join(hash_functions)} algorithms={','.join(selected_algorithms)} "
+        f"k={','.join(str(v) for v in k_values)} l={','.join(str(v) for v in l_values)} "
+        f"lLog={','.join(str(v) for v in l_log_values)} "
+        f"streaming={not args.skip_streaming} merge={not args.skip_merge} full={args.full}"
     )
     if args.full:
         print(
@@ -291,6 +415,15 @@ def main() -> None:
         elif not dataset_path.exists():
             raise FileNotFoundError(f"Missing dataset (use without --skip-generate): {dataset_path}")
 
+        resolved_namespace = format_results_namespace(
+            template=args.results_namespace_template,
+            base=args.results_namespace,
+            n=n,
+            d=d,
+            p=args.p,
+            seed=seed,
+        )
+
         if args.full:
             commands = build_full_commands(
                 base_l=args.l,
@@ -299,23 +432,35 @@ def main() -> None:
             )
             run_label = "full-domains"
         else:
-            commands = build_standard_commands(
-                k=args.k,
-                l=args.l,
-                l_log=args.l_log,
-                run_streaming=not args.skip_streaming,
-                run_merge=not args.skip_merge,
-            )
-            run_label = "single-params"
+            if selected_algorithms == ["all"]:
+                commands = build_standard_commands(
+                    k=args.k,
+                    l=args.l,
+                    l_log=args.l_log,
+                    run_streaming=not args.skip_streaming,
+                    run_merge=not args.skip_merge,
+                )
+                run_label = "single-params"
+            else:
+                commands = build_selected_commands(
+                    algorithms=selected_algorithms,
+                    k_values=k_values,
+                    l_values=l_values,
+                    l_log_values=l_log_values,
+                    run_streaming=not args.skip_streaming,
+                    run_merge=not args.skip_merge,
+                )
+                run_label = "selected-sweep"
 
-        run_benchmarks(
-            main_bin=main_bin,
-            dataset_path=dataset_path,
-            results_namespace=args.results_namespace,
-            hash_function=args.hash_function,
-            commands=commands,
-            run_label=run_label,
-        )
+        for hash_function in hash_functions:
+            run_benchmarks(
+                main_bin=main_bin,
+                dataset_path=dataset_path,
+                results_namespace=resolved_namespace,
+                hash_function=hash_function,
+                commands=commands,
+                run_label=f"{run_label}:{hash_function}",
+            )
 
     print("\n[done] orchestration completed")
 
