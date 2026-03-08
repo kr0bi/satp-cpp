@@ -419,9 +419,11 @@ Lo script \codepath{orchestrate_benchmarks.py} replica gli stessi domini
 nelle modalità \texttt{--full} e \texttt{single-params}.
 
 \section{Framework di valutazione}
-Nel framework di valutazione esistono due modalità operative.
-Esse coprono i due casi di studio attualmente implementati nel codice: analisi
-di prefisso su stream e confronto \emph{merge vs seriale}.
+Nel framework di valutazione esistono due modalità operative esposte dalla
+CLI. Esse coprono i due casi di studio già integrati nel flusso end-to-end:
+analisi di prefisso su stream e confronto \emph{merge vs seriale}. A queste si
+aggiunge, a livello di API del framework, un evaluator pairwise dedicato al
+merge eterogeneo.
 
 Il framework permette di monitorare determinate metriche che sono aperte ad essere aggiunte.
 In maniera consona le metriche di output sono le stesse che vengono monitorate.
@@ -454,12 +456,15 @@ Le due modalità operative del framework sono:
     (se \(\hat{F}_{0,\text{serial}}=0\), nel codice \(\Delta_{rel}=0\)).
 \end{itemize}
 
-La classe \texttt{EvaluationFramework} espone due flussi pubblici:
+La classe \texttt{EvaluationFramework} espone tre flussi pubblici:
 \begin{itemize}
     \item \texttt{evaluateStreaming(...)} per checkpoint prefissati
     (\texttt{mode=streaming});
     \item \texttt{evaluateMergePairs(...)} per confronto merge vs seriale su coppie
-    (\texttt{mode=merge}).
+    (\texttt{mode=merge});
+    \item \texttt{evaluateHeterogeneousMergePairs(...)} per benchmark pairwise
+    con due contesti locali distinti, descritti da
+    \texttt{HeterogeneousMergeRunDescriptor}.
 \end{itemize}
 Il framework
 restituisce vettori di statistiche/risultati in memoria, mentre l'adattamento
@@ -470,6 +475,21 @@ metadati del dataset esposti da \codepath{EvaluationMetadata}, costruiti a parti
 dall'indice binario del dataset.
 In modalità \texttt{merge}, il numero effettivo di coppie è
 \(\lfloor \texttt{runs}/2 \rfloor\).
+
+Nel caso eterogeneo, l'evaluator dedicato percorre ancora coppie di partizioni
+\((0,1),(2,3),\dots\), ma istanzia sketch sinistro e destro con contesti
+potenzialmente diversi per hash, seed e parametri. Per ogni coppia vengono poi
+calcolati:
+\begin{itemize}
+    \item l'unione esatta \texttt{exact\_union};
+    \item una stima da merge secondo la strategia indicata nel descriptor;
+    \item una stima seriale di riferimento, costruita con \texttt{serialReference}
+    se presente, altrimenti con il contesto sinistro;
+    \item una baseline omogenea opzionale, costruita con
+    \texttt{homogeneousBaseline} quando fornita.
+\end{itemize}
+Il risultato è esportato come vettore di \texttt{HeterogeneousMergePoint},
+pronto per la serializzazione CSV o per l'analisi nei notebook.
 
 
 \subsection{Metriche implementate}
@@ -580,7 +600,7 @@ dove \texttt{estimate\_merge} è la stima dopo fusione dei due sketch,
 e i due \texttt{delta} misurano lo scostamento assoluto e relativo tra i due risultati.
 
 \paragraph{Merge eterogeneo}
-\`E stato introdotto un modello dati dedicato al merge eterogeneo all'interno del modulo 
+\`E stato introdotto un modello dati dedicato al merge eterogeneo all'interno del modulo
 \codepath{simulation}. Il file
 \codepath{HeterogeneousMergeTypes.h} definisce:
 \begin{itemize}
@@ -592,10 +612,11 @@ e i due \texttt{delta} misurano lo scostamento assoluto e relativo tra i due ris
     hash, seed della hash e parametri locali dello sketch;
     \item il descrittore di run \texttt{HeterogeneousMergeRunDescriptor},
     esportato verso il layer CSV tramite l'alias
-    \texttt{HeterogeneousMergeCsvDescriptor};
+    \texttt{HeterogeneousMergeCsvDescriptor}, con due riferimenti opzionali:
+    \texttt{serialReference} e \texttt{homogeneousBaseline};
     \item il record per-riga \texttt{HeterogeneousMergePoint}, che contiene
-    stima da merge, stima seriale, verità esatta dell'unione e campi per il
-    confronto con la baseline omogenea.
+    stima da merge, stima seriale, verità esatta dell'unione, errori rispetto
+    all'esatto e campi per il confronto con la baseline omogenea.
 \end{itemize}
 
 Il writer \codepath{CsvResultWriter} espone ora anche
@@ -641,10 +662,12 @@ esatta. La Tabella~\ref{tab:heterogeneous-merge-header} riassume i campi.
 Questo schema separa quindi esplicitamente il \texttt{dataset\_seed} dai seed
 delle due funzioni di hash locali e rende osservabili, nello stesso record, sia
 la compatibilità semantica del caso sia la strategia effettivamente applicata.
-In questa fase, \texttt{baseline\_homogeneous} e \texttt{delta\_vs\_baseline}
-sono già parte dello schema, ma restano campi predisposti per la
-\emph{Phase 2}: non sono ancora popolati da una pipeline sperimentale
-end-to-end.
+
+Con l'introduzione di \codepath{HeterogeneousMergeEvaluation.tpp}, questi campi
+non sono più soltanto strutturali: \texttt{estimate\_serial} viene popolato a
+partire dal riferimento seriale selezionato dal descriptor, mentre
+\texttt{baseline\_homogeneous} e \texttt{delta\_vs\_baseline} vengono valorizzati
+quando è fornito un contesto di baseline omogenea.
 
 \section{CLI e orchestrazione sperimentale}
 
@@ -737,7 +760,10 @@ Il test del framework \codepath{EvaluationFrameworkTest.cpp} verifica che:
     \item la serializzazione sintetica del CSV di merge eterogeneo, con verifica
     dello header dedicato e dei campi \texttt{left/right\_hash},
     \texttt{strategy}, \texttt{validity}, \texttt{topology} e
-    \texttt{baseline\_homogeneous}.
+    \texttt{baseline\_homogeneous};
+    \item il percorso pairwise del merge eterogeneo nei casi
+    \texttt{valid}/\texttt{direct}, \texttt{invalid}/\texttt{reject} e nel
+    dispatch del caso \texttt{recoverable}.
 \end{itemize}
 
 \section{Scelte progettuali e limiti attuali}
@@ -750,17 +776,17 @@ Per esplicitare in un'unica sezione le scelte progettuali, esse sono:
     \texttt{merge}, pi\`u uno schema dedicato al merge eterogeneo gi\`a definito
     a livello di framework;
     \item l'uso di ID canonici per gli algoritmi e di un livello \texttt{hash} nei percorsi dei risultati;
-    \item un merge attualmente limitato al caso omogeneo, pairwise, con vincoli di compatibilit\`a stretti sui parametri dello sketch.
+    \item un'architettura di merge articolata su due livelli: confronto omogeneo
+    via CLI e valutazione pairwise eterogenea nel framework, entrambi fondati su
+    descrittori espliciti di contesto e strategia.
 \end{itemize}
 
 \section{TODOs}
 \begin{itemize}
     \item mancano le implementazioni Count-Min Sketch, Bloom Filter e Ring Bloom Filter;
-    \item il merge eterogeneo non \`e ancora eseguibile end-to-end: la
-    \emph{Phase 1} ha introdotto modello dati e CSV dedicato, ma mancano ancora
-    evaluator, surface CLI e orchestrazione batch delle campagne;
+    \item estendere la surface sperimentale del merge eterogeneo a CLI e
+    orchestrazione batch delle campagne;
     \item assenza di un test dedicato ai limiti di costruzione di ProbabilisticCounting (\(L \in [1,31]\));
-    \item nel tracciato eterogeneo i campi \texttt{baseline\_homogeneous} e
-    \texttt{delta\_vs\_baseline} sono gi\`a presenti nello schema, ma restano da
-    popolare nelle fasi successive del framework.
+    \item completare la campagna sperimentale sui tre assi principali:
+    hash mismatch, precision mismatch e topology amplification.
 \end{itemize}
