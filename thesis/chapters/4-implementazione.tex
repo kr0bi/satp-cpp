@@ -579,6 +579,73 @@ dove \texttt{estimate\_merge} è la stima dopo fusione dei due sketch,
 \texttt{estimate\_serial} è la stima ottenuta processando serialmente la stessa coppia,
 e i due \texttt{delta} misurano lo scostamento assoluto e relativo tra i due risultati.
 
+\paragraph{Merge eterogeneo}
+\`E stato introdotto un modello dati dedicato al merge eterogeneo all'interno del modulo 
+\codepath{simulation}. Il file
+\codepath{HeterogeneousMergeTypes.h} definisce:
+\begin{itemize}
+    \item tre classi per l'enumearzione dei due assi concettuali e la topologia:
+    \texttt{MergeValidity}, \texttt{MergeStrategy}, \texttt{MergeTopology};
+    \item le conversioni canoniche \codepath{toString(...)} verso i valori
+    testuali scritti nel CSV;
+    \item il contesto locale \texttt{MergeSketchContext}, che separa nome della
+    hash, seed della hash e parametri locali dello sketch;
+    \item il descrittore di run \texttt{HeterogeneousMergeRunDescriptor},
+    esportato verso il layer CSV tramite l'alias
+    \texttt{HeterogeneousMergeCsvDescriptor};
+    \item il record per-riga \texttt{HeterogeneousMergePoint}, che contiene
+    stima da merge, stima seriale, verità esatta dell'unione e campi per il
+    confronto con la baseline omogenea.
+\end{itemize}
+
+Il writer \codepath{CsvResultWriter} espone ora anche
+\codepath{appendHeterogeneousMergePairs(...)} con un header separato, dedicato
+alla nuova modalita' di merge eterogeneo. Rispetto ai CSV gia' presenti per lo
+\emph{streaming} e per il merge omogeneo, questo schema mantiene alcuni campi
+gia' esistenti e ne introduce altri necessari per descrivere separatamente i
+due sketch locali, la strategia di merge adottata e il confronto con l'unione
+esatta. La Tabella~\ref{tab:heterogeneous-merge-header} riassume i campi.
+
+\begin{table}[h]
+\centering
+\small
+\begin{tabular}{p{0.28\textwidth} p{0.18\textwidth} p{0.45\textwidth}}
+\toprule
+\textbf{Campo} & \textbf{Origine} & \textbf{Descrizione} \\
+\midrule
+\texttt{algorithm} & gia' presente & Nome canonico dell'algoritmo valutato. \\
+\texttt{mode} & gia' presente & Modalita' di esecuzione; in questo caso \texttt{merge\_heterogeneous}. \\
+\texttt{pairs} & gia' presente nel merge & Numero totale di coppie di partizioni analizzate nel run. \\
+\texttt{sample\_size} & gia' presente & Numero di elementi per partizione, ereditato dai metadata del dataset. \\
+\texttt{pair\_index} & gia' presente nel merge & Indice della coppia di partizioni considerata. \\
+\texttt{dataset\_seed} & nuovo & Seed del dataset, separato dai seed delle hash locali. \\
+\texttt{left\_hash}, \texttt{right\_hash} & nuovi & Funzioni di hash usate rispettivamente per sketch sinistro e destro. \\
+\texttt{left\_hash\_seed}, \texttt{right\_hash\_seed} & nuovi & Seed delle due funzioni di hash locali. \\
+\texttt{left\_params}, \texttt{right\_params} & nuovi & Parametri dei due sketch locali, ad esempio precisioni diverse. \\
+\texttt{strategy} & nuovo & Politica operativa applicata al merge: \texttt{direct}, \texttt{reject}, \texttt{reduce\_then\_merge}, \texttt{unsafe\_naive\_merge}. \\
+\texttt{validity} & nuovo & Classificazione semantica del caso: \texttt{valid}, \texttt{recoverable}, \texttt{invalid}. \\
+\texttt{topology} & nuovo & Topologia di aggregazione associata all'esperimento; nella fase iniziale e' tipicamente \texttt{pairwise}. \\
+\texttt{exact\_union} & nuovo & Cardinalita' esatta dell'unione delle due partizioni, usata come riferimento. \\
+\texttt{estimate\_merge} & gia' presente nel merge & Stima ottenuta fondendo i due sketch locali. \\
+\texttt{estimate\_serial} & gia' presente nel merge & Stima ottenuta processando serialmente la stessa unione. \\
+\texttt{error\_merge\_abs\_exact}, \texttt{error\_merge\_rel\_exact} & nuovi & Errore assoluto e relativo della stima da merge rispetto all'unione esatta. \\
+\texttt{error\_serial\_abs\_exact}, \texttt{error\_serial\_rel\_exact} & nuovi & Errore assoluto e relativo della stima seriale rispetto all'unione esatta. \\
+\texttt{baseline\_homogeneous} & nuovo & Valore di baseline omogenea usato come controllo sperimentale. \\
+\texttt{delta\_vs\_baseline} & nuovo & Scostamento rispetto alla baseline omogenea. \\
+\bottomrule
+\end{tabular}
+\caption{Campi del CSV dedicato al merge eterogeneo.}
+\label{tab:heterogeneous-merge-header}
+\end{table}
+
+Questo schema separa quindi esplicitamente il \texttt{dataset\_seed} dai seed
+delle due funzioni di hash locali e rende osservabili, nello stesso record, sia
+la compatibilita' semantica del caso sia la strategia effettivamente applicata.
+In questa fase, \texttt{baseline\_homogeneous} e \texttt{delta\_vs\_baseline}
+sono gia' parte dello schema, ma restano campi predisposti per la
+\emph{Phase 2}: non sono ancora popolati da una pipeline sperimentale
+end-to-end.
+
 \section{CLI e orchestrazione sperimentale}
 
 \subsection{CLI interattiva}
@@ -666,7 +733,11 @@ Il test del framework \codepath{EvaluationFrameworkTest.cpp} verifica che:
     \item in streaming con \texttt{NaiveCounting} sia uguale a
     \(\hat{F}_0(t)=F_0(t)\) a ogni checkpoint;
     \item la correttezza delle policy di checkpoint (che abbia un inizio, che sia monotona crescente e che la terminazione sia \(n\));
-    \item la correttezza del percorso delle coppie di merge e del loro relativo CSV.
+    \item la correttezza del percorso delle coppie di merge e del loro relativo CSV;
+    \item la serializzazione sintetica del CSV di merge eterogeneo, con verifica
+    dello header dedicato e dei campi \texttt{left/right\_hash},
+    \texttt{strategy}, \texttt{validity}, \texttt{topology} e
+    \texttt{baseline\_homogeneous}.
 \end{itemize}
 
 \section{Scelte progettuali e limiti attuali}
@@ -675,7 +746,9 @@ Per esplicitare in un'unica sezione le scelte progettuali, esse sono:
     \item la separazione netta tra gli algoritmi, l'I/O e il framework di misura;
     \item il formato binario compresso con loader per singola partizione;
     \item le due modalit\`a di run attive (\texttt{streaming}, \texttt{merge});
-    \item la serializzazione CSV con uno schema stabile e una colonna per il \texttt{seed} in ogni record;
+    \item la serializzazione CSV con uno schema stabile per \texttt{streaming} e
+    \texttt{merge}, pi\`u uno schema dedicato al merge eterogeneo gi\`a definito
+    a livello di framework;
     \item l'uso di ID canonici per gli algoritmi e di un livello \texttt{hash} nei percorsi dei risultati;
     \item un merge attualmente limitato al caso omogeneo, pairwise, con vincoli di compatibilit\`a stretti sui parametri dello sketch.
 \end{itemize}
@@ -683,11 +756,11 @@ Per esplicitare in un'unica sezione le scelte progettuali, esse sono:
 \section{TODOs}
 \begin{itemize}
     \item mancano le implementazioni Count-Min Sketch, Bloom Filter e Ring Bloom Filter;
-    \item il merge eterogeneo non è ancora implementato: il piano attuale prevede
-    esperimenti su hash/seed mismatch, mismatch di precisione e amplificazione
-    su topologie di merge, con HyperLogLog++ come riferimento;
+    \item il merge eterogeneo non \`e ancora eseguibile end-to-end: la
+    \emph{Phase 1} ha introdotto modello dati e CSV dedicato, ma mancano ancora
+    evaluator, surface CLI e orchestrazione batch delle campagne;
     \item assenza di un test dedicato ai limiti di costruzione di ProbabilisticCounting (\(L \in [1,31]\));
-    \item i report CSV di merge descrivono oggi solo il caso omogeneo
-    \emph{merge vs seriale} e non esportano ancora metadati dedicati a casi
-    \texttt{valid}/\texttt{recoverable}/\texttt{invalid}.
+    \item nel tracciato eterogeneo i campi \texttt{baseline\_homogeneous} e
+    \texttt{delta\_vs\_baseline} sono gi\`a presenti nello schema, ma restano da
+    popolare nelle fasi successive del framework.
 \end{itemize}
