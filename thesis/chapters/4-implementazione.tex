@@ -353,7 +353,7 @@ destra (\texttt{countr\_zero}) su hash troncato a \(L\) bit; la stima usa
 l'indice del primo zero (\texttt{countr\_one}) e la costante \(\phi\) nel termine
 \(\propto 2^R\) \cite{Flajolet_Martin_1985}.
 
-L'operazione di merge è un OR bit per bit con vincolo di compatibilita' su \(L\).
+L'operazione di merge è un OR bit per bit con vincolo di compatibilità su \(L\).
 
 \subsection{LogLog}
 
@@ -408,7 +408,7 @@ I domini accettati sono verificati durante la costruzione dell'oggetto.
 I test in
 \codepath{tests/algorithms/*.cpp} coprono esplicitamente i bound di HyperLogLog++,
 HyperLogLog e LogLog; per ProbabilisticCounting coprono il comportamento di merge
-e la compatibilita' dei parametri:
+e la compatibilità dei parametri:
 \begin{itemize}
     \item HyperLogLog++: \(p \in [4,18]\);
     \item HyperLogLog: \(k \in [4,16]\), \(L=32\);
@@ -600,9 +600,9 @@ e i due \texttt{delta} misurano lo scostamento assoluto e relativo tra i due ris
 
 Il writer \codepath{CsvResultWriter} espone ora anche
 \codepath{appendHeterogeneousMergePairs(...)} con un header separato, dedicato
-alla nuova modalita' di merge eterogeneo. Rispetto ai CSV gia' presenti per lo
+alla nuova modalità di merge eterogeneo. Rispetto ai CSV già presenti per lo
 \emph{streaming} e per il merge omogeneo, questo schema mantiene alcuni campi
-gia' esistenti e ne introduce altri necessari per descrivere separatamente i
+già esistenti e ne introduce altri necessari per descrivere separatamente i
 due sketch locali, la strategia di merge adottata e il confronto con l'unione
 esatta. La Tabella~\ref{tab:heterogeneous-merge-header} riassume i campi.
 
@@ -613,21 +613,21 @@ esatta. La Tabella~\ref{tab:heterogeneous-merge-header} riassume i campi.
 \toprule
 \textbf{Campo} & \textbf{Origine} & \textbf{Descrizione} \\
 \midrule
-\texttt{algorithm} & gia' presente & Nome canonico dell'algoritmo valutato. \\
-\texttt{mode} & gia' presente & Modalita' di esecuzione; in questo caso \texttt{merge\_heterogeneous}. \\
-\texttt{pairs} & gia' presente nel merge & Numero totale di coppie di partizioni analizzate nel run. \\
-\texttt{sample\_size} & gia' presente & Numero di elementi per partizione, ereditato dai metadata del dataset. \\
-\texttt{pair\_index} & gia' presente nel merge & Indice della coppia di partizioni considerata. \\
+\texttt{algorithm} & già presente & Nome canonico dell'algoritmo valutato. \\
+\texttt{mode} & già presente & Modalità di esecuzione; in questo caso \texttt{merge\_heterogeneous}. \\
+\texttt{pairs} & già presente nel merge & Numero totale di coppie di partizioni analizzate nel run. \\
+\texttt{sample\_size} & già presente & Numero di elementi per partizione, ereditato dai metadata del dataset. \\
+\texttt{pair\_index} & già presente nel merge & Indice della coppia di partizioni considerata. \\
 \texttt{dataset\_seed} & nuovo & Seed del dataset, separato dai seed delle hash locali. \\
 \texttt{left\_hash}, \texttt{right\_hash} & nuovi & Funzioni di hash usate rispettivamente per sketch sinistro e destro. \\
 \texttt{left\_hash\_seed}, \texttt{right\_hash\_seed} & nuovi & Seed delle due funzioni di hash locali. \\
 \texttt{left\_params}, \texttt{right\_params} & nuovi & Parametri dei due sketch locali, ad esempio precisioni diverse. \\
 \texttt{strategy} & nuovo & Politica operativa applicata al merge: \texttt{direct}, \texttt{reject}, \texttt{reduce\_then\_merge}, \texttt{unsafe\_naive\_merge}. \\
 \texttt{validity} & nuovo & Classificazione semantica del caso: \texttt{valid}, \texttt{recoverable}, \texttt{invalid}. \\
-\texttt{topology} & nuovo & Topologia di aggregazione associata all'esperimento; nella fase iniziale e' tipicamente \texttt{pairwise}. \\
-\texttt{exact\_union} & nuovo & Cardinalita' esatta dell'unione delle due partizioni, usata come riferimento. \\
-\texttt{estimate\_merge} & gia' presente nel merge & Stima ottenuta fondendo i due sketch locali. \\
-\texttt{estimate\_serial} & gia' presente nel merge & Stima ottenuta processando serialmente la stessa unione. \\
+\texttt{topology} & nuovo & Topologia di aggregazione associata all'esperimento; nella fase iniziale è tipicamente \texttt{pairwise}. \\
+\texttt{exact\_union} & nuovo & Cardinalità esatta dell'unione delle due partizioni, usata come riferimento. \\
+\texttt{estimate\_merge} & già presente nel merge & Stima ottenuta fondendo i due sketch locali. \\
+\texttt{estimate\_serial} & già presente nel merge & Stima ottenuta processando serialmente la stessa unione. \\
 \texttt{error\_merge\_abs\_exact}, \texttt{error\_merge\_rel\_exact} & nuovi & Errore assoluto e relativo della stima da merge rispetto all'unione esatta. \\
 \texttt{error\_serial\_abs\_exact}, \texttt{error\_serial\_rel\_exact} & nuovi & Errore assoluto e relativo della stima seriale rispetto all'unione esatta. \\
 \texttt{baseline\_homogeneous} & nuovo & Valore di baseline omogenea usato come controllo sperimentale. \\
@@ -640,9 +640,9 @@ esatta. La Tabella~\ref{tab:heterogeneous-merge-header} riassume i campi.
 
 Questo schema separa quindi esplicitamente il \texttt{dataset\_seed} dai seed
 delle due funzioni di hash locali e rende osservabili, nello stesso record, sia
-la compatibilita' semantica del caso sia la strategia effettivamente applicata.
+la compatibilità semantica del caso sia la strategia effettivamente applicata.
 In questa fase, \texttt{baseline\_homogeneous} e \texttt{delta\_vs\_baseline}
-sono gia' parte dello schema, ma restano campi predisposti per la
+sono già parte dello schema, ma restano campi predisposti per la
 \emph{Phase 2}: non sono ancora popolati da una pipeline sperimentale
 end-to-end.
 
