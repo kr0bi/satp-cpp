@@ -7,6 +7,7 @@
 #include "satp/simulation/detail/framework/EvaluationFramework.h"
 #include "satp/simulation/detail/framework/EvaluationMetadata.h"
 #include "satp/simulation/detail/framework/ProgressCallbacks.h"
+#include "satp/simulation/detail/merge/HeterogeneousMergeTypes.h"
 #include "satp/simulation/detail/merge/MergeSummary.h"
 #include "satp/simulation/detail/metrics/Statistics.h"
 #include "satp/simulation/detail/results/CsvResultWriter.h"

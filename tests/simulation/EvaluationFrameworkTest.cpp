@@ -33,6 +33,10 @@ namespace {
     [[nodiscard]] filesystem::path mergePairsCsvPath() {
         return filesystem::temp_directory_path() / "satp_merge_pairs_test.csv";
     }
+
+    [[nodiscard]] filesystem::path heterogeneousMergeCsvPath() {
+        return filesystem::temp_directory_path() / "satp_merge_heterogeneous_test.csv";
+    }
 } // namespace
 
 TEST_CASE("Evaluation Framework usa sempre i metadata del dataset", "[eval-framework][metadata]") {
@@ -221,6 +225,68 @@ TEST_CASE("Evaluation Framework merge pairs CSV", "[eval-framework][merge][csv]"
     getline(in, header);
     REQUIRE(header.find("estimate_merge") != string::npos);
     REQUIRE(header.find("estimate_serial") != string::npos);
+
+    fs::remove(csvPath);
+}
+
+TEST_CASE("CsvResultWriter serializza il CSV del merge eterogeneo", "[eval-framework][merge][heterogeneous][csv]") {
+    namespace fs = filesystem;
+
+    const fs::path csvPath = heterogeneousMergeCsvPath();
+    if (fs::exists(csvPath)) {
+        fs::remove(csvPath);
+    }
+
+    const eval::HeterogeneousMergeCsvDescriptor descriptor{
+        "HyperLogLog++",
+        {"splitmix64", 111u, "k=14"},
+        {"xxhash64", 222u, "k=10"},
+        eval::MergeStrategy::ReduceThenMerge,
+        eval::MergeValidity::Recoverable,
+        eval::MergeTopology::Pairwise,
+        {
+            50u,
+            1'000'000u,
+            100'000u,
+            21041998u
+        }
+    };
+    const vector<eval::HeterogeneousMergePoint> points{
+        {
+            0u,
+            12'345.0,
+            12'301.0,
+            12'320.0,
+            44.0,
+            44.0 / 12'345.0,
+            25.0,
+            25.0 / 12'345.0,
+            12'299.0,
+            2.0
+        }
+    };
+
+    eval::CsvResultWriter::appendHeterogeneousMergePairs(csvPath, descriptor, points);
+
+    REQUIRE(fs::exists(csvPath));
+    ifstream in(csvPath);
+    REQUIRE(in.good());
+
+    string header;
+    getline(in, header);
+    REQUIRE(header == eval::CsvResultWriter::HETEROGENEOUS_MERGE_HEADER);
+    REQUIRE(header.find("left_hash") != string::npos);
+    REQUIRE(header.find("baseline_homogeneous") != string::npos);
+
+    string row;
+    getline(in, row);
+    REQUIRE(row.find("HyperLogLog++") != string::npos);
+    REQUIRE(row.find("merge_heterogeneous") != string::npos);
+    REQUIRE(row.find("splitmix64") != string::npos);
+    REQUIRE(row.find("xxhash64") != string::npos);
+    REQUIRE(row.find("reduce_then_merge") != string::npos);
+    REQUIRE(row.find("recoverable") != string::npos);
+    REQUIRE(row.find("pairwise") != string::npos);
 
     fs::remove(csvPath);
 }
