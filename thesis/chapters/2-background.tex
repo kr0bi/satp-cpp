@@ -371,6 +371,65 @@ hash/seed, l'operatore di merge è il massimo componente-per-componente.
 Con queste condizioni, lo sketch ottenuto dal merge coincide con quello
 costruito processando la concatenazione delle due stream.
 
+Nel seguito della tesi conviene distinguere due assi concettualmente separati:
+\begin{itemize}
+    \item la \emph{compatibilità semantica} della coppia di sketch, cioè se la
+    coppia ammetta o meno un merge corretto;
+    \item la \emph{strategia operativa} scelta dal framework, cioè quale azione
+    applicare in presenza di una certa coppia di sketch.
+\end{itemize}
+
+\begin{definition}[Compatibilità semantica del merge]
+Nel seguito, una coppia di sketch è classificata in una delle tre categorie
+seguenti.
+\begin{itemize}
+    \item \texttt{valid}: il merge è semanticamente corretto così com'è. Nel
+    caso degli sketch della famiglia simil a HLL, questo significa che l'operazione
+    \emph{register-wise max} rappresenta davvero la stessa unione che si
+    otterrebbe processando serialmente i dati con la stessa specifica di
+    sketch. Nel contesto di HLL++, il caso tipico è: stessa famiglia, stessa
+    precisione \(p\) e stessa semantica di hash. Anche rappresentazioni diverse
+    dello stesso sketch, ad esempio \emph{sparse} e \emph{dense}, restano
+    \texttt{valid} se condividono \(p\) e hash.
+    \item \texttt{recoverable}: la coppia non è direttamente mergeabile, ma può
+    diventarlo dopo una normalizzazione esplicita e ben definita. In questo
+    caso il merge non è già corretto; è recuperabile mediante una procedura che
+    porta i due sketch in uno spazio comune. Nel piano sperimentale della tesi,
+    il caso tipico è HLL++ con precisioni diverse ma stessa semantica di hash,
+    normalizzati riducendo entrambi alla precisione più bassa prima del merge.
+    \item \texttt{invalid}: nel perimetro della tesi non esiste un merge
+    semanticamente corretto della coppia. Il problema non è una semplice perdita
+    di accuratezza, ma il fatto che i registri non rappresentano più la stessa
+    semantica. Casi tipici sono HLL++ con hash diverse, HLL++ con stessa
+    famiglia ma seed diversi quando il seed modifica la semantica della hash, o
+    sketch di famiglie diverse. In tali casi il massimo componente-per-componente
+    non va interpretato come merge corretto, ma solo come operazione su stati
+    incompatibili.
+\end{itemize}
+\end{definition}
+
+\begin{definition}[Strategia di merge]
+La strategia di merge è la politica operativa scelta dal framework una volta
+nota la compatibilità semantica della coppia. Nel seguito si usano le quattro
+strategie seguenti.
+\begin{itemize}
+    \item \texttt{direct}: applica direttamente il merge nativo dello sketch. È
+    la strategia appropriata quando la coppia è \texttt{valid}.
+    \item \texttt{reject}: non tenta il merge e registra che il caso è
+    incompatibile o non supportato. È la strategia naturale per i casi
+    \texttt{invalid} e rappresenta anche una scelta conservativa per i casi
+    \texttt{recoverable} quando non si vuole implementare la normalizzazione.
+    \item \texttt{reduce\_then\_merge}: applica prima una normalizzazione, poi
+    il merge nativo. È la strategia tipica per i casi \texttt{recoverable}; nel
+    caso HLL++ con precisioni diverse, consiste nel ridurre entrambi gli sketch
+    alla precisione minima \(\min(p_1,p_2)\) e poi applicare il merge.
+    \item \texttt{unsafe\_naive\_merge}: forza il merge come se la coppia fosse
+    \texttt{valid}, anche quando non lo è. Questa strategia non va interpretata
+    come merge corretto: serve solo come controllo negativo sperimentale per
+    misurare quanto si degrada il risultato ignorando i vincoli semantici.
+\end{itemize}
+\end{definition}
+
 \section{Stimatori}
 \label{sec:stimatori}
 In statistica, uno \emph{stimatore} è una funzione dei
