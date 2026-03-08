@@ -12,6 +12,7 @@
 #include "satp/simulation/detail/framework/EvaluationContext.h"
 #include "satp/simulation/detail/framework/EvaluationMetadata.h"
 #include "satp/simulation/detail/framework/ProgressCallbacks.h"
+#include "satp/simulation/detail/merge/HeterogeneousMergeTypes.h"
 #include "satp/simulation/detail/metrics/Statistics.h"
 
 namespace satp::evaluation {
@@ -24,6 +25,13 @@ namespace satp::evaluation {
         template<typename Algo, typename... Args>
         vector<MergePairPoint> evaluate(const detail::EvaluationContext &context, Args &&... ctorArgs);
     } // namespace modes::merge
+
+    namespace modes::merge_heterogeneous {
+        template<typename Algo, typename Builder>
+        vector<HeterogeneousMergePoint> evaluate(const detail::EvaluationContext &context,
+                                                 const HeterogeneousMergeRunDescriptor &descriptor,
+                                                 Builder buildAlgo);
+    } // namespace modes::merge_heterogeneous
 
     class EvaluationFramework {
     public:
@@ -50,6 +58,17 @@ namespace satp::evaluation {
         [[nodiscard]] vector<MergePairPoint> evaluateMergePairs(const ProgressCallbacks &progress,
                                                                 Args &&... ctorArgs) const;
 
+        template<typename Algo, typename Builder>
+        [[nodiscard]] vector<HeterogeneousMergePoint> evaluateHeterogeneousMergePairs(
+            const HeterogeneousMergeRunDescriptor &descriptor,
+            Builder buildAlgo) const;
+
+        template<typename Algo, typename Builder>
+        [[nodiscard]] vector<HeterogeneousMergePoint> evaluateHeterogeneousMergePairs(
+            const HeterogeneousMergeRunDescriptor &descriptor,
+            const ProgressCallbacks &progress,
+            Builder buildAlgo) const;
+
         [[nodiscard]] const EvaluationMetadata &metadata() const noexcept;
 
     private:
@@ -62,6 +81,7 @@ namespace satp::evaluation {
 } // namespace satp::evaluation
 
 #include "satp/simulation/detail/framework/EvaluationFacade.tpp"
+#include "satp/simulation/detail/merge/HeterogeneousMergeEvaluation.tpp"
 #include "satp/simulation/detail/merge/MergeEvaluation.tpp"
 #include "satp/simulation/detail/streaming/StreamingEvaluation.tpp"
 

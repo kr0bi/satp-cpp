@@ -2,9 +2,11 @@
 #include <cmath>
 #include <filesystem>
 #include <fstream>
+#include <stdexcept>
 
 #include "catch2/catch_approx.hpp"
 #include "catch2/catch_test_macros.hpp"
+#include "satp/algorithms/HyperLogLogPlusPlus.h"
 #include "satp/algorithms/NaiveCounting.h"
 #include "satp/hashing/HashFactory.h"
 #include "satp/simulation/Simulation.h"
@@ -17,6 +19,25 @@ namespace alg = satp::algorithms;
 using Catch::Approx;
 
 namespace {
+    [[nodiscard]] uint32_t parseSingleUnsignedParam(const string &params,
+                                                    const string &key) {
+        const string prefix = key + "=";
+        const size_t pos = params.find(prefix);
+        if (pos == string::npos) {
+            throw invalid_argument("Parametro mancante: " + key);
+        }
+
+        size_t end = params.find(',', pos);
+        if (end == string::npos) end = params.size();
+        return static_cast<uint32_t>(stoul(params.substr(pos + prefix.size(), end - (pos + prefix.size()))));
+    }
+
+    [[nodiscard]] alg::HyperLogLogPlusPlus buildHllppFromContext(
+        const eval::MergeSketchContext &context,
+        const satp::hashing::HashFunction &hashFunction) {
+        return alg::HyperLogLogPlusPlus(parseSingleUnsignedParam(context.params, "k"), hashFunction);
+    }
+
     struct EvaluationFrameworkFixture {
         satp::testdata::LoadedDataset dataset = satp::testdata::loadDataset();
         eval::EvaluationFramework bench{satp::testdata::datasetPath(), satp::hashing::getHashFunctionBy()};
@@ -289,4 +310,88 @@ TEST_CASE("CsvResultWriter serializza il CSV del merge eterogeneo", "[eval-frame
     REQUIRE(row.find("pairwise") != string::npos);
 
     fs::remove(csvPath);
+}
+
+TEST_CASE("Evaluation Framework merge eterogeneo diretto coincide con la baseline omogenea", "[eval-framework][merge][heterogeneous]") {
+    const EvaluationFrameworkFixture fixture;
+
+    eval::HeterogeneousMergeRunDescriptor descriptor{
+        "HyperLogLog++",
+        {"splitmix64", 0u, "k=14"},
+        {"splitmix64", 0u, "k=14"},
+        eval::MergeStrategy::Direct,
+        eval::MergeValidity::Valid,
+        eval::MergeTopology::Pairwise,
+        fixture.bench.metadata(),
+        nullopt,
+        eval::MergeSketchContext{"splitmix64", 0u, "k=14"}
+    };
+
+    const auto points = fixture.bench.evaluateHeterogeneousMergePairs<alg::HyperLogLogPlusPlus>(
+        descriptor,
+        buildHllppFromContext);
+
+    REQUIRE(points.size() == fixture.runs() / 2u);
+    REQUIRE_FALSE(points.empty());
+
+    for (const auto &point : points) {
+        REQUIRE(isfinite(point.exact_union));
+        REQUIRE(isfinite(point.estimate_merge));
+        REQUIRE(isfinite(point.estimate_serial));
+        REQUIRE(isfinite(point.error_merge_abs_exact));
+        REQUIRE(isfinite(point.error_serial_abs_exact));
+        REQUIRE(isfinite(point.baseline_homogeneous));
+        REQUIRE(point.delta_vs_baseline == Approx(0.0).margin(1e-12));
+    }
+}
+
+TEST_CASE("Evaluation Framework merge eterogeneo reject preserva seriale ed esatto", "[eval-framework][merge][heterogeneous]") {
+    const EvaluationFrameworkFixture fixture;
+
+    eval::HeterogeneousMergeRunDescriptor descriptor{
+        "HyperLogLog++",
+        {"splitmix64", 0u, "k=14"},
+        {"xxhash64", 123u, "k=14"},
+        eval::MergeStrategy::Reject,
+        eval::MergeValidity::Invalid,
+        eval::MergeTopology::Pairwise,
+        fixture.bench.metadata()
+    };
+
+    const auto points = fixture.bench.evaluateHeterogeneousMergePairs<alg::HyperLogLogPlusPlus>(
+        descriptor,
+        buildHllppFromContext);
+
+    REQUIRE(points.size() == fixture.runs() / 2u);
+    REQUIRE_FALSE(points.empty());
+
+    for (const auto &point : points) {
+        REQUIRE(isfinite(point.exact_union));
+        REQUIRE(isfinite(point.estimate_serial));
+        REQUIRE(isnan(point.estimate_merge));
+        REQUIRE(isnan(point.error_merge_abs_exact));
+        REQUIRE(isnan(point.error_merge_rel_exact));
+        REQUIRE(isnan(point.baseline_homogeneous));
+        REQUIRE(isnan(point.delta_vs_baseline));
+    }
+}
+
+TEST_CASE("Evaluation Framework merge eterogeneo segnala reduce_then_merge non implementato", "[eval-framework][merge][heterogeneous]") {
+    const EvaluationFrameworkFixture fixture;
+
+    eval::HeterogeneousMergeRunDescriptor descriptor{
+        "HyperLogLog++",
+        {"splitmix64", 0u, "k=14"},
+        {"splitmix64", 0u, "k=10"},
+        eval::MergeStrategy::ReduceThenMerge,
+        eval::MergeValidity::Recoverable,
+        eval::MergeTopology::Pairwise,
+        fixture.bench.metadata()
+    };
+
+    REQUIRE_THROWS_AS(
+        fixture.bench.evaluateHeterogeneousMergePairs<alg::HyperLogLogPlusPlus>(
+            descriptor,
+            buildHllppFromContext),
+        logic_error);
 }

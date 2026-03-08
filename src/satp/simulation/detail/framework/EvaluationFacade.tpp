@@ -30,4 +30,21 @@ namespace satp::evaluation {
         const auto evaluationContext = context(&progress);
         return modes::merge::evaluate<Algo>(evaluationContext, std::forward<Args>(ctorArgs)...);
     }
+
+    template<typename Algo, typename Builder>
+    vector<HeterogeneousMergePoint> EvaluationFramework::evaluateHeterogeneousMergePairs(
+        const HeterogeneousMergeRunDescriptor &descriptor,
+        Builder buildAlgo) const {
+        const auto evaluationContext = context();
+        return modes::merge_heterogeneous::evaluate<Algo>(evaluationContext, descriptor, buildAlgo);
+    }
+
+    template<typename Algo, typename Builder>
+    vector<HeterogeneousMergePoint> EvaluationFramework::evaluateHeterogeneousMergePairs(
+        const HeterogeneousMergeRunDescriptor &descriptor,
+        const ProgressCallbacks &progress,
+        Builder buildAlgo) const {
+        const auto evaluationContext = context(&progress);
+        return modes::merge_heterogeneous::evaluate<Algo>(evaluationContext, descriptor, buildAlgo);
+    }
 } // namespace satp::evaluation

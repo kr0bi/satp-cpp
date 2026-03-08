@@ -3,6 +3,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <limits>
+#include <optional>
 #include <string>
 #include <string_view>
 
@@ -62,7 +63,7 @@ namespace satp::evaluation {
 
     struct MergeSketchContext {
         string hashName;
-        uint64_t hashSeed = 0;
+        uint32_t hashSeed = 0;
         string params;
     };
 
@@ -74,6 +75,8 @@ namespace satp::evaluation {
         MergeValidity validity = MergeValidity::Invalid;
         MergeTopology topology = MergeTopology::Pairwise;
         EvaluationMetadata metadata;
+        optional<MergeSketchContext> serialReference = nullopt;
+        optional<MergeSketchContext> homogeneousBaseline = nullopt;
     };
 
     struct HeterogeneousMergePoint {
