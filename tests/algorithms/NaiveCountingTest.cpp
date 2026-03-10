@@ -14,7 +14,7 @@ namespace {
     }
 }
 
-TEST_CASE("NaiveCounting conta 1000 distinti su 10000 campioni", "[naive]") {
+TEST_CASE("NaiveCounting conta i distinti del dataset di test", "[naive]") {
     auto dataset = satp::testdata::loadDataset();
     auto NUMBER_OF_UNIQUE_ELEMENTS = dataset.distinct;
 

@@ -16,11 +16,13 @@ namespace satp::cli {
         [[nodiscard]] optional<RunMode> runModeByCommand(const string_view commandName) {
             if (commandName == "runstream") return RunMode::Streaming;
             if (commandName == "runmerge") return RunMode::Merge;
+            if (commandName == "runmergehet") return RunMode::MergeHeterogeneous;
             return nullopt;
         }
 
         [[nodiscard]] const char *runUsageByMode(const RunMode mode) {
             if (mode == RunMode::Streaming) return "Uso: runstream <algo|all>";
+            if (mode == RunMode::MergeHeterogeneous) return "Uso: runmergehet <algo|all>";
             return "Uso: runmerge <algo|all>";
         }
     } // namespace

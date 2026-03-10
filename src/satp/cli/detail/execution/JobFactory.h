@@ -16,4 +16,9 @@ namespace satp::cli::executor {
         const RunConfig &cfg,
         RunMode mode,
         const string &hashName);
+
+    [[nodiscard]] vector<AlgorithmJob> buildHeterogeneousMergeJobs(
+        satp::evaluation::EvaluationFramework &bench,
+        const DatasetRuntimeContext &ctx,
+        const RunConfig &cfg);
 } // namespace satp::cli::executor

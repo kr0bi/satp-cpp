@@ -11,6 +11,7 @@ using namespace std;
 namespace satp::cli::executor {
     const char *modeLabel(const RunMode mode) {
         if (mode == RunMode::Streaming) return "streaming";
+        if (mode == RunMode::MergeHeterogeneous) return "merge_heterogeneous";
         return "merge";
     }
 

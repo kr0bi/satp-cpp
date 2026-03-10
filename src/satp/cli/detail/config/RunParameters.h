@@ -13,7 +13,7 @@ namespace satp::cli::config {
                                 const string &param,
                                 const string &value);
 
-    [[nodiscard]] const array<string_view, 6> &configurableParamNames();
+    [[nodiscard]] const array<string_view, 13> &configurableParamNames();
 
     [[nodiscard]] const array<string_view, 4> &supportedHashFunctionNames();
 } // namespace satp::cli::config

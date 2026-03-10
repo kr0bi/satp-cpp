@@ -74,6 +74,9 @@ namespace satp::cli::path_utils {
         if (mode == RunMode::Merge) {
             fileName = "results_merge.csv";
             modeDir = "merge";
+        } else if (mode == RunMode::MergeHeterogeneous) {
+            fileName = "results_merge_heterogeneous.csv";
+            modeDir = "merge_heterogeneous";
         }
         return repoRoot / "results" / nsDir / modeDir / algorithmDir / hashDir / paramsDir / fileName;
     }

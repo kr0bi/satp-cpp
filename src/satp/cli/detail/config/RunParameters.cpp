@@ -4,6 +4,7 @@
 #include <limits>
 
 #include "satp/hashing/HashFactory.h"
+#include "satp/simulation/detail/merge/HeterogeneousMergeTypes.h"
 
 using namespace std;
 
@@ -52,8 +53,74 @@ namespace satp::cli::config {
             return true;
         }
 
+        bool setLeftHashFunctionName(RunConfig &cfg, const string &value) {
+            if (value == "default") {
+                cfg.leftHashFunctionName = nullopt;
+                return true;
+            }
+            try {
+                const auto hash = hashing::getHashFunctionBy(value, 0u);
+                cfg.leftHashFunctionName = string(hash->name());
+            } catch (const exception &) {
+                return false;
+            }
+            return true;
+        }
+
+        bool setRightHashFunctionName(RunConfig &cfg, const string &value) {
+            if (value == "default") {
+                cfg.rightHashFunctionName = nullopt;
+                return true;
+            }
+            try {
+                const auto hash = hashing::getHashFunctionBy(value, 0u);
+                cfg.rightHashFunctionName = string(hash->name());
+            } catch (const exception &) {
+                return false;
+            }
+            return true;
+        }
+
+        bool setOptionalSeed(optional<uint32_t> &out, const string &value) {
+            if (value == "dataset") {
+                out = nullopt;
+                return true;
+            }
+            uint32_t parsed = 0;
+            if (!parseU32(value, parsed)) return false;
+            out = parsed;
+            return true;
+        }
+
+        bool setLeftHashSeed(RunConfig &cfg, const string &value) {
+            return setOptionalSeed(cfg.leftHashSeed, value);
+        }
+
+        bool setRightHashSeed(RunConfig &cfg, const string &value) {
+            return setOptionalSeed(cfg.rightHashSeed, value);
+        }
+
         bool setK(RunConfig &cfg, const string &value) {
             return parseU32(value, cfg.k);
+        }
+
+        bool setOptionalK(optional<uint32_t> &out, const string &value) {
+            if (value == "default") {
+                out = nullopt;
+                return true;
+            }
+            uint32_t parsed = 0;
+            if (!parseU32(value, parsed)) return false;
+            out = parsed;
+            return true;
+        }
+
+        bool setLeftK(RunConfig &cfg, const string &value) {
+            return setOptionalK(cfg.leftK, value);
+        }
+
+        bool setRightK(RunConfig &cfg, const string &value) {
+            return setOptionalK(cfg.rightK, value);
         }
 
         bool setL(RunConfig &cfg, const string &value) {
@@ -64,14 +131,42 @@ namespace satp::cli::config {
             return parseU32(value, cfg.lLog);
         }
 
-        [[nodiscard]] const array<RunParamSpec, 6> &runParamSpecs() {
-            static const array<RunParamSpec, 6> specs{{
+        bool setMergeStrategy(RunConfig &cfg, const string &value) {
+            using satp::evaluation::MergeStrategy;
+            if (value == "direct") {
+                cfg.mergeStrategy = MergeStrategy::Direct;
+                return true;
+            }
+            if (value == "reject") {
+                cfg.mergeStrategy = MergeStrategy::Reject;
+                return true;
+            }
+            if (value == "reduce_then_merge") {
+                cfg.mergeStrategy = MergeStrategy::ReduceThenMerge;
+                return true;
+            }
+            if (value == "unsafe_naive_merge") {
+                cfg.mergeStrategy = MergeStrategy::UnsafeNaiveMerge;
+                return true;
+            }
+            return false;
+        }
+
+        [[nodiscard]] const array<RunParamSpec, 13> &runParamSpecs() {
+            static const array<RunParamSpec, 13> specs{{
                 {"datasetPath", setDatasetPath},
                 {"resultsNamespace", setResultsNamespace},
                 {"hashFunction", setHashFunctionName},
+                {"leftHashFunction", setLeftHashFunctionName},
+                {"rightHashFunction", setRightHashFunctionName},
+                {"leftHashSeed", setLeftHashSeed},
+                {"rightHashSeed", setRightHashSeed},
                 {"k", setK},
+                {"leftK", setLeftK},
+                {"rightK", setRightK},
                 {"l", setL},
-                {"lLog", setLLog}
+                {"lLog", setLLog},
+                {"mergeStrategy", setMergeStrategy}
             }};
             return specs;
         }
@@ -88,14 +183,21 @@ namespace satp::cli::config {
         return false;
     }
 
-    const array<string_view, 6> &configurableParamNames() {
-        static const array<string_view, 6> names{
+    const array<string_view, 13> &configurableParamNames() {
+        static const array<string_view, 13> names{
             "datasetPath",
             "resultsNamespace",
             "hashFunction",
+            "leftHashFunction",
+            "rightHashFunction",
+            "leftHashSeed",
+            "rightHashSeed",
             "k",
+            "leftK",
+            "rightK",
             "l",
-            "lLog"
+            "lLog",
+            "mergeStrategy"
         };
         return names;
     }

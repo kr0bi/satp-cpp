@@ -16,7 +16,7 @@ namespace {
     }
 }
 
-TEST_CASE("HyperLogLog stima ~1000 distinti su 10000 campioni", "[hyperloglog-count]") {
+TEST_CASE("HyperLogLog stima i distinti del dataset di test", "[hyperloglog-count]") {
     constexpr uint32_t K = 10;
 
     auto dataset = satp::testdata::loadDataset();
@@ -38,7 +38,7 @@ TEST_CASE("HyperLogLog stima ~1000 distinti su 10000 campioni", "[hyperloglog-co
     REQUIRE(estimate <= NUMBER_OF_UNIQUE_ELEMENTS * (1.0 + 3 * RSE));
 }
 
-TEST_CASE("HyperLogLog++ stima ~1000 distinti su 10000 campioni", "[hyperloglogpp-count]") {
+TEST_CASE("HyperLogLog++ stima i distinti del dataset di test", "[hyperloglogpp-count]") {
     constexpr uint32_t K = 10;
 
     auto dataset = satp::testdata::loadDataset();

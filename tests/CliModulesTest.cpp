@@ -1,5 +1,6 @@
 #include <array>
 #include <cmath>
+#include <optional>
 #include <string_view>
 #include <vector>
 
@@ -27,6 +28,12 @@ TEST_CASE("CLI command parser parses command tokens", "[cli][config]") {
     }
 
     {
+        const auto cmd = satp::cli::config::parseCommand("runmergehet hllpp");
+        REQUIRE(cmd.name == "runmergehet");
+        REQUIRE(cmd.args == vector<string>{"hllpp"});
+    }
+
+    {
         const auto cmd = satp::cli::config::parseCommand("   ");
         REQUIRE(cmd.name.empty());
         REQUIRE(cmd.args.empty());
@@ -45,8 +52,26 @@ TEST_CASE("CLI run config parameter setters update and validate values", "[cli][
     REQUIRE(satp::cli::config::setParam(cfg, "hashFunction", "murmur3"));
     REQUIRE(cfg.hashFunctionName == "murmurhash3");
 
+    REQUIRE(satp::cli::config::setParam(cfg, "leftHashFunction", "splitmix64"));
+    REQUIRE(cfg.leftHashFunctionName == optional<string>{"splitmix64"});
+
+    REQUIRE(satp::cli::config::setParam(cfg, "rightHashFunction", "xxhash64"));
+    REQUIRE(cfg.rightHashFunctionName == optional<string>{"xxhash64"});
+
+    REQUIRE(satp::cli::config::setParam(cfg, "leftHashSeed", "17"));
+    REQUIRE(cfg.leftHashSeed == optional<uint32_t>{17u});
+
+    REQUIRE(satp::cli::config::setParam(cfg, "rightHashSeed", "dataset"));
+    REQUIRE(cfg.rightHashSeed == nullopt);
+
     REQUIRE(satp::cli::config::setParam(cfg, "k", "12"));
     REQUIRE(cfg.k == 12u);
+
+    REQUIRE(satp::cli::config::setParam(cfg, "leftK", "10"));
+    REQUIRE(cfg.leftK == optional<uint32_t>{10u});
+
+    REQUIRE(satp::cli::config::setParam(cfg, "rightK", "default"));
+    REQUIRE(cfg.rightK == nullopt);
 
     REQUIRE(satp::cli::config::setParam(cfg, "l", "20"));
     REQUIRE(cfg.l == 20u);
@@ -54,22 +79,33 @@ TEST_CASE("CLI run config parameter setters update and validate values", "[cli][
     REQUIRE(satp::cli::config::setParam(cfg, "lLog", "24"));
     REQUIRE(cfg.lLog == 24u);
 
+    REQUIRE(satp::cli::config::setParam(cfg, "mergeStrategy", "reject"));
+    REQUIRE(cfg.mergeStrategy == satp::evaluation::MergeStrategy::Reject);
+
     const uint32_t oldK = cfg.k;
     REQUIRE_FALSE(satp::cli::config::setParam(cfg, "k", "abc"));
     REQUIRE(cfg.k == oldK);
 
     REQUIRE_FALSE(satp::cli::config::setParam(cfg, "hashFunction", "not-a-hash"));
+    REQUIRE_FALSE(satp::cli::config::setParam(cfg, "mergeStrategy", "not-a-strategy"));
     REQUIRE_FALSE(satp::cli::config::setParam(cfg, "unknownParam", "x"));
 }
 
 TEST_CASE("CLI run config exposes canonical parameter and hash lists", "[cli][config]") {
-    constexpr array<string_view, 6> expectedParams{
+    constexpr array<string_view, 13> expectedParams{
         "datasetPath",
         "resultsNamespace",
         "hashFunction",
+        "leftHashFunction",
+        "rightHashFunction",
+        "leftHashSeed",
+        "rightHashSeed",
         "k",
+        "leftK",
+        "rightK",
         "l",
-        "lLog"
+        "lLog",
+        "mergeStrategy"
     };
     constexpr array<string_view, 4> expectedHashes{
         "splitmix64",
@@ -113,6 +149,7 @@ TEST_CASE("Executor output helpers expose stable labels and metrics", "[cli][exe
 
     REQUIRE(string(modeLabel(RunMode::Streaming)) == "streaming");
     REQUIRE(string(modeLabel(RunMode::Merge)) == "merge");
+    REQUIRE(string(modeLabel(RunMode::MergeHeterogeneous)) == "merge_heterogeneous");
 
     REQUIRE(abs(rseHll(10u) - 0.0325) < 1e-12);
     REQUIRE(abs(rseLogLog(10u) - 0.040625) < 1e-12);

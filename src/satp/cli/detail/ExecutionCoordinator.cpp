@@ -17,12 +17,21 @@ namespace satp::cli {
                                    const RunMode mode) const {
         auto ctx = config::loadDatasetRuntimeContext(cfg);
         auto runtimeHash = satp::hashing::getHashFunctionBy(cfg.hashFunctionName, ctx.seed);
-        const string hashName = cfg.hashFunctionName;
         satp::evaluation::EvaluationFramework bench(std::move(ctx.index), std::move(runtimeHash));
 
-        executor::printRunContext(ctx, mode, hashName);
         const auto selected = executor::collectRequestedAlgorithms(algs);
-        const auto jobs = executor::buildAlgorithmJobs(bench, ctx, cfg, mode, hashName);
+        vector<executor::AlgorithmJob> jobs;
+        string hashLabel = cfg.hashFunctionName;
+        if (mode == RunMode::MergeHeterogeneous) {
+            const string leftHash = cfg.leftHashFunctionName.value_or(cfg.hashFunctionName);
+            const string rightHash = cfg.rightHashFunctionName.value_or(cfg.hashFunctionName);
+            hashLabel = leftHash + "->" + rightHash;
+            jobs = executor::buildHeterogeneousMergeJobs(bench, ctx, cfg);
+        } else {
+            jobs = executor::buildAlgorithmJobs(bench, ctx, cfg, mode, cfg.hashFunctionName);
+        }
+
+        executor::printRunContext(ctx, mode, hashLabel);
 
         for (const auto &job : jobs) {
             if (!executor::shouldRun(selected, job.spec.algorithmId)) {

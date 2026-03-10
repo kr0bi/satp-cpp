@@ -15,7 +15,7 @@ namespace {
     }
 }
 
-TEST_CASE("ProbabilisticCounting stima ~1000 distinti su 10000 campioni", "[prob-count]") {
+TEST_CASE("ProbabilisticCounting stima i distinti del dataset di test", "[prob-count]") {
     constexpr uint32_t L = 16; // bitmap 16 bit → buono fino a ~65k
 
     auto dataset = satp::testdata::loadDataset();

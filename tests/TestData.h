@@ -18,7 +18,7 @@ namespace satp::testdata {
     };
 
     inline filesystem::path datasetPath() {
-        return filesystem::path(__FILE__).parent_path() / "data" / "dataset_n_2000_d_1000_p_3_s_5489.bin";
+        return filesystem::path(__FILE__).parent_path() / "data" / "dataset_n_10000_d_5000_p_3_s_5489.bin";
     }
 
     inline LoadedDataset loadDataset() {

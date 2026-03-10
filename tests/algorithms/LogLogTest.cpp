@@ -15,7 +15,7 @@ namespace {
     }
 }
 
-TEST_CASE("LogLog stima ~1000 distinti su 10000 campioni", "[log-count]") {
+TEST_CASE("LogLog stima i distinti del dataset di test", "[log-count]") {
     constexpr uint32_t L = 32;
     constexpr uint32_t K = 10;
 
