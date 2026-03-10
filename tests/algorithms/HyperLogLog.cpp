@@ -1,4 +1,5 @@
 #include "catch2/catch_test_macros.hpp"
+#include <array>
 #include <cmath>
 #include <stdexcept>
 #include "satp/hashing/HashFactory.h"
@@ -199,4 +200,57 @@ TEST_CASE("HyperLogLog++ merge sparse+normal equivale al seriale", "[hyperloglog
                                 ? abs(mergedEstimate - serialEstimate) / serialEstimate
                                 : 0.0;
     REQUIRE(relDelta <= 0.05);
+}
+
+TEST_CASE("HyperLogLog++ riduce correttamente la precisione verso p piu' basso", "[hyperloglogpp][reduce]") {
+    struct PrecisionCase {
+        uint32_t sourceP;
+        uint32_t targetP;
+    };
+
+    const array<PrecisionCase, 3> cases{{
+        {14u, 10u},
+        {18u, 10u},
+        {18u, 14u}
+    }};
+
+    for (const auto testCase : cases) {
+        CAPTURE(testCase.sourceP, testCase.targetP);
+
+        satp::algorithms::HyperLogLogPlusPlus source(testCase.sourceP, defaultHash());
+        satp::algorithms::HyperLogLogPlusPlus directLow(testCase.targetP, defaultHash());
+
+        for (uint32_t value = 0; value < 200'000u; ++value) {
+            source.process(value);
+            directLow.process(value);
+        }
+
+        auto reduced = source.reducedTo(testCase.targetP);
+        REQUIRE(reduced.count() == directLow.count());
+    }
+}
+
+TEST_CASE("HyperLogLog++ riduzione naive differisce dalla riduzione corretta", "[hyperloglogpp][reduce][naive]") {
+    satp::algorithms::HyperLogLogPlusPlus source(18u, defaultHash());
+    satp::algorithms::HyperLogLogPlusPlus directLow(10u, defaultHash());
+
+    for (uint32_t value = 0; value < 200'000u; ++value) {
+        source.process(value);
+        directLow.process(value);
+    }
+
+    auto reduced = source.reducedTo(10u);
+    auto reducedNaive = source.reducedToNaive(10u);
+
+    REQUIRE(reduced.count() == directLow.count());
+    REQUIRE(reducedNaive.count() != directLow.count());
+}
+
+TEST_CASE("HyperLogLog++ valida i target di riduzione", "[hyperloglogpp][reduce][params]") {
+    satp::algorithms::HyperLogLogPlusPlus source(14u, defaultHash());
+
+    REQUIRE_NOTHROW(source.reducedTo(14u));
+    REQUIRE_NOTHROW(source.reducedTo(10u));
+    REQUIRE_THROWS_AS(source.reducedTo(3u), invalid_argument);
+    REQUIRE_THROWS_AS(source.reducedTo(15u), invalid_argument);
 }

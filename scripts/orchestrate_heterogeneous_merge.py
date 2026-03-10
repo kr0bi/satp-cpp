@@ -127,9 +127,9 @@ def strategy_allowed(strategy: str, validity: str) -> tuple[bool, str]:
     if strategy == "direct":
         return validity == "valid", "direct richiede un caso valid"
     if strategy == "unsafe_naive_merge":
-        return validity == "invalid", "unsafe_naive_merge e' riservato ai casi invalid"
+        return validity != "valid", "unsafe_naive_merge richiede un caso non-valid"
     if strategy == "reduce_then_merge":
-        return False, "reduce_then_merge non e' ancora implementato"
+        return validity == "recoverable", "reduce_then_merge richiede un caso recoverable"
     return False, f"strategia non supportata: {strategy}"
 
 

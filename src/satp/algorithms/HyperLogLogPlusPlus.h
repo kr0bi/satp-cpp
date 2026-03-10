@@ -31,6 +31,10 @@ namespace satp::algorithms {
 
         void merge(const HyperLogLogPlusPlus &other);
 
+        [[nodiscard]] HyperLogLogPlusPlus reducedTo(uint32_t targetP) const;
+
+        [[nodiscard]] HyperLogLogPlusPlus reducedToNaive(uint32_t targetP) const;
+
     private:
         enum class Format {
             Sparse,
@@ -65,6 +69,8 @@ namespace satp::algorithms {
         [[nodiscard]] uint32_t sparseIndex(uint32_t encoded) const;
         [[nodiscard]] uint8_t rhoFromEncoded(uint32_t encoded) const;
         [[nodiscard]] pair<uint32_t, uint8_t> decodeHash(uint32_t encoded) const;
+        [[nodiscard]] HyperLogLogPlusPlus reducePrecision(uint32_t targetP,
+                                                          bool correctDroppedBits) const;
 
         void flushTmpSetToSparseList();
         void convertSparseToNormal();

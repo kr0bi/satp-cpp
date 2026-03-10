@@ -57,11 +57,8 @@ namespace satp::cli::executor {
             if (strategy == MergeStrategy::ReduceThenMerge && validity != MergeValidity::Recoverable) {
                 throw invalid_argument("HLL++ reduce_then_merge richiede un caso recoverable");
             }
-            if (strategy == MergeStrategy::UnsafeNaiveMerge && validity != MergeValidity::Invalid) {
-                throw invalid_argument("HLL++ unsafe_naive_merge e' riservato ai casi invalid");
-            }
-            if (strategy == MergeStrategy::UnsafeNaiveMerge && validity == MergeValidity::Recoverable) {
-                throw invalid_argument("HLL++ unsafe_naive_merge non e' valido su mismatch di precisione");
+            if (strategy == MergeStrategy::UnsafeNaiveMerge && validity == MergeValidity::Valid) {
+                throw invalid_argument("HLL++ unsafe_naive_merge richiede un caso non-valid");
             }
         }
 
@@ -95,6 +92,10 @@ namespace satp::cli::executor {
                 left.hashSeed,
                 hllppParams(min(leftK, rightK))
             };
+            const optional<satp::evaluation::MergeSketchContext> serialReference =
+                (validity == satp::evaluation::MergeValidity::Recoverable)
+                    ? optional<satp::evaluation::MergeSketchContext>{baseline}
+                    : optional<satp::evaluation::MergeSketchContext>{left};
 
             return {
                 satp::algorithms::catalog::getNameBy("hllpp"),
@@ -104,7 +105,7 @@ namespace satp::cli::executor {
                 validity,
                 satp::evaluation::MergeTopology::Pairwise,
                 bench.metadata(),
-                left,
+                serialReference,
                 baseline
             };
         }

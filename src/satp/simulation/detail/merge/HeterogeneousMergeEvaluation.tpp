@@ -4,9 +4,12 @@
 #include <concepts>
 #include <limits>
 #include <stdexcept>
+#include <string>
+#include <type_traits>
 #include <unordered_set>
 #include <vector>
 
+#include "satp/algorithms/HyperLogLogPlusPlus.h"
 #include "satp/hashing/HashFactory.h"
 #include "satp/simulation/detail/framework/DatasetTraversal.h"
 #include "satp/simulation/detail/framework/EvaluationContext.h"
@@ -60,6 +63,31 @@ namespace satp::evaluation::modes::merge_heterogeneous {
             const HeterogeneousMergeRunDescriptor &descriptor) {
             return descriptor.homogeneousBaseline;
         }
+
+        [[nodiscard]] inline uint32_t parseSingleUnsignedParam(const string &params,
+                                                               const string &key) {
+            const string prefix = key + "=";
+            const size_t pos = params.find(prefix);
+            if (pos == string::npos) {
+                throw invalid_argument("Missing merge param: " + key);
+            }
+
+            size_t end = params.find(',', pos);
+            if (end == string::npos) end = params.size();
+            return static_cast<uint32_t>(stoul(params.substr(
+                pos + prefix.size(),
+                end - (pos + prefix.size()))));
+        }
+
+        [[nodiscard]] inline uint32_t reductionTargetKOf(
+            const HeterogeneousMergeRunDescriptor &descriptor) {
+            if (descriptor.homogeneousBaseline.has_value()) {
+                return parseSingleUnsignedParam(descriptor.homogeneousBaseline->params, "k");
+            }
+            const uint32_t leftK = parseSingleUnsignedParam(descriptor.left.params, "k");
+            const uint32_t rightK = parseSingleUnsignedParam(descriptor.right.params, "k");
+            return min(leftK, rightK);
+        }
     } // namespace
 
     template<typename Algo, typename Builder>
@@ -106,12 +134,34 @@ namespace satp::evaluation::modes::merge_heterogeneous {
                 case MergeStrategy::Direct:
                 case MergeStrategy::UnsafeNaiveMerge: {
                     Algo merged = sketchA;
-                    merged.merge(sketchB);
+                    if constexpr (is_same_v<Algo, satp::algorithms::HyperLogLogPlusPlus>) {
+                        if (descriptor.validity == MergeValidity::Recoverable &&
+                            descriptor.strategy == MergeStrategy::UnsafeNaiveMerge) {
+                            const uint32_t targetK = reductionTargetKOf(descriptor);
+                            merged = sketchA.reducedToNaive(targetK);
+                            const Algo reducedB = sketchB.reducedToNaive(targetK);
+                            merged.merge(reducedB);
+                        } else {
+                            merged.merge(sketchB);
+                        }
+                    } else {
+                        merged.merge(sketchB);
+                    }
                     estimateMerge = static_cast<double>(merged.count());
                     break;
                 }
-                case MergeStrategy::ReduceThenMerge:
-                    throw logic_error("reduce_then_merge is not implemented yet");
+                case MergeStrategy::ReduceThenMerge: {
+                    if constexpr (!is_same_v<Algo, satp::algorithms::HyperLogLogPlusPlus>) {
+                        throw logic_error("reduce_then_merge currently supports only HyperLogLogPlusPlus");
+                    } else {
+                        const uint32_t targetK = reductionTargetKOf(descriptor);
+                        Algo merged = sketchA.reducedTo(targetK);
+                        const Algo reducedB = sketchB.reducedTo(targetK);
+                        merged.merge(reducedB);
+                        estimateMerge = static_cast<double>(merged.count());
+                    }
+                    break;
+                }
             }
 
             const MergeSketchContext &serialContext = serialReferenceOf(descriptor);

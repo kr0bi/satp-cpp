@@ -150,6 +150,14 @@ namespace satp::algorithms {
         }
     }
 
+    HyperLogLogPlusPlus HyperLogLogPlusPlus::reducedTo(const uint32_t targetP) const {
+        return reducePrecision(targetP, true);
+    }
+
+    HyperLogLogPlusPlus HyperLogLogPlusPlus::reducedToNaive(const uint32_t targetP) const {
+        return reducePrecision(targetP, false);
+    }
+
     uint32_t HyperLogLogPlusPlus::encodeHash(uint64_t hash) const {
         const auto sparseIdx = static_cast<uint32_t>(hash >> (64u - SPARSE_P));
         const uint32_t idxTailBits = SPARSE_P - p;
@@ -187,6 +195,50 @@ namespace satp::algorithms {
         const uint32_t idxPrime = sparseIndex(encoded);
         const uint32_t idx = idxPrime >> (SPARSE_P - p);
         return {idx, rhoFromEncoded(encoded)};
+    }
+
+    HyperLogLogPlusPlus HyperLogLogPlusPlus::reducePrecision(const uint32_t targetP,
+                                                             const bool correctDroppedBits) const {
+        if (targetP < MIN_P || targetP > p) {
+            throw invalid_argument("HLL++ reduction requires target p in [4, current p]");
+        }
+        if (targetP == p) {
+            return *this;
+        }
+
+        HyperLogLogPlusPlus source = *this;
+        if (source.format == Format::Sparse) {
+            source.convertSparseToNormal();
+        }
+
+        HyperLogLogPlusPlus reduced(targetP, hashFunction());
+        reduced.convertSparseToNormal();
+
+        const uint32_t delta = p - targetP;
+        const uint32_t suffixMask = (1u << delta) - 1u;
+
+        for (uint32_t idxHi = 0; idxHi < source.m; ++idxHi) {
+            const uint8_t rhoHi = source.registers[idxHi];
+            if (rhoHi == 0u) {
+                continue;
+            }
+
+            const uint32_t idxLo = idxHi >> delta;
+            uint8_t rhoLo = rhoHi;
+            if (correctDroppedBits) {
+                const uint32_t suffix = idxHi & suffixMask;
+                if (suffix == 0u) {
+                    rhoLo = static_cast<uint8_t>(rhoHi + delta);
+                } else {
+                    const uint32_t leading =
+                        static_cast<uint32_t>(countl_zero(suffix)) - (32u - delta);
+                    rhoLo = static_cast<uint8_t>(leading + 1u);
+                }
+            }
+            reduced.addNormalRegister(idxLo, rhoLo);
+        }
+
+        return reduced;
     }
 
     void HyperLogLogPlusPlus::flushTmpSetToSparseList() {

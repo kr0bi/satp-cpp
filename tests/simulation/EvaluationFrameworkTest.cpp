@@ -376,22 +376,64 @@ TEST_CASE("Evaluation Framework merge eterogeneo reject preserva seriale ed esat
     }
 }
 
-TEST_CASE("Evaluation Framework merge eterogeneo segnala reduce_then_merge non implementato", "[eval-framework][merge][heterogeneous]") {
+TEST_CASE("Evaluation Framework merge eterogeneo recoverable supporta reduce_then_merge", "[eval-framework][merge][heterogeneous]") {
     const EvaluationFrameworkFixture fixture;
 
     eval::HeterogeneousMergeRunDescriptor descriptor{
         "HyperLogLog++",
-        {"splitmix64", 0u, "k=14"},
+        {"splitmix64", 0u, "k=18"},
         {"splitmix64", 0u, "k=10"},
         eval::MergeStrategy::ReduceThenMerge,
         eval::MergeValidity::Recoverable,
         eval::MergeTopology::Pairwise,
-        fixture.bench.metadata()
+        fixture.bench.metadata(),
+        eval::MergeSketchContext{"splitmix64", 0u, "k=10"},
+        eval::MergeSketchContext{"splitmix64", 0u, "k=10"}
     };
 
-    REQUIRE_THROWS_AS(
-        fixture.bench.evaluateHeterogeneousMergePairs<alg::HyperLogLogPlusPlus>(
-            descriptor,
-            buildHllppFromContext),
-        logic_error);
+    const auto points = fixture.bench.evaluateHeterogeneousMergePairs<alg::HyperLogLogPlusPlus>(
+        descriptor,
+        buildHllppFromContext);
+
+    REQUIRE(points.size() == fixture.runs() / 2u);
+    REQUIRE_FALSE(points.empty());
+
+    for (const auto &point : points) {
+        REQUIRE(isfinite(point.exact_union));
+        REQUIRE(isfinite(point.estimate_merge));
+        REQUIRE(isfinite(point.estimate_serial));
+        REQUIRE(isfinite(point.baseline_homogeneous));
+        REQUIRE(point.delta_vs_baseline == Approx(0.0).margin(1e-12));
+    }
+}
+
+TEST_CASE("Evaluation Framework merge eterogeneo recoverable supporta unsafe_naive_merge come controllo negativo", "[eval-framework][merge][heterogeneous]") {
+    const EvaluationFrameworkFixture fixture;
+
+    eval::HeterogeneousMergeRunDescriptor descriptor{
+        "HyperLogLog++",
+        {"splitmix64", 0u, "k=18"},
+        {"splitmix64", 0u, "k=10"},
+        eval::MergeStrategy::UnsafeNaiveMerge,
+        eval::MergeValidity::Recoverable,
+        eval::MergeTopology::Pairwise,
+        fixture.bench.metadata(),
+        eval::MergeSketchContext{"splitmix64", 0u, "k=10"},
+        eval::MergeSketchContext{"splitmix64", 0u, "k=10"}
+    };
+
+    const auto points = fixture.bench.evaluateHeterogeneousMergePairs<alg::HyperLogLogPlusPlus>(
+        descriptor,
+        buildHllppFromContext);
+
+    REQUIRE(points.size() == fixture.runs() / 2u);
+    REQUIRE_FALSE(points.empty());
+    REQUIRE(all_of(points.begin(), points.end(), [](const auto &point) {
+        return isfinite(point.estimate_merge) &&
+               isfinite(point.estimate_serial) &&
+               isfinite(point.baseline_homogeneous);
+    }));
+    REQUIRE(any_of(points.begin(), points.end(), [](const auto &point) {
+        return point.delta_vs_baseline > 0.0;
+    }));
 }

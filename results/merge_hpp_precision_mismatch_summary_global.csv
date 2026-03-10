@@ -1,0 +1,4 @@
+strategy,validity,pairs,merge_rel_mean,merge_rel_median,merge_rel_max,serial_rel_mean,baseline_gap_abs_mean,baseline_gap_abs_max,degradation_ratio_mean
+reject,recoverable,450,,,,0.016651281360457734,,,
+unsafe_naive_merge,recoverable,450,0.3638816880744659,0.053305265500000004,1.0613779,0.016651281360457734,3387887.1422222224,10449611.0,32.37038633591679
+reduce_then_merge,recoverable,450,0.016651281360457734,0.01415235376,0.0574181195,0.016651281360457734,0.0,0.0,1.0
