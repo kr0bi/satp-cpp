@@ -1,0 +1,2 @@
+algorithm,mode,pairs,sample_size,pair_index,dataset_seed,left_hash,right_hash,left_hash_seed,right_hash_seed,left_params,right_params,strategy,validity,topology,exact_union,estimate_merge,estimate_serial,error_merge_abs_exact,error_merge_rel_exact,error_serial_abs_exact,error_serial_rel_exact,baseline_homogeneous,delta_vs_baseline
+HyperLogLog++,merge_heterogeneous,1,10000,0,5489,splitmix64,splitmix64,5489,5489,k=4,k=4,direct,valid,pairwise,9612,8876,8876,736,0.07657095298,736,0.07657095298,8876,0
