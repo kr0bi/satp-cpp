@@ -7,10 +7,9 @@ framework descritto nel Capitolo~\ref{chp:implementazione}.
 L'organizzazione del capitolo segue la progressione effettiva del lavoro.
 Si parte dalle condizioni sperimentali e dalle verifiche preliminari necessarie
 per costruire una baseline affidabile; si passa poi ai risultati in modalità
-\texttt{streaming} sul dataset a prefisso costante infine si
-presenta il controllo sul merge omogeneo e si introduce il piano degli
-esperimenti sul merge eterogeneo, che costituisce la direzione successiva della
-tesi.
+\texttt{streaming} sul dataset a prefisso costante, poi al controllo sul
+merge omogeneo e infine alla prima campagna di merge eterogeneo su
+\emph{hash mismatch} per HyperLogLog++.
 
 \section{Ambiente di test}
 
@@ -71,6 +70,18 @@ Per la modalità \texttt{merge}, invece, il controllo corrente usa:
 \end{itemize}
 cioè lo scostamento tra stima ottenuta via merge e stima ottenuta in modalità
 seriale sul medesimo dominio.
+
+Per il merge eterogeneo, inoltre, vengono osservate:
+\begin{itemize}
+    \item \texttt{error\_merge\_rel\_exact}, errore relativo della stima da
+    merge rispetto all'unione esatta;
+    \item \texttt{error\_serial\_rel\_exact}, errore relativo del riferimento
+    seriale rispetto all'unione esatta;
+    \item \texttt{delta\_vs\_baseline}, scostamento assoluto rispetto alla
+    baseline omogenea;
+    \item \texttt{degradation\_ratio}, rapporto tra errore del merge forzato ed
+    errore del riferimento seriale.
+\end{itemize}
 
 \subsection{Lettura dei grafici}
 
@@ -376,74 +387,159 @@ e seriale in tutte le 900 coppie considerate.
 Questo risultato \`e estremamente importante ai fini di analizzare successivamente il merge
 eterogeneo, potendogli attribuire qualunque deviazione osservata.
 
-\section{Verso il merge eterogeneo}
+\section{Merge eterogeneo: hash mismatch}
 
-Sul piano sperimentale, il capitolo si ferma al baseline omogeneo della
-\emph{Phase 0}. Sul piano implementativo, però, il framework dispone ora anche
-di un evaluator pairwise dedicato al merge eterogeneo, oltre al modello dati e
-allo schema CSV introdotti in precedenza; questo costituisce il supporto
-tecnico per le campagne discusse nelle sottosezioni seguenti.
+\subsection{Setup della campagna minima}
 
-\subsection{Motivazione e gap nella letteratura}
+Il primo esperimento di merge eterogeneo nel
+framework è focalizzata sull'asse \emph{hash mismatch} per HyperLogLog++.
+\`E stata eseguita con \texttt{runmergehet}, orchestrata da
+\codepath{orchestrate\_heterogeneous\_merge.py} e analizzata nel notebook
+\codepath{22\_ch5\_merge\_hllpp\_hash\_mismatch.ipynb}.
 
-Dopo aver costruito una baseline affidabile per la modalità \texttt{streaming} e
-aver verificato il comportamento corretto del merge omogeneo, il passo
-successivo consiste nello studiare il merge in condizioni non ideali. In
-letteratura il merge è spesso trattato assumendo omogeneità completa del
-contesto locale; risultano invece molto meno analizzati i casi in cui due
-sketch sono prodotti con hash differenti, seed differenti o parametri
-incompatibili.
-
-\subsection{Domanda di ricerca}
-
-La domanda guida del seguito della tesi è la seguente:
-\begin{quote}
-quando il merge di sketch di cardinalità HLL-like è semanticamente valido sotto
-eterogeneità di hash e precisione, quanto errore introduce quando non lo è, e
-quali trasformazioni sono sufficienti per recuperare i casi sanabili?
-\end{quote}
-
-\subsection{Modello di compatibilità}
-
-Seguendo il piano operativo definito in
-\codepath{codex/merge_heterogeneous_roadmap.md}, i casi di merge eterogeneo
-saranno classificati in tre categorie:
+Il dominio sperimentale minimo è:
 \begin{itemize}
-    \item \texttt{valid}: il merge è semanticamente corretto senza trasformazioni;
-    \item \texttt{recoverable}: il merge non è corretto direttamente, ma può
-    essere ricondotto a un caso valido tramite normalizzazione;
-    \item \texttt{invalid}: il merge rompe il contratto semantico dello sketch e
-    non deve essere interpretato come operazione corretta.
+    \item algoritmo fissato a HyperLogLog++;
+    \item topologia \texttt{pairwise};
+    \item precisione fissata a \(k=14\) in entrambi gli sketch locali;
+    \item dataset \texttt{prefix\_constant\_rho} con
+    \[
+    n = 10^7,\qquad p = 50,\qquad seed = 21041998,
+    \]
+    e
+    \[
+    d \in \{10^5,10^6,10^7\},\qquad \rho \in \{100,10,1\};
+    \]
+    \item quattro hash nel controllo omogeneo:
+    \texttt{splitmix64}, \texttt{xxhash64}, \texttt{murmurhash3},
+    \texttt{siphash24};
+    \item scenari \texttt{invalid} di due tipi:
+    \texttt{seed mismatch} sulla stessa famiglia di hash e
+    \texttt{family mismatch} tra \texttt{xxhash64} e le altre hash, in entrambe
+    le direzioni;
+    \item strategie osservate:
+    \texttt{direct} per il controllo \texttt{valid},
+    \texttt{reject} e \texttt{unsafe\_naive\_merge} per i casi
+    \texttt{invalid}.
 \end{itemize}
 
-\subsection{Asse 1: hash mismatch}
+Nel complesso, la campagna produce 72 CSV e 1800 record pairwise:
+\begin{itemize}
+    \item 300 pair del controllo omogeneo;
+    \item 750 pair \texttt{invalid} con strategia \texttt{reject};
+    \item 750 pair \texttt{invalid} con strategia \texttt{unsafe\_naive\_merge}.
+\end{itemize}
 
-Il primo asse sperimentale riguarda la costruzione di sketch locali con hash
-diverse oppure con seed diverse. Questo è il caso più naturale per studiare la
-rottura del merge \emph{register-wise}, perché cambia la semantica con cui gli
-elementi sono proiettati nei registri.
+\subsection{Controllo omogeneo e strategia \texttt{reject}}
 
-\subsection{Asse 2: precision mismatch}
+L'esecuzione della stessa campagna sul caso \texttt{ctrl} conferma la coerenza
+del percorso eterogeneo quando i due sketch sono in realtà compatibili. Sulle
+300 coppie del controllo omogeneo si osserva:
+\[
+\mathrm{MRE}_{merge} = 0.006233,\qquad
+\mathrm{MRE}_{serial} = 0.006233,
+\]
+con \(\texttt{delta\_vs\_baseline}=0\) in tutti i record e fattore di
+degradazione pari a 1.
 
-Il secondo asse riguarda sketch della stessa famiglia costruiti con precisioni
-diverse. Nel caso di HLL++, il punto non è soltanto misurare il degrado di un
-\emph{naive merge}, ma distinguere chiaramente tra casi da rigettare, casi
-formalmente non sicuri e casi potenzialmente recuperabili tramite una strategia
-di riduzione alla precisione più bassa.
+La strategia \texttt{reject}, applicata ai casi \texttt{invalid}, non produce
+una stima di merge ma preserva nel CSV il contesto della coppia, il riferimento
+seriale e l'unione esatta. In questo modo il caso incompatibile resta
+osservabile e confrontabile senza introdurre una fusione semanticamente
+scorretta.
 
-\subsection{Asse 3: topology amplification}
+\begin{figure}[htbp]
+    \centering
+    \begin{subfigure}[t]{0.98\textwidth}
+        \centering
+        \includegraphics[width=\linewidth]{figures/results/merge_hpp_hash_mismatch_overview.png}
+        \caption{Controllo omogeneo e andamento medio del merge forzato sui casi \texttt{invalid}.}
+        \label{fig:hllpp-hash-mismatch-overview}
+    \end{subfigure}
 
-Il terzo asse riguarda l'accumulo dell'errore lungo più livelli di merge. Una
-volta stabilito il comportamento pairwise, sarà quindi necessario verificare se
-e come l'errore si amplifica in topologie come \texttt{balanced\_tree} o
-\texttt{left\_deep\_chain}.
+    \vspace{0.8em}
 
-\subsection{HyperLogLog++ come riferimento}
+    \begin{subfigure}[t]{0.78\textwidth}
+        \centering
+        \includegraphics[width=\linewidth]{figures/results/merge_hpp_hash_mismatch_unsafe_heatmap.png}
+        \caption{Heatmap dell'errore relativo medio del merge forzato per scenario e \(\rho\).}
+        \label{fig:hllpp-hash-mismatch-unsafe-heatmap}
+    \end{subfigure}
+    \caption{Campagna minima di \emph{hash mismatch} su HyperLogLog++ nella \emph{Phase 4}.}
+    \label{fig:hllpp-hash-mismatch-phase4}
+\end{figure}
 
-L'algoritmo di riferimento per questa parte della tesi sarà HyperLogLog++.
-L'obiettivo non è implementare nuove famiglie come UltraLogLog o ExaLogLog, ma
-usare HLL++ come baseline principale per studiare compatibilità, degrado e
-normalizzazione del merge sotto eterogeneità controllata.
+\subsection{Degrado del merge forzato su casi \texttt{invalid}}
+
+La Tabella~\ref{tab:hllpp-hash-mismatch-summary} mostra che il merge forzato su
+sketch incompatibili non introduce una piccola perturbazione del baseline
+omogeneo, ma un degrado strutturale dell'errore. Aggregando per scenario, gli
+esperimenti con \texttt{unsafe\_naive\_merge} producono infatti:
+\begin{itemize}
+    \item errore relativo medio del merge tra \(0.342\) e \(0.353\);
+    \item errore relativo massimo fino a \(1.009634\);
+    \item errore relativo medio del riferimento seriale compreso tra
+    \(0.0046\) e \(0.0101\);
+    \item fattore medio di degradazione tra \(28.8\) e \(307.2\).
+\end{itemize}
+
+\begin{table}[htbp]
+    \centering
+    \small
+    \setlength{\tabcolsep}{5pt}
+    \renewcommand{\arraystretch}{1.1}
+    \begin{tabular}{|l|r|r|r|r|r|}
+        \hline
+        Scenario & Pair & \(\overline{\varepsilon}_{merge}\) & \(\overline{\varepsilon}_{serial}\) & \(\max \varepsilon_{merge}\) & \(\overline{\varepsilon}_{merge}/\overline{\varepsilon}_{serial}\) \\
+        \hline
+        \texttt{ctrl} & 300 & 0.006233 & 0.006233 & 0.025913 & 1.00 \\
+        \hline
+        \texttt{seed\_xx} & 75 & 0.342374 & 0.007436 & 0.969548 & 49.45 \\
+        \hline
+        \texttt{seed\_xx\_rev} & 75 & 0.343830 & 0.010076 & 0.969548 & 28.82 \\
+        \hline
+        \texttt{seed\_murmur} & 75 & 0.347522 & 0.004836 & 0.984223 & 206.46 \\
+        \hline
+        \texttt{seed\_murmur\_rev} & 75 & 0.348319 & 0.004606 & 0.984223 & 307.18 \\
+        \hline
+        \texttt{family} & 225 & 0.352037 & 0.007436 & 1.009634 & 50.36 \\
+        \hline
+        \texttt{family\_rev} & 225 & 0.352802 & 0.005832 & 1.009634 & 130.76 \\
+        \hline
+    \end{tabular}
+    \caption{Sintesi globale della campagna minima di \emph{hash mismatch} su HLL++.}
+    \label{tab:hllpp-hash-mismatch-summary}
+\end{table}
+
+Il comportamento dipende in modo marcato da \(\rho\). Nei casi
+\texttt{invalid} con merge forzato:
+\begin{itemize}
+    \item per \(\rho = 100\) l'errore relativo medio resta contenuto tra circa
+    \(0.0057\) e \(0.0106\);
+    \item per \(\rho = 10\) cresce stabilmente intorno a \(0.050\);
+    \item per \(\rho = 1\) diventa quasi unitario, tra \(0.9695\) e \(1.0096\).
+\end{itemize}
+
+Il caso peggiore emerge quando si forza il merge tra \texttt{xxhash64} e
+\texttt{splitmix64} con \(\rho=1\): sia nello scenario \texttt{family} sia in
+\texttt{family\_rev} l'errore relativo medio raggiunge \(1.009634\), mentre lo
+scostamento medio rispetto alla baseline omogenea è dell'ordine di
+\(10^7\) elementi distinti.
+
+\subsection{Interpretazione}
+
+La \emph{Phase 4} conferma sperimentalmente che, nel caso HLL++, l'eterogeneità
+di hash o seed non si manifesta come una semplice perdita graduale di
+accuratezza. Quando il caso è \texttt{valid}, il merge diretto coincide con il
+baseline omogeneo; quando il caso è \texttt{invalid}, il \emph{max}
+\emph{register-wise} smette di rappresentare la stessa unione che si
+otterrebbe in seriale.
+
+La distinzione tra \texttt{reject} e \texttt{unsafe\_naive\_merge} risulta
+quindi essenziale: la prima strategia conserva un record corretto del caso
+incompatibile, mentre la seconda fornisce il controllo negativo sperimentale
+che misura quanto il risultato si rompa quando si ignorano i vincoli semantici
+del merge.
 
 \section{Sintesi del capitolo}
 
@@ -451,6 +547,7 @@ Il capitolo è costruito attorno a tre livelli. Il primo è la baseline
 \texttt{streaming} su \texttt{prefix\_constant\_rho}, che consente di
 confrontare gli algoritmi su un dominio con cardinalità reale nota in ogni
 prefisso. Il secondo è il controllo sul merge omogeneo, necessario per validare
-il framework prima di introdurre condizioni non ideali. Il terzo è l'apertura
-agli esperimenti di merge eterogeneo, che costituiscono il passo successivo del
-lavoro e il contributo principale verso cui converge la roadmap della tesi.
+il framework prima di introdurre condizioni non ideali. Il terzo è la prima
+campagna di merge eterogeneo su \emph{hash mismatch}, che mostra in modo
+esplicito la differenza tra casi semanticamente validi e casi in cui il merge
+forzato produce errore strutturale.

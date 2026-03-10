@@ -39,8 +39,11 @@ I componenti principali e le rispettive responsabilità sono:
     (HyperLogLog++, HyperLogLog, LogLog, ProbabilisticCounting, TODO: CountMin e Bloom Filter);
     \item \codepath{generate_prefix_constant_rho_dataset_bin.py}: generazione deterministica
     del dataset partizionato compresso usato nella campagna sperimentale;
-    \item \codepath{orchestrate_benchmarks.py}: esecuzione batch sulle configurazioni \((n,d,seed)\)
-    e selezione dei parametri per ogni algoritmo standard o custom.
+    \item \codepath{orchestrate_benchmarks.py}: esecuzione batch delle modalità
+    \texttt{streaming} e \texttt{merge} omogeneo sulle configurazioni \((n,d,seed)\);
+    \item \codepath{orchestrate_heterogeneous_merge.py}: orchestrazione batch
+    delle modalitaà di merge eterogeneo HLL++, con matrice su hash, seed,
+    precisioni e strategie di merge.
 \end{itemize}
 
 La Figura~\ref{fig:system-architecture} riassume le dipendenze principali tra i moduli
@@ -62,13 +65,16 @@ L'esecuzione end-to-end della pipeline del framework è la seguente:
     \item vengono prima generati i dataset, chiamati \codepath{dataset_n_{n}_d_{d}_p_{p}_s_{seed}.bin}, con
     \codepath{scripts/generate_prefix_constant_rho_dataset_bin.py};
     \item viene eseguito poi da CLI (\codepath{main.cpp}) e vengono configurati i parametri
-    di sessione: \texttt{datasetPath}, \texttt{resultsNamespace}, \texttt{hashFunction},
-    \texttt{k}, \texttt{l}, \texttt{lLog};
+    di sessione: \texttt{datasetPath}, \texttt{resultsNamespace},
+    \texttt{hashFunction}, \texttt{k}, \texttt{l}, \texttt{lLog} e, per il
+    merge eterogeneo, i parametri locali \texttt{left/rightHashFunction},
+    \texttt{left/rightHashSeed}, \texttt{left/rightK} e
+    \texttt{mergeStrategy};
     \item il modulo \codepath{cli} carica il contesto runtime dal dataset, costruisce
     la funzione di hash tramite \codepath{HashFactory} e istanzia
     \codepath{EvaluationFramework} sul dataset indicizzato;
-    \item il modulo \codepath{simulation} esegue gli algoritmi nelle due modalità attive
-    (\texttt{streaming}, \texttt{merge}) e produce serie/statistiche in memoria;
+    \item il modulo \codepath{simulation} esegue gli algoritmi nelle tre modalità attive
+    (\texttt{streaming}, \texttt{merge}, \texttt{merge\_heterogeneous}) e produce serie/statistiche in memoria;
     \item infine, a seconda della modalità, avviene la scrittura CSV in
     \codepath{results/<namespace>/<mode>/<algorithm>/<hash>/<params>/results_*.csv}
     tramite \codepath{path\_utils::buildResultCsvPath} e \codepath{CsvResultWriter}.
@@ -419,19 +425,18 @@ Lo script \codepath{orchestrate_benchmarks.py} replica gli stessi domini
 nelle modalità \texttt{--full} e \texttt{single-params}.
 
 \section{Framework di valutazione}
-Nel framework di valutazione esistono due modalità operative esposte dalla
-CLI. Esse coprono i due casi di studio già integrati nel flusso end-to-end:
-analisi di prefisso su stream e confronto \emph{merge vs seriale}. A queste si
-aggiunge, a livello di API del framework, un evaluator pairwise dedicato al
-merge eterogeneo.
+Nel framework di valutazione esistono tre modalità operative esposte dalla
+CLI. Esse coprono i tre casi di studio integrati nel flusso end-to-end:
+analisi di prefisso su stream, confronto \emph{merge vs seriale} omogeneo e
+benchmark pairwise di merge eterogeneo.
 
 Il framework permette di monitorare determinate metriche che sono aperte ad essere aggiunte.
 In maniera consona le metriche di output sono le stesse che vengono monitorate.
 
 
-\subsection{Modalità streaming e merge}
+\subsection{Modalità streaming, merge e merge eterogeneo}
 
-Le due modalità operative del framework sono:
+Le tre modalità operative del framework sono:
 
 \begin{itemize}
     \item \texttt{streaming}: per ogni partizione si processa la stream elemento
@@ -442,19 +447,25 @@ Le due modalità operative del framework sono:
     F_0(t)=\sum_{i=1}^{t} b_i.
     \]
 
-    \item \texttt{merge}: le partizioni sono accoppiate a due a due
-    \((0,1),(2,3),\dots\).
-    Per ogni coppia si costruiscono due sketch separati (\(S_A, S_B\)),
-    si calcola lo sketch mergiato \(S_M = S_A \oplus S_B\), e si confronta con
-    uno sketch seriale \(S_{serial}\) ottenuto processando in sequenza le due
+	    \item \texttt{merge}: le partizioni sono accoppiate a due a due
+	    \((0,1),(2,3),\dots\).
+	    Per ogni coppia si costruiscono due sketch separati (\(S_A, S_B\)),
+	    si calcola lo sketch mergiato \(S_M = S_A \oplus S_B\), e si confronta con
+	    uno sketch seriale \(S_{serial}\) ottenuto processando in sequenza le due
     partizioni. Le metriche di confronto sono:
     \[
     \Delta_{abs} = \left| \hat{F}_{0,\text{merge}} - \hat{F}_{0,\text{serial}} \right|,
     \qquad
-    \Delta_{rel} = \frac{\Delta_{abs}}{\hat{F}_{0,\text{serial}}}
-    \]
-    (se \(\hat{F}_{0,\text{serial}}=0\), nel codice \(\Delta_{rel}=0\)).
-\end{itemize}
+	    \Delta_{rel} = \frac{\Delta_{abs}}{\hat{F}_{0,\text{serial}}}
+	    \]
+	    (se \(\hat{F}_{0,\text{serial}}=0\), nel codice \(\Delta_{rel}=0\)).
+
+	    \item \texttt{merge\_heterogeneous}: le partizioni sono ancora percorse a
+	    coppie, ma i due sketch locali possono avere contesti distinti per hash,
+	    seed e parametri. Il risultato viene confrontato sia con l'unione esatta
+	    sia con un riferimento seriale e, opzionalmente, con una baseline
+	    omogenea.
+	\end{itemize}
 
 La classe \texttt{EvaluationFramework} espone tre flussi pubblici:
 \begin{itemize}
@@ -675,25 +686,29 @@ quando è fornito un contesto di baseline omogenea.
 
 L'entry point è il \codepath{main.cpp} che istanzia \codepath{satp::cli::Cli}. I comandi sono:
 
-\begin{itemize}
-    \item \texttt{help}: mostra l'elenco dei comandi disponibili e una breve descrizione d'uso.
-    \item \texttt{show}: stampa la configurazione corrente; \texttt{sampleSize}, \texttt{runs} e \texttt{seed} sono letti dal dataset indicato in \texttt{datasetPath}.
-    \item \texttt{list}: elenca gli algoritmi disponibili (\texttt{hllpp}, \texttt{hll}, \texttt{ll}, \texttt{pc}) e le funzioni di hash supportate.
-    \item \texttt{set <param> <value>}: imposta un parametro della sessione. I parametri supportati sono \texttt{datasetPath}, \texttt{resultsNamespace}, \texttt{hashFunction}, \texttt{k}, \texttt{l}, \texttt{lLog}.
-    \item \texttt{runstream <algo|all>}: esegue uno o più algoritmi in modalità \texttt{streaming} (metriche ai checkpoint \(t\) durante la scansione della partizione).
-    \item \texttt{runmerge <algo|all>}: esegue benchmark di merge a coppie di partizioni \((0,1),(2,3),\dots\), confrontando stima da merge e stima seriale.
-    \item \texttt{quit}: termina la sessione interattiva.
-\end{itemize}
+	\begin{itemize}
+	    \item \texttt{help}: mostra l'elenco dei comandi disponibili e una breve descrizione d'uso.
+	    \item \texttt{show}: stampa la configurazione corrente; \texttt{sampleSize}, \texttt{runs} e \texttt{seed} sono letti dal dataset indicato in \texttt{datasetPath}.
+	    \item \texttt{list}: elenca gli algoritmi disponibili (\texttt{hllpp}, \texttt{hll}, \texttt{ll}, \texttt{pc}) e le funzioni di hash supportate.
+	    \item \texttt{set <param> <value>}: imposta un parametro della sessione. I parametri supportati sono \texttt{datasetPath}, \texttt{resultsNamespace}, \texttt{hashFunction}, \texttt{leftHashFunction}, \texttt{rightHashFunction}, \texttt{leftHashSeed}, \texttt{rightHashSeed}, \texttt{k}, \texttt{leftK}, \texttt{rightK}, \texttt{l}, \texttt{lLog}, \texttt{mergeStrategy}.
+	    \item \texttt{runstream <algo|all>}: esegue uno o più algoritmi in modalità \texttt{streaming} (metriche ai checkpoint \(t\) durante la scansione della partizione).
+	    \item \texttt{runmerge <algo|all>}: esegue benchmark di merge a coppie di partizioni \((0,1),(2,3),\dots\), confrontando stima da merge e stima seriale.
+	    \item \texttt{runmergehet <algo|all>}: esegue benchmark di merge eterogeneo; allo stato attuale è supportato end-to-end il solo caso \texttt{hllpp}.
+	    \item \texttt{quit}: termina la sessione interattiva.
+	\end{itemize}
 
-Per i comandi \texttt{runstream} e \texttt{runmerge}, l'argomento
-\texttt{<algo>} può essere uno tra \texttt{hllpp}, \texttt{hll}, \texttt{ll},
-\texttt{pc}, oppure \texttt{all}.
+	Per i comandi \texttt{runstream} e \texttt{runmerge}, l'argomento
+	\texttt{<algo>} può essere uno tra \texttt{hllpp}, \texttt{hll}, \texttt{ll},
+	\texttt{pc}, oppure \texttt{all}.
+	Per \texttt{runmergehet}, invece, l'argomento operativo è attualmente
+	\texttt{hllpp} (oppure \texttt{all}, che si riduce allo stesso caso supportato).
 
-Il metodo \codepath{path\_utils::buildResultCsvPath} costruisce i percorsi:
-\begin{itemize}
-    \item \codepath{results/<namespace>/streaming/<algorithmId>/<hash>/<params>/results_streaming.csv};
-    \item \codepath{results/<namespace>/merge/<algorithmId>/<hash>/<params>/results_merge.csv}.
-\end{itemize}
+	Il metodo \codepath{path\_utils::buildResultCsvPath} costruisce i percorsi:
+	\begin{itemize}
+	    \item \codepath{results/<namespace>/streaming/<algorithmId>/<hash>/<params>/results_streaming.csv};
+	    \item \codepath{results/<namespace>/merge/<algorithmId>/<hash>/<params>/results_merge.csv};
+	    \item \codepath{results/<namespace>/merge_heterogeneous/<algorithmId>/<hash>/<params>/results_merge_heterogeneous.csv}.
+	\end{itemize}
 La stringa \texttt{params} viene sanitizzata da
 \codepath{sanitizeForPath} sostituendo i caratteri non alfanumerici con
 \texttt{\_}. Anche il nome della funzione di hash e l'ID canonico dell'algoritmo
@@ -702,17 +717,23 @@ configurazioni diverse.
 
 \subsection{Orchestrazione batch}
 
-Lo script \codepath{orchestrate_benchmarks.py} automatizza:
-\begin{itemize}
-    \item pianificazione della matrice \((n,d,seed)\) e numero partizioni \(p\);
-    \item generazione dataset (opzionale) con \codepath{ensure_dataset};
-    \item invio di payload CLI con sequenze \texttt{set} + \texttt{runstream}/\texttt{runmerge};
-    \item impostazione esplicita di \texttt{resultsNamespace} e \texttt{hashFunction};
-    \item i parametri di default, se non vengono passati esplicitamente con l'opzione (\texttt{--full}) su domini validi.
-\end{itemize}
+	Lo script \codepath{orchestrate_benchmarks.py} automatizza:
+	\begin{itemize}
+	    \item pianificazione della matrice \((n,d,seed)\) e numero partizioni \(p\);
+	    \item generazione dataset (opzionale) con \codepath{ensure_dataset};
+	    \item invio di payload CLI con sequenze \texttt{set} + \texttt{runstream}/\texttt{runmerge};
+	    \item impostazione esplicita di \texttt{resultsNamespace} e \texttt{hashFunction};
+	    \item i parametri di default, se non vengono passati esplicitamente con l'opzione (\texttt{--full}) su domini validi.
+	\end{itemize}
 
-Per l'analisi finale del Capitolo~\ref{chp:risultati}, i grafici e le tabelle
-sono prodotti in modo riproducibile all'interno di notebooks Jupyter.
+	In parallelo, \codepath{orchestrate_heterogeneous_merge.py} automatizza le
+	campagne HLL++ di merge eterogeneo. Lo script costruisce una matrice su
+	\((n,d,seed)\), hash e seed locali sinistro/destro, precisioni
+	\texttt{leftK}/\texttt{rightK} e strategia di merge, genera i dataset quando
+	necessario e invia alla CLI payload con \texttt{runmergehet}.
+
+	Per l'analisi finale del Capitolo~\ref{chp:risultati}, i grafici e le tabelle
+	sono prodotti in modo riproducibile all'interno di notebooks Jupyter.
 
 \section{Seed e riproducibilità}
 Il seed viene definito all'interno del dataset e viene propagato all'interno dell'intero framework.
@@ -724,14 +745,19 @@ La sua propagazione segue questo flusso:
     \texttt{uint32}, popolando \codepath{DatasetInfo.seed};
     \item il metodo \codepath{loadDatasetRuntimeContext} trasferisce il 
     \texttt{seed} nel contesto runtime \texttt{DatasetRuntimeContext};
-    \item \codepath{ExecutionCoordinator} istanzia la funzione di hash con
-    \codepath{hashing::getHashFunctionBy(cfg.hashFunctionName, ctx.seed)};
-    \item infine il \codepath{CsvResultWriter} serializza il \texttt{seed} in tutte le righe
-    \texttt{streaming}/\texttt{merge}.
-\end{enumerate}
+	    \item \codepath{ExecutionCoordinator} istanzia la funzione di hash con
+	    \codepath{hashing::getHashFunctionBy(cfg.hashFunctionName, ctx.seed)};
+	    \item infine il \codepath{CsvResultWriter} serializza il \texttt{seed} in tutte le righe
+	    \texttt{streaming}/\texttt{merge}.
+	\end{enumerate}
 
-Inoltre, la generazione usa \codepath{_derive_partition_seed(seed, partition_index)}
-per rendere deterministico il contenuto di ogni partizione.
+	Inoltre, la generazione usa \codepath{_derive_partition_seed(seed, partition_index)}
+	per rendere deterministico il contenuto di ogni partizione.
+	Nel caso del merge eterogeneo, il CSV separa esplicitamente il
+	\texttt{dataset\_seed} dai seed delle due hash locali
+	(\texttt{left\_hash\_seed}, \texttt{right\_hash\_seed}); quando questi non
+	sono configurati esplicitamente, il layer CLI usa il seed del dataset come
+	fallback per entrambi i lati.
 
 \section{Validazione e testing}
 
@@ -768,25 +794,23 @@ Il test del framework \codepath{EvaluationFrameworkTest.cpp} verifica che:
 
 \section{Scelte progettuali e limiti attuali}
 Per esplicitare in un'unica sezione le scelte progettuali, esse sono:
-\begin{itemize}
-    \item la separazione netta tra gli algoritmi, l'I/O e il framework di misura;
-    \item il formato binario compresso con loader per singola partizione;
-    \item le due modalit\`a di run attive (\texttt{streaming}, \texttt{merge});
-    \item la serializzazione CSV con uno schema stabile per \texttt{streaming} e
-    \texttt{merge}, pi\`u uno schema dedicato al merge eterogeneo gi\`a definito
-    a livello di framework;
-    \item l'uso di ID canonici per gli algoritmi e di un livello \texttt{hash} nei percorsi dei risultati;
-    \item un'architettura di merge articolata su due livelli: confronto omogeneo
-    via CLI e valutazione pairwise eterogenea nel framework, entrambi fondati su
-    descrittori espliciti di contesto e strategia.
-\end{itemize}
+	\begin{itemize}
+	    \item la separazione netta tra gli algoritmi, l'I/O e il framework di misura;
+	    \item il formato binario compresso con loader per singola partizione;
+	    \item le tre modalità di run attive (\texttt{streaming}, \texttt{merge}, \texttt{merge\_heterogeneous});
+	    \item la serializzazione CSV con uno schema stabile per \texttt{streaming} e
+	    \texttt{merge}, più uno schema dedicato al merge eterogeneo esposto anche
+	    nel flusso end-to-end via CLI;
+	    \item l'uso di ID canonici per gli algoritmi e di un livello \texttt{hash} nei percorsi dei risultati;
+	    \item un'architettura di merge articolata su due livelli: confronto omogeneo
+	    via CLI e valutazione pairwise eterogenea end-to-end, entrambi fondati su
+	    descrittori espliciti di contesto e strategia.
+	\end{itemize}
 
 \section{TODOs}
 \begin{itemize}
     \item mancano le implementazioni Count-Min Sketch, Bloom Filter e Ring Bloom Filter;
-    \item estendere la surface sperimentale del merge eterogeneo a CLI e
-    orchestrazione batch delle campagne;
     \item assenza di un test dedicato ai limiti di costruzione di ProbabilisticCounting (\(L \in [1,31]\));
-    \item completare la campagna sperimentale sui tre assi principali:
-    hash mismatch, precision mismatch e topology amplification.
+    \item completare la campagna sperimentale sui due assi rimanenti del merge eterogeneo:
+    precision mismatch e topology amplification.
 \end{itemize}
