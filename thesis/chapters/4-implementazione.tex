@@ -680,6 +680,17 @@ partire dal riferimento seriale selezionato dal descriptor, mentre
 \texttt{baseline\_homogeneous} e \texttt{delta\_vs\_baseline} vengono valorizzati
 quando è fornito un contesto di baseline omogenea.
 
+Nel caso di HyperLogLog++, la strategia \texttt{reduce\_then\_merge} è
+implementata per i casi \texttt{recoverable}: l'evaluator riduce entrambi gli
+sketch alla precisione minima \(\min(k_{left}, k_{right})\) tramite
+\codepath{reducedTo(targetK)} e applica poi il merge nativo. Per lo stesso
+asse sperimentale è disponibile anche \texttt{unsafe\_naive\_merge} come
+controllo negativo, ottenuto riducendo i due sketch con la procedura naïve
+\codepath{reducedToNaive(targetK)} prima del merge.
+Questo stesso percorso è poi usato end-to-end nella campagna minima di
+\emph{precision mismatch} del Capitolo~\ref{chp:risultati}, dove il riferimento
+seriale e la baseline omogenea sono entrambi fissati alla precisione più bassa.
+
 \section{CLI e orchestrazione sperimentale}
 
 \subsection{CLI interattiva}
@@ -693,7 +704,7 @@ L'entry point è il \codepath{main.cpp} che istanzia \codepath{satp::cli::Cli}. 
 	    \item \texttt{set <param> <value>}: imposta un parametro della sessione. I parametri supportati sono \texttt{datasetPath}, \texttt{resultsNamespace}, \texttt{hashFunction}, \texttt{leftHashFunction}, \texttt{rightHashFunction}, \texttt{leftHashSeed}, \texttt{rightHashSeed}, \texttt{k}, \texttt{leftK}, \texttt{rightK}, \texttt{l}, \texttt{lLog}, \texttt{mergeStrategy}.
 	    \item \texttt{runstream <algo|all>}: esegue uno o più algoritmi in modalità \texttt{streaming} (metriche ai checkpoint \(t\) durante la scansione della partizione).
 	    \item \texttt{runmerge <algo|all>}: esegue benchmark di merge a coppie di partizioni \((0,1),(2,3),\dots\), confrontando stima da merge e stima seriale.
-	    \item \texttt{runmergehet <algo|all>}: esegue benchmark di merge eterogeneo; allo stato attuale è supportato end-to-end il solo caso \texttt{hllpp}.
+	    \item \texttt{runmergehet <algo|all>}: esegue benchmark di merge eterogeneo; allo stato attuale è supportato end-to-end il solo caso \texttt{hllpp}, sia per la campagna \emph{hash mismatch} sia per quella \emph{precision mismatch}.
 	    \item \texttt{quit}: termina la sessione interattiva.
 	\end{itemize}
 
@@ -730,10 +741,14 @@ configurazioni diverse.
 	campagne HLL++ di merge eterogeneo. Lo script costruisce una matrice su
 	\((n,d,seed)\), hash e seed locali sinistro/destro, precisioni
 	\texttt{leftK}/\texttt{rightK} e strategia di merge, genera i dataset quando
-	necessario e invia alla CLI payload con \texttt{runmergehet}.
+	necessario e invia alla CLI payload con \texttt{runmergehet}. Nella
+	configurazione attuale copre le due matrici minime usate nel Capitolo~\ref{chp:risultati}:
+	\emph{hash mismatch} e \emph{precision mismatch} per HyperLogLog++.
 
 	Per l'analisi finale del Capitolo~\ref{chp:risultati}, i grafici e le tabelle
-	sono prodotti in modo riproducibile all'interno di notebooks Jupyter.
+	sono prodotti in modo riproducibile all'interno di notebooks Jupyter, in
+	particolare \codepath{22\_ch5\_merge\_hllpp\_hash\_mismatch.ipynb} e
+	\codepath{23\_ch5\_merge\_hllpp\_precision\_mismatch.ipynb}.
 
 \section{Seed e riproducibilità}
 Il seed viene definito all'interno del dataset e viene propagato all'interno dell'intero framework.
@@ -788,8 +803,9 @@ Il test del framework \codepath{EvaluationFrameworkTest.cpp} verifica che:
     \texttt{strategy}, \texttt{validity}, \texttt{topology} e
     \texttt{baseline\_homogeneous};
     \item il percorso pairwise del merge eterogeneo nei casi
-    \texttt{valid}/\texttt{direct}, \texttt{invalid}/\texttt{reject} e nel
-    dispatch del caso \texttt{recoverable}.
+    \texttt{valid}/\texttt{direct}, \texttt{invalid}/\texttt{reject},
+    \texttt{recoverable}/\texttt{reduce\_then\_merge} e
+    \texttt{recoverable}/\texttt{unsafe\_naive\_merge}.
 \end{itemize}
 
 \section{Scelte progettuali e limiti attuali}
@@ -811,6 +827,6 @@ Per esplicitare in un'unica sezione le scelte progettuali, esse sono:
 \begin{itemize}
     \item mancano le implementazioni Count-Min Sketch, Bloom Filter e Ring Bloom Filter;
     \item assenza di un test dedicato ai limiti di costruzione di ProbabilisticCounting (\(L \in [1,31]\));
-    \item completare la campagna sperimentale sui due assi rimanenti del merge eterogeneo:
-    precision mismatch e topology amplification.
+    \item completare la campagna sperimentale sull'asse rimanente del merge eterogeneo:
+    topology amplification.
 \end{itemize}
