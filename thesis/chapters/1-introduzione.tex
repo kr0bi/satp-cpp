@@ -2,3 +2,92 @@
 
 \chapter{Introduzione}
 \label{chp:introduzione}
+
+\section{Contesto e motivazione}
+Nel mondo dei flussi di dati la stima del numero di elementi distinti è un
+servizio fondamentale per telemetria, osservabilità e sistemi di monitoraggio.
+Il conteggio esatto richiede memoria e tempo proporzionali al dominio, mentre
+le strutture riassuntive, indicate nel seguito come sketch, consentono aggiornamenti in tempo
+reale con occupazione di memoria compatta.
+Quando il flusso viene suddiviso su nodi distribuiti la fusione dei risultati
+diventa il solo modo praticabile per abbattere la latenza aggregando le
+stime locali, ma in questi scenari la fusione non è più un'operazione
+banale: dipende dalla semantica degli sketch, della funzione di hash e dei
+parametri di precisione impiegati su ciascun lato.
+
+\section{Problema affrontato}
+Questa tesi prende in esame il problema del conteggio approssimato degli
+elementi distinti attraverso più strutture riassuntive, con particolare
+attenzione alla famiglia derivata da HyperLogLog e con HyperLogLog++ come
+riferimento principale per la fusione. La domanda centrale è quando e come
+abbia senso fondere due strutture in presenza di eterogeneità, distinguendo
+tra casi \texttt{valid}, \texttt{recoverable} e \texttt{invalid}.
+Il problema non è inventare nuovi stimatori, ma comprendere il comportamento
+reale nel confronto tra algoritmi, tra funzioni di hash e tra parametri di
+precisione diversi, mettendo alla prova la fusione quando qualcosa si discosta
+dalla condizione ideale di omogeneità.
+
+\section{Obiettivi della tesi}
+Gli obiettivi concreti sono:
+\begin{itemize}
+    \item confrontare più algoritmi di conteggio distinti sotto una stessa
+    interfaccia, usando insiemi di dati con proprietà controllate e misure rigorose;
+    \item introdurre un'infrastruttura sperimentale che separi algoritmi,
+    funzioni di hash e catena di esecuzione;
+    \item caratterizzare il comportamento della fusione nei casi
+    omogenei e nelle varianti eterogenee;
+    \item individuare strategie pratiche per recuperare fusioni che nascono da
+    parametri diversi;
+    \item mantenere il codice e i risultati riproducibili per studi futuri.
+\end{itemize}
+
+\section{Domande di ricerca}
+La tesi cerca risposte a tre domande chiave:
+\begin{enumerate}
+    \item Come si comportano gli algoritmi di conteggio approssimato in un
+    insieme di dati a prefisso controllato quando si confrontano le stime dei
+    singoli sketch?
+    \item Quando la fusione di strutture riassuntive mantiene una semantica valida, quando
+    si può recuperare con una normalizzazione e quando invece resta invalida?
+    \item Quanto la scelta della funzione di hash e il parametro di precisione
+    influiscono sull'errore finale delle stime e sulla correttezza della fusione?
+\end{enumerate}
+
+\section{Approccio metodologico}
+Per rispondere a queste domande si è adottata una metodologia strutturata:
+si è generato un insieme di dati con prefisso costante in modo che il numero reale di
+elementi distinti cresca in modo prevedibile; si sono implementati gli
+algoritmi con un contratto comune che separa il loro stato interno dalle funzioni di hash;
+si è costruita un'infrastruttura di esperimenti che comprende la modalità di
+flusso e la fusione a coppie nel caso omogeneo, oltre a un ramo eterogeneo che registra
+strategie, validità e parametri dei due sketch coinvolti; si sono condotti
+esperimenti mirati a isolare il ruolo della funzione di hash, del parametro di precisione
+e delle condizioni di omogeneità o eterogeneità della fusione.
+
+\section{Contributi principali}
+I contributi che emergono da questa impostazione sono:
+\begin{itemize}
+    \item un insieme coeso di implementazioni per il conteggio approssimato dei distinti,
+    con particolare attenzione alla famiglia HyperLogLog, dotato di interfaccia comune e test dedicati;
+    \item un modulo dedicato alle funzioni di hash che rende semplice alternare splitmix64,
+    xxHash, Murmur e SipHash con gli stessi seed e parametri;
+    \item un'infrastruttura sperimentale che gestisce insiemi di dati compressi, configurazioni
+    multiple e produce risultati coerenti per flusso e fusione eterogenea;
+    \item una caratterizzazione sperimentale del comportamento dei singoli
+    algoritmi in modalità di flusso, con le due viste principali del comportamento della stima e con l'analisi del parametro di precisione;
+    \item la distinzione operativa tra casi \texttt{valid}, \texttt{recoverable} e \texttt{invalid}
+    nella fusione, con valutazione degli errori assoluti e relativi.
+\end{itemize}
+
+\section{Struttura della tesi}
+Il resto del documento è organizzato come segue.
+Il Capitolo~\ref{chp:background} presenta i fondamenti del conteggio approssimato,
+le famiglie di sketch e le metriche di errore.
+Il Capitolo~\ref{chp:stato-arte} riassume lo stato dell'arte con particolare
+attenzione alle proprietà di fusione e alle assunzioni sistemistiche.
+Il Capitolo~\ref{chp:implementazione_nuovo} descrive l'architettura software che
+implementa gli algoritmi, le funzioni di hash e i flussi di esperimenti.
+Il Capitolo~\ref{chp:risultati_nuovo} illustra i risultati in modalità di flusso e
+le analisi sulle fusioni omogenee ed eterogenee.
+Il Capitolo~\ref{chp:conclusioni} chiude con osservazioni finali e possibili
+sviluppi futuri per la piattaforma sperimentale.

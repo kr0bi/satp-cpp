@@ -1,0 +1,13 @@
+algorithm_label,param_name,param_value,rho,endpoint_mre
+HyperLogLog,k,10,1,0.0019631
+HyperLogLog,k,16,10,0.00359754
+HyperLogLog,k,16,100,0.002704
+HyperLogLog++,k,18,1,0.0013256
+HyperLogLog++,k,18,10,0.00156082
+HyperLogLog++,k,18,100,0.0011188
+LogLog,k,14,1,0.0027087
+LogLog,k,16,10,0.00404378
+LogLog,k,14,100,0.0081684
+Probabilistic Counting,L,20,1,0.8644393
+Probabilistic Counting,L,20,10,0.38902108
+Probabilistic Counting,L,16,100,0.2501848

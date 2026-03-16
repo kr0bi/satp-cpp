@@ -1,0 +1,665 @@
+\chapter{Risultati sperimentali}
+\label{chp:risultati_nuovo}
+
+In questo capitolo sono presentati i risultati sperimentali ottenuti con
+l'infrastruttura descritta nel Capitolo~\ref{chp:implementazione_nuovo}.
+La progressione segue il flusso reale del lavoro: prima la validazione del
+contesto sperimentale, poi i risultati in modalità di flusso, quindi l'analisi
+della fusione in condizioni omogenee ed eterogenee.
+
+\section{Introduzione al capitolo}
+
+Gli esperimenti hanno due obiettivi principali:
+\begin{itemize}
+    \item misurare il comportamento degli algoritmi su flussi di dati con cardinalità
+    reale nota in ogni prefisso;
+    \item caratterizzare la correttezza e il degrado della fusione quando il
+    contesto è omogeneo oppure eterogeneo.
+\end{itemize}
+
+La parte dedicata alla fusione è organizzata con un filo interpretativo unico:
+\texttt{valid}, \texttt{invalid}, \texttt{recoverable}.
+Questa distinzione permette di separare i casi in cui la fusione è
+semanticamente corretta dai casi in cui è necessario rifiutare la fusione o
+applicare una normalizzazione esplicita.
+
+\section{Validazione del contesto sperimentale}
+
+\subsection{Ambiente di test}
+
+I risultati sono stati ottenuti su un notebook Apple MacBook Pro 13'' (2020)
+con processore Apple M1, 16 GB di memoria ad accesso casuale (RAM) e unità a
+stato solido (SSD) da 512 GB con interfaccia Non-Volatile Memory Express
+(NVMe), oltre al sistema operativo macOS Sequoia
+15.7.2.
+La catena di compilazione utilizzata è:
+\begin{itemize}
+    \item CMake 4.2.3;
+    \item Apple Clang 17.0.0 (\texttt{clang-1700.0.13.5});
+    \item target \texttt{arm64-apple-darwin24.6.0}.
+\end{itemize}
+
+\subsection{Verifica empirica del dataset a prefisso costante}
+
+Gli esperimenti usano il dataset \texttt{prefix\_constant\_rho} con:
+\[
+n=10^7,\qquad p=50,\qquad seed=21041998,\qquad
+d \in \{10^5,2\cdot 10^5,5\cdot 10^5,10^6,2\cdot 10^6,5\cdot 10^6,10^7\}
+\]
+\[
+\rho=\frac{n}{d}\in\{100,50,20,10,5,2,1\}
+\]
+I sette valori di \(\rho\) corrispondono ai rapporti tra elementi processati e
+distinti usati nel resto del capitolo.
+
+La validazione empirica del comportamento del dataset è mostrata nelle
+Figure~\ref{fig:ch5-dataset-rho-ratio-linear} e
+\ref{fig:ch5-dataset-rho-ratio-boundary}.
+La prima figura mostra il rapporto \(\rho_t=t/F_0(t)\) sui punti di controllo
+effettivamente usati nella modalità di flusso, mentre la seconda isola i soli
+punti di bordo dei blocchi, nei quali il rapporto assume il valore costante
+previsto dalla costruzione.
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=0.96\textwidth]{figures/results/ratio_processed_vs_distinct_streaming_linear.png}
+    \caption{Rapporto \(\rho_t=t/F_0(t)\) osservato sui punti di controllo del dataset \texttt{prefix\_constant\_rho}}
+    \label{fig:ch5-dataset-rho-ratio-linear}
+\end{figure}
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=0.96\textwidth]{figures/results/ratio_processed_vs_distinct_streaming_boundary_linear.png}
+    \caption{Rapporto \(\rho_t\) osservato ai bordi di blocco del dataset \texttt{prefix\_constant\_rho}}
+    \label{fig:ch5-dataset-rho-ratio-boundary}
+\end{figure}
+
+\subsection{Scelta del seed}
+
+Una verifica preliminare, svolta nelle prime iterazioni degli esperimenti, ha
+indicato che l'effetto del seed resta secondario rispetto alle differenze tra
+algoritmi e tra regimi di fusione.
+Per questo motivo gli esperimenti principali fissano un seed unico pari a
+\(21041998\).
+
+I risultati in formato valori separati da virgola (CSV) di questa verifica non
+sono presenti nell'insieme di dati rigenerato più di recente.
+Per questo motivo la sezione conserva solo il ruolo di giustificazione
+metodologica della scelta del seed e non viene trattata come sezione
+quantitativa autonoma.
+
+\section{Risultati in modalità di flusso}
+
+\subsection{Impostazione degli esperimenti di flusso}
+
+Gli esperimenti di flusso usano il dataset:
+\begin{center}
+\small
+\codepath{datasets/prefix_constant_rho/dataset_n_10000000_d_<d>_p_50_s_21041998.bin}
+\end{center}
+
+I risultati sono salvati in:
+\begin{center}
+\small
+\codepath{results/prefix_constant_rho/streaming/.../results_streaming.csv}
+\end{center}
+
+Le metriche principali osservate sono:
+\begin{itemize}
+    \item cardinalità reale del prefisso \(\,F_0(t)\,\) in
+    \texttt{f0\_mean\_t};
+    \item stima media \(\,\hat{F}_0(t)\,\) in \texttt{f0\_hat\_mean\_t};
+    \item dispersione della stima con bande \(\mu \pm \sigma\);
+    \item errore relativo medio ai punti finali osservati, usato come sintesi
+    comparativa tra algoritmi.
+\end{itemize}
+
+\subsection{Stima in funzione della cardinalità reale del prefisso}
+\label{sec:ch5-streaming-f0}
+
+Questa analisi corrisponde ai grafici precedentemente indicati come
+analisi A.
+L'ascissa riporta la cardinalità reale \(F_0(t)\), l'ordinata la stima
+\(\hat{F}_0(t)\), e i pannelli sono separati per ciascun valore di \(\rho\).
+
+\begin{figure}[p]
+    \centering
+    \begin{subfigure}[t]{0.49\textwidth}
+        \centering
+        \includegraphics[width=\linewidth]{figures/results/typeA_prefix_constant_rho_linear.png}
+        \caption{Scala lineare}
+        \label{fig:ch5-stream-f0-all-linear}
+    \end{subfigure}
+    \hfill
+    \begin{subfigure}[t]{0.49\textwidth}
+        \centering
+        \includegraphics[width=\linewidth]{figures/results/typeA_prefix_constant_rho_loglog.png}
+        \caption{Scala logaritmica}
+        \label{fig:ch5-stream-f0-all-loglog}
+    \end{subfigure}
+    \caption{Stima rispetto alla cardinalità reale del prefisso, tutti gli algoritmi}
+    \label{fig:ch5-stream-f0-all}
+\end{figure}
+
+\begin{figure}[p]
+    \centering
+    \begin{subfigure}[t]{0.49\textwidth}
+        \centering
+        \includegraphics[width=\linewidth]{figures/results/typeA_prefix_constant_rho_hll_hllpp_linear.png}
+        \caption{Scala lineare}
+        \label{fig:ch5-stream-f0-hll-linear}
+    \end{subfigure}
+    \hfill
+    \begin{subfigure}[t]{0.49\textwidth}
+        \centering
+        \includegraphics[width=\linewidth]{figures/results/typeA_prefix_constant_rho_hll_hllpp_loglog.png}
+        \caption{Scala logaritmica}
+        \label{fig:ch5-stream-f0-hll-loglog}
+    \end{subfigure}
+    \caption{Stima rispetto alla cardinalità reale del prefisso, confronto HyperLogLog e HyperLogLog++}
+    \label{fig:ch5-stream-f0-hll}
+\end{figure}
+
+\subsection{Stima in funzione del rapporto tra elementi processati e distinti}
+\label{sec:ch5-streaming-rho}
+
+Questa analisi corrisponde ai grafici precedentemente indicati come
+analisi B.
+Per ciascun valore obiettivo
+\[
+F_0^{\ast} \in \{1000,2000,5000,10000,20000,50000,100000\}
+\]
+si estrae per interpolazione il punto la cui ascissa è il rapporto
+\[
+\rho_t=\frac{t}{F_0(t)}
+\]
+e la cui ordinata è la stima corrispondente.
+
+\begin{figure}[p]
+    \centering
+    \begin{subfigure}[t]{0.49\textwidth}
+        \centering
+        \includegraphics[width=\linewidth]{figures/results/typeB_prefix_constant_rho_all_linear.png}
+        \caption{Scala lineare}
+        \label{fig:ch5-stream-rho-all-linear}
+    \end{subfigure}
+    \hfill
+    \begin{subfigure}[t]{0.49\textwidth}
+        \centering
+        \includegraphics[width=\linewidth]{figures/results/typeB_prefix_constant_rho_all_loglog.png}
+        \caption{Scala logaritmica}
+        \label{fig:ch5-stream-rho-all-loglog}
+    \end{subfigure}
+    \caption{Stima rispetto al rapporto tra elementi processati e distinti, tutti gli algoritmi}
+    \label{fig:ch5-stream-rho-all}
+\end{figure}
+
+\begin{figure}[p]
+    \centering
+    \begin{subfigure}[t]{0.49\textwidth}
+        \centering
+        \includegraphics[width=\linewidth]{figures/results/typeB_prefix_constant_rho_hll_hllpp_linear.png}
+        \caption{Scala lineare}
+        \label{fig:ch5-stream-rho-hll-linear}
+    \end{subfigure}
+    \hfill
+    \begin{subfigure}[t]{0.49\textwidth}
+        \centering
+        \includegraphics[width=\linewidth]{figures/results/typeB_prefix_constant_rho_hll_hllpp_loglog.png}
+        \caption{Scala logaritmica}
+        \label{fig:ch5-stream-rho-hll-loglog}
+    \end{subfigure}
+    \caption{Stima rispetto al rapporto tra elementi processati e distinti, confronto HyperLogLog e HyperLogLog++}
+    \label{fig:ch5-stream-rho-hll}
+\end{figure}
+
+\subsection{Sintesi quantitativa della modalità di flusso}
+
+Le osservazioni principali emerse dai riassunti ai punti finali osservati sono:
+\begin{itemize}
+    \item nella vista rispetto alla cardinalità reale del prefisso,
+    HyperLogLog e HyperLogLog++ risultano quasi sovrapposti, con errore
+    relativo medio ai punti finali di circa \(0.00618\);
+    \item nella stessa vista, LogLog segue con errore medio di circa
+    \(0.00708\), mentre Probabilistic Counting è nettamente più instabile con
+    errore medio di circa \(0.770\);
+    \item nella vista rispetto al rapporto tra elementi processati e distinti,
+    HyperLogLog++ è l'algoritmo più accurato con errore medio di circa
+    \(3.95\cdot 10^{-4}\);
+    \item HyperLogLog segue con errore medio di circa \(2.08\cdot 10^{-3}\);
+    \item nella stessa vista, Probabilistic Counting ha errore medio di circa
+    \(0.346\);
+    \item nella seconda vista, l'errore medio più alto è osservato per LogLog,
+    con valore di circa \(1.455\).
+\end{itemize}
+
+Le Figure~\ref{fig:ch5-stream-f0-hll} e \ref{fig:ch5-stream-rho-hll}
+confermano che HyperLogLog++ mantiene il comportamento più stabile nelle due
+viste complementari del problema.
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=0.98\textwidth]{figures/results/streaming_endpoint_mre_summary.png}
+    \caption{Sintesi degli errori relativi medi ai punti finali osservati nella modalità di flusso. Il pannello sinistro confronta tutti gli algoritmi, mentre quello destro isola HyperLogLog++, HyperLogLog e LogLog}
+    \label{fig:ch5-stream-endpoint-summary}
+\end{figure}
+
+La Figura~\ref{fig:ch5-stream-endpoint-summary} riassume in forma compatta la
+stessa evidenza: Probabilistic Counting resta nettamente separato dagli altri
+algoritmi, mentre HyperLogLog++ mantiene il comportamento più regolare e
+accurato nel confronto complessivo.
+
+\subsection{Variazione del parametro di precisione nella modalità di flusso}
+
+Per isolare l'effetto del parametro di precisione, è stato eseguito un secondo
+insieme di esperimenti di flusso in cui sono stati fissati lo stesso insieme di
+dati, lo stesso seed e la stessa funzione di hash, variando solo il parametro
+interno di ciascun
+algoritmo.
+L'impostazione comune è:
+\begin{itemize}
+    \item funzione di hash \texttt{splitmix64}
+    \item seed fissato a \(21041998\)
+    \item tre regimi rappresentativi con \(\rho \in \{1,10,100\}\)
+    \item HyperLogLog++ con \(k \in \{8,10,12,14,16,18\}\)
+    \item HyperLogLog e LogLog con \(k \in \{4,6,8,10,12,14,16\}\) e \(L=32\)
+    \item Probabilistic Counting con \(L \in \{4,8,12,16,20,24,28,31\}\)
+\end{itemize}
+
+L'analisi usa tre rappresentazioni complementari.
+La prima riassume l'errore relativo medio al punto finale per ogni coppia di
+valori tra \(\rho\) e il parametro.
+La seconda mantiene la forma del confronto rispetto alla cardinalità reale del
+prefisso, sostituendo però il confronto tra algoritmi con il confronto tra
+valori del parametro per uno stesso algoritmo.
+La terza fissa invece una cardinalità obiettivo \(F_0^\ast\) e osserva come
+varia la stima prodotta ai diversi valori del parametro.
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=0.98\textwidth]{figures/results/streaming_precision_sweep_endpoint_heatmaps.png}
+    \caption{Analisi del parametro di precisione nella modalità di flusso. Ogni pannello mostra, per un algoritmo, l'errore relativo medio al punto finale al variare del parametro e di \(\rho\)}
+    \label{fig:ch5-stream-precision-heatmaps}
+\end{figure}
+
+\begin{figure}[p]
+    \centering
+    \begin{subfigure}[t]{0.78\textwidth}
+        \centering
+        \includegraphics[height=0.33\textheight,keepaspectratio]{figures/results/streaming_precision_sweep_typeA_grid_linear.png}
+        \caption{Scala lineare}
+        \label{fig:ch5-stream-precision-typea-linear}
+    \end{subfigure}
+
+    \vspace{0.6em}
+
+    \begin{subfigure}[t]{0.78\textwidth}
+        \centering
+        \includegraphics[height=0.33\textheight,keepaspectratio]{figures/results/streaming_precision_sweep_typeA_grid_loglog.png}
+        \caption{Scala logaritmica}
+        \label{fig:ch5-stream-precision-typea-loglog}
+    \end{subfigure}
+    \caption{Confronto rispetto alla cardinalità reale del prefisso nell'analisi del parametro di precisione. Le righe corrispondono agli algoritmi e le colonne ai tre valori di \(\rho\)}
+    \label{fig:ch5-stream-precision-typea}
+\end{figure}
+
+\begin{figure}[p]
+    \centering
+    \begin{subfigure}[t]{0.78\textwidth}
+        \centering
+        \includegraphics[height=0.33\textheight,keepaspectratio]{figures/results/streaming_precision_sweep_typeB_grid_linear.png}
+        \caption{Scala lineare}
+        \label{fig:ch5-stream-precision-typeb-linear}
+    \end{subfigure}
+
+    \vspace{0.6em}
+
+    \begin{subfigure}[t]{0.78\textwidth}
+        \centering
+        \includegraphics[height=0.33\textheight,keepaspectratio]{figures/results/streaming_precision_sweep_typeB_grid_loglog.png}
+        \caption{Scala logaritmica}
+        \label{fig:ch5-stream-precision-typeb-loglog}
+    \end{subfigure}
+    \caption{Confronto a cardinalità obiettivo fissata nell'analisi del parametro di precisione. Le righe corrispondono agli algoritmi e le colonne ai tre valori di \(\rho\)}
+    \label{fig:ch5-stream-precision-typeb}
+\end{figure}
+
+\begin{table}[htbp]
+    \centering
+    \footnotesize
+    \setlength{\tabcolsep}{4pt}
+    \renewcommand{\arraystretch}{1.1}
+    \begin{tabular}{|l|c|c|c|c|}
+        \hline
+        Algoritmo & Complessivo & \(\rho=1\) & \(\rho=10\) & \(\rho=100\) \\
+        \hline
+        HyperLogLog++ & \(k=18\) & \(k=18\) & \(k=18\) & \(k=18\) \\
+        \hline
+        HyperLogLog & \(k=16\) & \(k=10\) & \(k=16\) & \(k=16\) \\
+        \hline
+        LogLog & \(k=14\) & \(k=14\) & \(k=16\) & \(k=14\) \\
+        \hline
+        Probabilistic Counting & \(L=20\) & \(L=20\) & \(L=20\) & \(L=16\) \\
+        \hline
+    \end{tabular}
+    \caption{Miglior parametro osservato per algoritmo nell'analisi del parametro di precisione in modalità di flusso}
+    \label{tab:ch5-stream-precision-best}
+\end{table}
+
+Le Figure~\ref{fig:ch5-stream-precision-heatmaps},
+\ref{fig:ch5-stream-precision-typea} e
+\ref{fig:ch5-stream-precision-typeb} mostrano quattro comportamenti distinti.
+
+\begin{itemize}
+    \item HyperLogLog++ è l'algoritmo con andamento più regolare: nel dominio
+    osservato i valori migliori si concentrano stabilmente nella parte alta
+    dell'intervallo esplorato, e il parametro migliore resta sempre il valore
+    \(k=18\) con errore
+    medio globale al punto finale pari a circa \(0.00134\) nel riepilogo
+    complessivo;
+    \item HyperLogLog beneficia anch'esso dell'aumento di \(k\), ma in modo
+    meno uniforme: il valore migliore medio coincide con \(k=16\), mentre per
+    \(\rho=1\) il minimo osservato è già raggiunto dal valore \(k=10\) nel
+    sottoinsieme esaminato;
+    \item LogLog mostra il comportamento meno monotono tra gli algoritmi a
+    registri: il valore medio migliore coincide con \(k=14\), mentre \(k=16\) migliora
+    solo il caso intermedio \(\rho=10\) e peggiora invece il caso
+    \(\rho=100\) nel confronto diretto;
+    \item Probabilistic Counting resta nettamente separato dagli altri
+    algoritmi per tutto il dominio osservato: il miglior compromesso medio è
+    ottenuto con \(L=20\) ma l'errore finale resta comunque elevato, con media
+    intorno a \(0.592\) e valore superiore a \(0.864\) nel caso \(\rho=1\) nel
+    riepilogo finale.
+\end{itemize}
+
+Questo esperimento aggiunge un'informazione che i confronti precedenti non
+mostravano direttamente.
+Non basta sapere quale algoritmo sia mediamente più accurato: nel dominio
+osservato è altrettanto importante capire se l'aumento del parametro produca un
+miglioramento regolare oppure un comportamento irregolare.
+In questo senso HyperLogLog++ risulta il candidato più robusto anche rispetto
+alla scelta del parametro, mentre LogLog e Probabilistic Counting mostrano una
+sensibilità molto più marcata.
+
+\section{Analisi della fusione}
+
+\subsection{Filo interpretativo: casi \texttt{valid}, \texttt{invalid}, \texttt{recoverable}}
+
+Negli esperimenti di fusione il criterio interpretativo è separato in tre classi:
+\begin{itemize}
+    \item \texttt{valid}: fusione semanticamente corretta in modo diretto;
+    \item \texttt{invalid}: fusione non semanticamente corretta;
+    \item \texttt{recoverable}: fusione non corretta in modo diretto ma
+    recuperabile con normalizzazione esplicita.
+\end{itemize}
+
+Questa classificazione è usata come riferimento comune per leggere prima il
+controllo omogeneo e poi i casi eterogenei.
+
+\subsection{Controllo nel caso omogeneo}
+
+Il controllo omogeneo fissa algoritmo, hash, seed e precisione identici nei due
+lati della coppia.
+Nella matrice minima:
+\[
+\rho \in \{1,10,100\},\qquad
+k \in \{10,14,18\}
+\]
+sono state analizzate 36 configurazioni e 900 coppie, combinando i tre valori
+di \(k\), i tre regimi di \(\rho\) e le quattro funzioni di hash disponibili.
+
+Il risultato è:
+\[
+\Delta_{abs}=0,\qquad \Delta_{rel}=0
+\]
+in tutte le coppie.
+
+\begin{table}[htbp]
+    \centering
+    \small
+    \setlength{\tabcolsep}{6pt}
+    \renewcommand{\arraystretch}{1.1}
+    \begin{tabular}{|r|r|r|r|r|r|r|}
+        \hline
+        \(\rho\) & \(d\) & Configurazioni & Coppie totali & Coppie con delta \(\neq 0\) & Max \(\Delta_{abs}\) & Max \(\Delta_{rel}\) \\
+        \hline
+        1 & \(10^7\) & 12 & 300 & 0 & 0 & 0 \\
+        \hline
+        10 & \(10^6\) & 12 & 300 & 0 & 0 & 0 \\
+        \hline
+        100 & \(10^5\) & 12 & 300 & 0 & 0 & 0 \\
+        \hline
+    \end{tabular}
+    \caption{Sintesi del controllo omogeneo di HyperLogLog++}
+    \label{tab:ch5-merge-homo-summary}
+\end{table}
+
+Il controllo omogeneo chiude il caso \texttt{valid} e fornisce la base per
+attribuire gli scostamenti successivi ai soli fattori di eterogeneità.
+
+\section{Fusione eterogenea: casi \texttt{invalid}}
+
+\subsection{Esperimento su disallineamento della funzione di hash}
+
+Il primo esperimento eterogeneo riguarda il disallineamento della funzione di
+hash in HyperLogLog++.
+La configurazione usa:
+\[
+n=10^7,\qquad p=50,\qquad seed=21041998,\qquad
+d\in\{10^5,10^6,10^7\},\qquad \rho\in\{100,10,1\}
+\]
+con precisione fissata a \(k=14\) e strategie
+\texttt{direct}, \texttt{reject}, \texttt{unsafe\_naive\_merge}.
+
+Sono stati prodotti 72 file in formato valori separati da virgola (CSV), per
+un totale di 1800 righe:
+\begin{itemize}
+    \item 300 coppie nel controllo omogeneo;
+    \item 750 coppie \texttt{invalid} con \texttt{reject};
+    \item 750 coppie \texttt{invalid} con \texttt{unsafe\_naive\_merge}.
+\end{itemize}
+
+\begin{figure}[htbp]
+    \centering
+    \begin{subfigure}[t]{0.98\textwidth}
+        \centering
+        \includegraphics[width=\linewidth]{figures/results/merge_hpp_hash_mismatch_overview.png}
+        \caption{Controllo omogeneo e andamento medio della fusione forzata nei casi \texttt{invalid}}
+        \label{fig:ch5-hash-mismatch-overview}
+    \end{subfigure}
+
+    \vspace{0.8em}
+
+    \begin{subfigure}[t]{0.78\textwidth}
+        \centering
+        \includegraphics[width=\linewidth]{figures/results/merge_hpp_hash_mismatch_unsafe_heatmap.png}
+        \caption{Errore relativo medio della fusione forzata per scenario e \(\rho\)}
+        \label{fig:ch5-hash-mismatch-heatmap}
+    \end{subfigure}
+    \caption{Esperimento di fusione eterogenea con disallineamento della funzione di hash}
+    \label{fig:ch5-hash-mismatch}
+\end{figure}
+
+Nella tabella seguente, \(\overline{\varepsilon}_{merge}\) e
+\(\overline{\varepsilon}_{serial}\) indicano rispettivamente l'errore relativo
+medio della fusione e del riferimento seriale.
+La colonna finale riporta invece il degrado medio, cioè la media del rapporto
+punto per punto tra errore della fusione ed errore del riferimento seriale.
+Le etichette \texttt{seed\_xx} e \texttt{seed\_murmur} indicano un
+disallineamento di seed all'interno della stessa famiglia di hash, mentre
+\texttt{family} e \texttt{family\_rev} indicano il confronto tra famiglie
+diverse nelle due direzioni.
+
+\begin{table}[htbp]
+    \centering
+    \small
+    \setlength{\tabcolsep}{5pt}
+    \renewcommand{\arraystretch}{1.1}
+    \begin{tabular}{|l|r|r|r|r|r|}
+        \hline
+        Scenario & Coppie & \(\overline{\varepsilon}_{merge}\) & \(\overline{\varepsilon}_{serial}\) & \(\max \varepsilon_{merge}\) & Degrado medio \\
+        \hline
+        \texttt{ctrl} & 300 & 0.006233 & 0.006233 & 0.025913 & 1.00 \\
+        \hline
+        \texttt{seed\_xx} & 75 & 0.342374 & 0.007436 & 0.969548 & 49.45 \\
+        \hline
+        \texttt{seed\_xx\_rev} & 75 & 0.343830 & 0.010076 & 0.969548 & 28.82 \\
+        \hline
+        \texttt{seed\_murmur} & 75 & 0.347522 & 0.004836 & 0.984223 & 206.46 \\
+        \hline
+        \texttt{seed\_murmur\_rev} & 75 & 0.348319 & 0.004606 & 0.984223 & 307.18 \\
+        \hline
+        \texttt{family} & 225 & 0.352037 & 0.007436 & 1.009634 & 50.36 \\
+        \hline
+        \texttt{family\_rev} & 225 & 0.352802 & 0.005832 & 1.009634 & 130.76 \\
+        \hline
+    \end{tabular}
+    \caption{Sintesi globale della fusione eterogenea con disallineamento della funzione di hash}
+    \label{tab:ch5-hash-mismatch-summary}
+\end{table}
+
+Nei casi \texttt{invalid}, la fusione forzata non produce una semplice perdita
+graduale ma un degrado strutturale.
+Per \(\rho=1\) l'errore relativo medio raggiunge valori prossimi o superiori a
+1, con massimo 1.009634.
+La strategia \texttt{reject} mantiene invece tracciabile il caso incompatibile
+senza introdurre una fusione semanticamente scorretta.
+
+\section{Fusione eterogenea: casi \texttt{recoverable}}
+
+\subsection{Esperimento su disallineamento di precisione}
+
+Il secondo esperimento eterogeneo usa HyperLogLog++ con semantica di hash
+costante e precisioni differenti tra lato sinistro e lato destro.
+Le coppie di precisione sono:
+\[
+(k_{left},k_{right}) \in
+\{(10,14),(14,10),(10,18),(18,10),(14,18),(18,14)\}
+\]
+con strategie \texttt{reject}, \texttt{unsafe\_naive\_merge},
+\texttt{reduce\_then\_merge}.
+
+Sono stati prodotti 54 file in formato valori separati da virgola (CSV), per
+un totale di 1350 righe:
+\begin{itemize}
+    \item 450 coppie \texttt{recoverable} con \texttt{reject};
+    \item 450 coppie \texttt{recoverable} con \texttt{unsafe\_naive\_merge};
+    \item 450 coppie \texttt{recoverable} con \texttt{reduce\_then\_merge}.
+\end{itemize}
+
+\subsection{Correttezza della normalizzazione \texttt{reduce\_then\_merge}}
+
+Nei casi \texttt{recoverable} la normalizzazione alla precisione minima produce
+coincidenza tra stima da fusione e riferimento seriale.
+La stessa coincidenza è osservata anche rispetto al riferimento omogeneo alla
+precisione più bassa.
+
+\begin{figure}[htbp]
+    \centering
+    \begin{subfigure}[t]{0.98\textwidth}
+        \centering
+        \includegraphics[width=\linewidth]{figures/results/merge_hpp_precision_mismatch_overview.png}
+        \caption{Confronto tra \texttt{reduce\_then\_merge} e \texttt{unsafe\_naive\_merge}}
+        \label{fig:ch5-precision-mismatch-overview}
+    \end{subfigure}
+
+    \vspace{0.8em}
+
+    \begin{subfigure}[t]{0.78\textwidth}
+        \centering
+        \includegraphics[width=\linewidth]{figures/results/merge_hpp_precision_mismatch_unsafe_heatmap.png}
+        \caption{Errore relativo medio della fusione forzata per gruppo di precisioni e \(\rho\)}
+        \label{fig:ch5-precision-mismatch-heatmap}
+    \end{subfigure}
+    \caption{Esperimento di fusione eterogenea con disallineamento di precisione}
+    \label{fig:ch5-precision-mismatch}
+\end{figure}
+
+Anche nella tabella seguente, l'ultima colonna riporta il degrado medio, cioè
+la media del rapporto punto per punto tra errore della fusione ed errore del
+riferimento seriale.
+
+\begin{table}[htbp]
+    \centering
+    \small
+    \setlength{\tabcolsep}{5pt}
+    \renewcommand{\arraystretch}{1.1}
+    \begin{tabular}{|l|r|r|r|r|r|}
+        \hline
+        Strategia & Coppie & \(\overline{\varepsilon}_{merge}\) & \(\overline{\varepsilon}_{serial}\) & \(\max \varepsilon_{merge}\) & Degrado medio \\
+        \hline
+        \texttt{reject} & 450 & -- & 0.016651 & -- & -- \\
+        \hline
+        \texttt{unsafe\_naive\_merge} & 450 & 0.363882 & 0.016651 & 1.061378 & 32.37 \\
+        \hline
+        \texttt{reduce\_then\_merge} & 450 & 0.016651 & 0.016651 & 0.057418 & 1.00 \\
+        \hline
+    \end{tabular}
+    \caption{Sintesi globale della fusione eterogenea con disallineamento di precisione}
+    \label{tab:ch5-precision-mismatch-summary}
+\end{table}
+
+\subsection{Degrado della fusione forzata nel caso \texttt{recoverable}}
+
+Senza normalizzazione, la fusione forzata mostra un degrado marcato:
+\begin{itemize}
+    \item per \(\rho=100\) errore medio tra 0.0081 e 0.0290;
+    \item per \(\rho=10\) errore medio tra 0.0498 e 0.0563;
+    \item per \(\rho=1\) errore medio tra 0.9471 e 1.0614.
+\end{itemize}
+
+Il caso peggiore è nel gruppo \texttt{10 vs 14} con \(\rho=1\) dove
+l'errore medio raggiunge 1.061378.
+Con \texttt{reduce\_then\_merge}, invece, il comportamento torna coerente con il
+riferimento omogeneo alla precisione comune più bassa.
+
+\section{Discussione complessiva}
+
+I risultati consolidano tre punti.
+
+Il primo punto riguarda la modalità di flusso: HyperLogLog++ mantiene il quadro
+più stabile tra gli algoritmi analizzati, con vantaggio chiaro sulla seconda
+vista legata al rapporto tra elementi processati e distinti.
+La nuova analisi del parametro di precisione rafforza questa lettura, perché
+mostra che l'algoritmo è anche quello con andamento più regolare al variare del
+parametro interno.
+Nella stessa analisi, HyperLogLog converge verso \(k=16\), LogLog mostra un
+ottimo intermedio intorno a \(k=14\), mentre Probabilistic Counting resta
+instabile anche nel suo punto migliore.
+
+Il secondo punto riguarda la fusione omogenea: quando il caso è \texttt{valid},
+le stime da fusione e seriali coincidono in modo sistematico nel dominio
+misurato.
+
+Il terzo punto riguarda la fusione eterogenea: nei casi \texttt{invalid} emerge
+un degrado strutturale, mentre nei casi \texttt{recoverable} la normalizzazione
+esplicita riporta il comportamento al riferimento corretto.
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=0.98\textwidth]{figures/results/merge_hpp_cross_case_summary.png}
+    \caption{Sintesi trasversale dei casi osservati nella fusione di HyperLogLog++. Il pannello sinistro confronta i casi a livello globale, mentre quello destro mostra come il degrado varia al variare di \(\rho\)}
+    \label{fig:ch5-merge-cross-case-summary}
+\end{figure}
+
+In questo senso gli esperimenti confermano quanto assunto in letteratura sulle
+condizioni di compatibilità della fusione e, allo stesso tempo, mostrano che
+l'infrastruttura realizzata consente di analizzare in modo sistematico nuovi scenari
+eterogenei. La Figura~\ref{fig:ch5-merge-cross-case-summary} rende evidente in
+un unico quadro la differenza tra i tre regimi osservati: controllo omogeneo,
+casi non validi con hash diverso e caso recuperabile con disallineamento di
+precisione.
+
+\section{Conclusione del capitolo}
+
+Il capitolo ha presentato una progressione completa dagli esperimenti di flusso
+agli esperimenti di fusione.
+Dopo la verifica del contesto sperimentale, il confronto tra algoritmi è stato
+esteso anche alla variazione del parametro di precisione, mettendo in evidenza
+regolarità e irregolarità che non emergono dal solo confronto a parametri
+fissati.
+Successivamente, il processo di fusione è stato analizzato in tre regimi
+semantici distinti:
+\texttt{valid}, \texttt{invalid}, \texttt{recoverable}.
+Questa impostazione rende i risultati leggibili in modo uniforme e prepara in
+modo diretto la discussione conclusiva della tesi.

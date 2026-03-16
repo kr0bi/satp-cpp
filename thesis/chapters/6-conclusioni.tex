@@ -1,10 +1,107 @@
 \chapter{Conclusioni}
 \label{chp:conclusioni}
 
-Volendo idea: sarebbe da prendere i dati in una stream continua e fare misurazione real-time di quello che
-accade, ovviamente non si può sapere il valore esatto in questo caso.
+\section{Richiamo del problema}
+Il conteggio approssimato degli elementi distinti nei flussi di dati è diventato
+un servizio critico per osservabilità, telemetria e analisi rapida in ambienti
+distribuiti. Le strutture riassuntive a registri, indicate nel seguito come
+sketch, in particolare quelle della famiglia HyperLogLog
+(con HyperLogLog++ come riferimento principale), permettono di mantenere stime
+compatte, ma quando i dati vengono prodotti da nodi eterogenei la fusione delle
+stime locali perde immediatamente la semplicità semantica della fusione per
+massimo registro per registro. La tesi ha quindi chiesto quando la fusione resta
+valida e quando invece
+è necessario rifiutarla o introdurre trasformazioni esplicite.
 
-Però si potrebbe invece fare che la stream esiste già però vengono dati un valore alla volta, in modo tale
-da avere effettivamente i valori.
+\section{Sintesi dei risultati principali}
+I risultati del Capitolo~\ref{chp:risultati_nuovo} si sviluppano su tre livelli.
+La modalità di flusso mostra che, con un insieme di dati a prefisso costante, HyperLogLog++
+mantiene la stima più regolare e l'errore finale più basso sia rispetto alla
+cardinalità reale sia rispetto al rapporto osservato tra elementi processati e
+distinti descritto da \(\rho_t=t/F_0(t)\). HyperLogLog si
+comporta in modo analogo ma con saturazioni in alcuni regimi e LogLog ha variazioni
+più marcate; Probabilistic Counting resta lontano dal fronte per la sensibilità
+del parametro \(L\) nei casi osservati. Il controllo omogeneo della fusione conferma che lo spazio delle
+configurazioni di riferimento è privo di errori e offre un punto stabile di confronto.
+L'analisi eterogenea mostra che i disallineamenti della funzione di hash
+appartengono alla classe \texttt{invalid}: la fusione forzata vale solo come
+esperimento negativo e produce errori consistenti, mentre il disallineamento di
+precisione appartiene alla classe \texttt{recoverable} grazie al
+reduce\_then\_merge che normalizza entrambi gli sketch alla precisione più bassa.
+Le mappe di calore del parametro, insieme alla sintesi basata su \(\Delta_{abs}\) e
+\(\Delta_{rel}\) rendono evidente quanto la funzione di hash e la dimensione dei
+registri guidino il degrado.
 
-Pensare anche all'implementazione di un sistema reale di streaming di dati come Apache Kafka.
+\section{Risposte alle domande di ricerca}
+\begin{enumerate}
+    \item Gli algoritmi di conteggio si comportano in modo prevedibile sull'insieme di dati
+    a prefisso controllato: HyperLogLog++ emerge come riferimento stabile, mentre
+    HyperLogLog e LogLog mostrano oscillazioni maggiori ma ancora comprensibili in
+    funzione dei parametri \(k\) e \(\rho\) nei diversi regimi osservati. I grafici di tipo A e B delineano chiaramente i
+    regimi di accuratezza.
+    \item La fusione è classificata come \texttt{valid} quando funzione di hash,
+    precisione e seed coincidono tra
+    gli sketch; è \texttt{recoverable} quando basta una riduzione esplicita della
+    precisione per tornare in linea; è \texttt{invalid} quando le funzioni di hash differiscono
+    e le registrazioni non rappresentano più lo stesso spazio semantico, causando
+    errori strutturali.
+    \item La scelta della funzione di hash e del parametro di precisione determina
+    l'errore relativo finale e la correttezza della fusione: le mappe di calore e
+    la variazione sistematica del parametro mostrano che valori troppo piccoli di
+    \(k\) o di \(L\) fanno degradare la stima, mentre la non omogeneità della
+    funzione di hash compromette direttamente la correttezza della fusione.
+\end{enumerate}
+
+\section{Contributi della tesi}
+\begin{itemize}
+    \item Una trattazione completa dello spazio delle strutture riassuntive di tipo
+    HyperLogLog con interfaccia comune e test di regressione che permettono di confrontare implementazioni
+    differenti in modo uniforme.
+    \item Un modulo dedicato alle funzioni di hash che rende semplice alternare splitmix64, xxHash,
+    Murmur e SipHash, mantenendo gli stessi seed e parametri per ogni esperimento.
+    \item Un'infrastruttura sperimentale modulare che gestisce insiemi di dati compressi,
+    produce risultati strutturati per la modalità di flusso e per la fusione e
+    traccia strategie, validità e parametri.
+    \item La caratterizzazione sperimentale del comportamento di flusso, comprensiva
+    delle sintesi di tipo A e di tipo B e della variazione sistematica dei parametri di precisione.
+    \item La distinzione operativa tra casi \texttt{valid}, \texttt{recoverable} e
+    \texttt{invalid} nella fusione e la valutazione quantitativa del degrado nei casi
+    non validi.
+\end{itemize}
+
+\section{Limiti del lavoro}
+Il lavoro resta ancorato a un insieme di dati sintetico e non include ancora una
+sorgente di dati reale. Ciò significa che non tutti i regimi di skew o di burst
+sono stati esplorati. La fusione è stata studiata soprattutto nel caso a coppie,
+che è sufficiente per caratterizzare il problema semantico di base ma non esaurisce
+le topologie dinamiche tipiche dei sistemi di elaborazione in flusso completi.
+Inoltre lo studio delle funzioni di hash si è concentrato su un insieme specifico
+di scelte pratiche e non copre famiglie più ampie o ipotesi adattive.
+
+\section{Sviluppi futuri}
+Gli sviluppi che emergono naturalmente dai risultati sono:
+\begin{itemize}
+    \item estendere l'insieme di dati con flussi reali o con generatori che riproducano
+    burst, skew e tracce di rete, per validare la metodologia in condizioni meno
+    controllate;
+    \item integrare la piattaforma con un broker come Apache Kafka per pilotare
+    flussi continui controllati e sperimentare filtri e trasformazioni in tempo reale mantenendo
+    la riproducibilità;
+    \item elaborare topologie di fusione più ampie, come catene o gerarchie
+    dal margine al nodo regionale fino al centro,
+    e misurare come l'errore si accumuli lungo alberi sbilanciati;
+    \item sperimentare funzioni di hash basate sul contenuto o parametrizzate
+    per verificare se si possano recuperare fusioni classificate come \texttt{invalid}
+    senza ridurre la precisione;
+    \item automatizzare la generazione di resoconti comparativi per ogni esecuzione e
+    integrare strumenti di visualizzazione.
+\end{itemize}
+
+\section{Chiusura finale}
+Questa tesi conferma che la fusione rimane la leva centrale nei sistemi distribuiti
+che traggono valore da strutture riassuntive di cardinalità: identificare quando
+la fusione appartiene alla classe \texttt{valid}, quando è recuperabile e quando
+appartiene alla classe \texttt{invalid} permette di costruire catene di analisi
+osservabili e affidabili. L'infrastruttura sperimentale proposta offre una base
+riproducibile per estendere questo studio ad altre famiglie di strutture
+riassuntive, topologie e ambienti di produzione.

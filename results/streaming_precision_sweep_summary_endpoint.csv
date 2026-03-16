@@ -1,0 +1,85 @@
+algorithm_label,param_name,param_value,rho,endpoint_mre
+HyperLogLog,k,4,1,0.2291966
+HyperLogLog,k,6,1,0.099677
+HyperLogLog,k,8,1,0.018927
+HyperLogLog,k,10,1,0.0019631
+HyperLogLog,k,12,1,0.0208345
+HyperLogLog,k,14,1,0.0026346
+HyperLogLog,k,16,1,0.0021134
+HyperLogLog,k,4,10,0.23053674
+HyperLogLog,k,6,10,0.08695152
+HyperLogLog,k,8,10,0.05137804
+HyperLogLog,k,10,10,0.0284674
+HyperLogLog,k,12,10,0.01360894
+HyperLogLog,k,14,10,0.00824862
+HyperLogLog,k,16,10,0.00359754
+HyperLogLog,k,4,100,0.2247524
+HyperLogLog,k,6,100,0.0998406
+HyperLogLog,k,8,100,0.050652
+HyperLogLog,k,10,100,0.0252058
+HyperLogLog,k,12,100,0.0138772
+HyperLogLog,k,14,100,0.0062036
+HyperLogLog,k,16,100,0.002704
+HyperLogLog++,k,8,1,0.0189213
+HyperLogLog++,k,10,1,0.0019601
+HyperLogLog++,k,12,1,0.0208326
+HyperLogLog++,k,14,1,0.0026329
+HyperLogLog++,k,16,1,0.002112
+HyperLogLog++,k,18,1,0.0013256
+HyperLogLog++,k,8,10,0.05137798
+HyperLogLog++,k,10,10,0.02846738
+HyperLogLog++,k,12,10,0.01360894
+HyperLogLog++,k,14,10,0.0082486
+HyperLogLog++,k,16,10,0.00359754
+HyperLogLog++,k,18,10,0.00156082
+HyperLogLog++,k,8,100,0.050652
+HyperLogLog++,k,10,100,0.0252058
+HyperLogLog++,k,12,100,0.0138772
+HyperLogLog++,k,14,100,0.0062036
+HyperLogLog++,k,16,100,0.0032462
+HyperLogLog++,k,18,100,0.0011188
+LogLog,k,4,1,0.3044383
+LogLog,k,6,1,0.0269232
+LogLog,k,8,1,0.0529168
+LogLog,k,10,1,0.0069609
+LogLog,k,12,1,0.0282397
+LogLog,k,14,1,0.0027087
+LogLog,k,16,1,0.0032254
+LogLog,k,4,10,0.27431874
+LogLog,k,6,10,0.13408126
+LogLog,k,8,10,0.05835546
+LogLog,k,10,10,0.0336612
+LogLog,k,12,10,0.01786714
+LogLog,k,14,10,0.00906484
+LogLog,k,16,10,0.00404378
+LogLog,k,4,100,0.237699
+LogLog,k,6,100,0.12052
+LogLog,k,8,100,0.0609598
+LogLog,k,10,100,0.0299244
+LogLog,k,12,100,0.0182346
+LogLog,k,14,100,0.0081684
+LogLog,k,16,100,0.034062
+Probabilistic Counting,L,4,1,0.999998
+Probabilistic Counting,L,8,1,0.999967
+Probabilistic Counting,L,12,1,0.9994705
+Probabilistic Counting,L,16,1,0.9915275
+Probabilistic Counting,L,20,1,0.8644393
+Probabilistic Counting,L,24,1,1.168972
+Probabilistic Counting,L,28,1,1.168972
+Probabilistic Counting,L,31,1,1.168972
+Probabilistic Counting,L,4,10,0.99998
+Probabilistic Counting,L,8,10,0.99967
+Probabilistic Counting,L,12,10,0.994705
+Probabilistic Counting,L,16,10,0.915275
+Probabilistic Counting,L,20,10,0.38902108
+Probabilistic Counting,L,24,10,0.93126424
+Probabilistic Counting,L,28,10,0.93126424
+Probabilistic Counting,L,31,10,0.93126424
+Probabilistic Counting,L,4,100,0.9998
+Probabilistic Counting,L,8,100,0.9967
+Probabilistic Counting,L,12,100,0.94705
+Probabilistic Counting,L,16,100,0.2501848
+Probabilistic Counting,L,20,100,0.5238302
+Probabilistic Counting,L,24,100,0.5238302
+Probabilistic Counting,L,28,100,0.5238302
+Probabilistic Counting,L,31,100,0.5238302

@@ -19,6 +19,7 @@ In questa sezione si raccolgono le notazioni utilizzate nel resto della tesi.
     \item $F_k$: frequency moments.
     \item $F_0$: numero di distinti nella stream.
     \item $\hat{F}_0$: stima di $F_0$ prodotta da un algoritmo.
+    \item $F_0^{\ast}$: valore obiettivo della cardinalità distinta usato per interpolare i grafici della modalità di flusso.
     \item $\bar{F}_0$: media dei valori veri su $R$ run.
     \item $\bar{\hat{F}}_0$: media delle stime su $R$ run.
     \item $(\varepsilon,\delta)$: parametri di accuratezza; $\varepsilon$ è l'errore relativo ammesso e $1-\delta$ è la probabilità di successo.
@@ -33,6 +34,7 @@ In questa sezione si raccolgono le notazioni utilizzate nel resto della tesi.
     \item $p$: parametro di precisione; tipicamente $m=2^p$.
     \item $p'$: precisione usata nella rappresentazione sparsa di HLL++.
     \item $k_{\text{sp}}$: numero di entry non nulle nella rappresentazione sparsa di HLL++.
+    \item $\rho_t=t/F_0(t)$: rapporto tra elementi processati e distinti al tempo $t$.
     \item $\rho(\cdot)$: posizione del primo bit a 1 nel suffisso hash.
     \item $j(x)$: indice del registro selezionato dai $\log_2 m$ bit più significativi di $h(x)$.
     \item $w(x)$: suffisso di $h(x)$ usato per calcolare $\rho(w(x))$ nel registro $j(x)$.
@@ -53,6 +55,9 @@ In questa sezione si raccolgono le notazioni utilizzate nel resto della tesi.
     \item $\mathrm{RE}$: errore relativo.
     \item $\mathrm{RSE}$: relative standard error.
     \item $\mathrm{RSE}_{\text{obs}}$: relative standard error osservata, definita come \(\widehat{\sigma}/\bar{F}_0\).
+    \item $\Delta_{abs}$: differenza assoluta tra stima da fusione e riferimento seriale.
+    \item $\Delta_{rel}$: differenza relativa tra stima da fusione e riferimento seriale.
+    \item $D$: rapporto di degrado tra errore della fusione ed errore del riferimento seriale, valutato punto per punto e poi mediato sui casi osservati.
     \item $\mathrm{Bias}(\hat{\theta})$: bias di uno stimatore.
     \item $\mathrm{Var}(\hat{\theta})$: varianza di uno stimatore.
     \item $\widehat{\mathrm{Bias}}(\hat{F}_0)$: stima empirica del bias su $R$ run.
