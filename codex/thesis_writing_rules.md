@@ -11,3 +11,6 @@ Promemoria editoriale per i prossimi aggiornamenti della tesi.
 
 3. Ogni nuovo termine o abbreviazione va inserito nella sezione di notazione.
    Inoltre, alla prima occorrenza nel testo, il termine va scritto per esteso.
+
+4. Evitare la parola `fusione` riferita agli sketch.
+   Preferire `unione di sketch` oppure `merge di sketch`, a seconda del contesto.

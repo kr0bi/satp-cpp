@@ -326,17 +326,23 @@ sketch costruiti su porzioni diverse della stream. Come possibile esempio, si pe
 indipendente il loro sketch dei dati e che si voglia unire queste informazioni. Intuitivamente, ciò è
 possibile solo se gli sketch condividono gli stessi parametri strutturali e la stessa funzione di hash
 (o lo stesso seed), altrimenti l'unione può degradare la stima finale.
-\begin{definition}[Mergeable Sketch]
-Sia $\mathcal{K}(\cdot)$ la procedura che costruisce uno sketch e sia $\oplus$ un
-operatore sullo stato. Lo sketch è \emph{mergeable} se, per due stream
-$S_1, S_2$ costruite con la stessa parametrizzazione e la stessa funzione di hash,
-vale
-\[
-\mathcal{K}(S_1) \oplus \mathcal{K}(S_2) \approx \mathcal{K}(S_1 \cdot S_2)
-\]
-preservando le garanzie di errore (o con degradazione nota) \cite{Agarwal_Cormode_Huang_Phillips_Wei_Yi_2012}.
-\end{definition}
-Nel caso specifico trattato in questa tesi del conteggio degli elementi distinti in una stream, la concatenazione induce la stessa
+\begin{definition}[Sketch mergeabile]
+  Sia $\theta(S)$ la quantità d'interesse associata alla stream $S$, sia
+  $\mathcal{K}(\cdot)$ la procedura che costruisce uno sketch, sia
+  $\hat{\theta}(\mathcal{K}(S))$ la stima prodotta dallo sketch costruito su
+  $S$, e sia $\oplus$ un operatore definito sullo stato dello sketch.
+  Uno sketch è \emph{mergeable} se, per due stream $S_1$ e $S_2$, lo sketch
+  ottenuto combinando $\mathcal{K}(S_1)$ e $\mathcal{K}(S_2)$ consente di stimare
+  la quantità d'interesse su $S_1 \cdot S_2$ con le stesse garanzie di errore,
+  oppure con una degradazione esplicitamente caratterizzata:
+  \[
+  \hat{\theta}\bigl(\mathcal{K}(S_1)\oplus\mathcal{K}(S_2)\bigr)
+  \approx
+  \hat{\theta}\bigl(\mathcal{K}(S_1\cdot S_2)\bigr)
+  \]
+  \end{definition}
+Nel caso specifico trattato in questa tesi del conteggio degli elementi distinti in una stream, si ha
+\(\theta = F_0\) e la concatenazione induce la stessa
 informazione rilevante dell'unione insiemistica delle chiavi osservate.
 
 \begin{wrapfigure}{r}{0.6\textwidth}
@@ -634,15 +640,15 @@ correzioni e accorgimenti pratici (ad esempio per il small-range) che riducono i
 e migliorano l'accuratezza su diverse scale di cardinalità.
 
 Questi algoritmi condividono inoltre una proprietà operativa importante: essendo lo stato
-basato su aggiornamenti monotoni per registro, la fusione di sketch costruiti su partizioni
+basato su aggiornamenti monotoni per registro, l'unione di sketch costruiti su partizioni
 disgiunte della stream è naturale (ad esempio tramite massimo componente-per-componente),
 rendendo tali metodi adatti a scenari distribuiti \cite{Flajolet_Fusy_Gandouet_Meunier_2007,Agarwal_Cormode_Huang_Phillips_Wei_Yi_2012}.
 Il Capitolo~3 riprende questa linea evolutiva confrontando, per ogni algoritmo,
 la struttura dello sketch e i meccanismi di correzione dell'errore.
 
 \section{Altri obiettivi di sketching}
-Sebbene il focus principale della tesi sia il count-distinct, il framework è
-pensato per includere anche sketch con obiettivi diversi.
+Sebbene il focus principale della tesi sia il count-distinct, il framework permette
+di includere anche sketch con obiettivi diversi.
 
 \begin{definition}[Stima di frequenza puntuale]
 Dato un elemento $a\in\mathcal{U}$, una query di frequenza restituisce una stima
@@ -650,7 +656,7 @@ $\hat f(a)$ della frequenza reale $f(a)$. Nei metodi approssimati, la garanzia �
 tipicamente espressa come errore additivo controllato con probabilità alta.
 \end{definition}
 
-\begin{definition}[Membership approssimata]
+\begin{definition}[Verifica di membership approssimata]
 Data una chiave $x$, una query di membership decide se $x$ appartiene
 all'insieme osservato. Le strutture approssimate sono spesso progettate per non
 produrre falsi negativi, accettando una probabilità controllata di falsi
@@ -674,14 +680,14 @@ $1-\delta$ usando spazio $\tilde{O}\bigl(\varepsilon^{-2}\log(1/\delta) + \log n
 bit, dove $n=|\mathcal{U}|$ e $\tilde{O}$ nasconde fattori polilogaritmici
 \cite{Alon_Matias_Szegedy_2002,Kane_Nelson_Woodruff_2010}. 
 
-Inoltre, esistono lower bound dello stesso ordine di grandezza, per cui tale dipendenza è
+Inoltre, esistono limiti inferiori dello stesso ordine di grandezza, per cui tale dipendenza è
 ottimale a livello di ordine \cite{Kane_Nelson_Woodruff_2010}.
 
 Di conseguenza, ridurre $\varepsilon$ di un fattore 2 richiede
 circa 4 volte la memoria, poiché lo spazio cresce come $\varepsilon^{-2}$.
 
 Mentre, ridurre $\delta$ richiede solo un fattore logaritmico, ottenibile
-tramite ripetizioni indipendenti e combinazione (ad esempio \emph{median trick} \cite{Motwani_Raghavan_1996}).
+tramite ripetizioni indipendenti e combinazione (ad esempio il \emph{median trick} \cite{Motwani_Raghavan_1996}).
 
 Questo andamento rende naturale ottimizzare soprattutto la dipendenza da
 $\varepsilon$, mentre $\delta$ viene spesso gestito tramite amplificazione della
