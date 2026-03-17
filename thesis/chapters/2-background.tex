@@ -1,700 +1,546 @@
 %!TEX root = ../dissertation.tex
 
-\chapter{Background}
+\chapter{Fondamenti teorici}
 \label{chp:background}
-Il modello che rappresenta i dati in input, a differenza di algoritmi più tradizionali,
-è chiamato \emph{modello di stream di dati} (data stream model). 
-\section{Modello di stream di dati}
-Nel modello di stream i dati \cite{Leskovec_Rajaraman_Ullman_2014} arrivano in modo continuo; questo flusso pu\`o essere
-potenzialmente infinita. Rispetto all'utilizzo di una base di dati tradizionale, non \`e possibile
-accumulare tutto in memoria o su disco e interrogare i dati. 
-Gli elementi devono essere processati al volo oppure vengono persi.
+A seguire vengono introdotte le nozioni teoriche utilizzate.
+Si parte dal modello di flusso di dati, si presentano gli algoritmi per flussi di dati,
+il ruolo delle funzioni di hash e delle strutture probabilistiche, 
+infine si richiamano i concetti statistici necessari per interpretare le metriche sperimentali.
 
-Inoltre, la velocità con cui i dati arrivano non è controllata dal sistema (più flussi
-possono arrivare a velocità e con formati diversi) e lo spazio di memoria
-disponibile è limitato. Eventuali archivi storici possono esistere, ma non
-sono pensati per rispondere a query online in tempi ragionevoli.
+\section{Modello di flusso di dati}
+Il modello di flusso di dati descrive situazioni in cui gli elementi arrivano in modo continuo
+e devono essere elaborati nell'ordine in cui vengono osservati \cite{Leskovec_Rajaraman_Ullman_2014}.
+A differenza dei contesti tradizionali, non si assume di poter memorizzare interamente l'input
+prima di interrogarlo, di conseguenza lo spazio disponibile è limitato e il numero totale di elementi
+può essere molto grande o non noto a priori.
 
-Iniziamo a definire formalmente gli elementi di una stream e come vengono processati.
-\begin{definition}[Stream di dati]
-Sia $\mathcal{U}$ un universo di chiavi. Senza perdita di generalità, assumiamo
-$\mathcal{U} \subseteq \mathbb{N}$. Una \emph{stream di dati} è una sequenza ordinata
-di elementi
+In questa sezione vengono introdotti, nell'ordine, gli oggetti di base del modello,
+il meccanismo di aggiornamento e la quantità principale studiata nella tesi.
+
+\begin{definition}[Flusso di dati]
+Sia $\mathcal{U}$ un universo di chiavi. Un \emph{flusso di dati} è una sequenza ordinata
 \[
 S = \langle x_1, x_2, \dots, x_s \rangle
 \]
-dove ogni $x_i \in \mathcal{U}$ e $s$ può essere molto grande o non noto a priori.
+dove ogni $x_i \in \mathcal{U}$ e $s$ può essere molto grande o non noto a priori
 \end{definition}
 
-Per analizzare una stream è utile descriverla tramite le frequenze degli elementi.
+Per descrivere il contenuto del flusso è utile introdurre le frequenze delle chiavi osservate.
+
 \begin{definition}[Frequenze]
-Data una stream $S$, la \emph{frequenza} di un elemento $a \in \mathcal{U}$ è
+Data una sequenza $S$, la \emph{frequenza} di un elemento $a \in \mathcal{U}$ è
 \[
-f(a) = |\{ i \mid x_i = a \}|
+f(a) = |\{i \mid x_i = a\}|
 \]
-La collezione delle frequenze può essere vista come un vettore $f \in \mathbb{N}^{|\mathcal{U}|}$.
+La collezione delle frequenze può essere vista come un vettore
+\[
+f \in \mathbb{N}^{|\mathcal{U}|}
+\]
 \end{definition}
 
-Una volta definita la nozione di frequenza, si specifica il modello di aggiornamento
-con cui la stream viene osservata.
-Nel modello della stream dei dati esistono diverse tipologie di modelli
-\cite{Muthukrishnan_2005}. In questa tesi adottiamo il seguente.
-\begin{definition}[Modello \emph{insertion-only}]
-La stream è una sequenza di aggiornamenti del tipo $(a_t, \Delta_t)$, con
-$a_t \in \mathcal{U}$ e $\Delta_t \ge 0$. Indichiamo con $A_t[j]$ la frequenza
-dell'elemento $j$ dopo i primi $t$ aggiornamenti; allora
+Nel modello generale per flussi di dati esistono diverse modalità di aggiornamento
+\cite{Muthukrishnan_2005}. In questo contesto si adotta il caso a soli inserimenti
+(\emph{insertion-only}), che è anche quello più naturale per il conteggio degli elementi distinti.
+
+\begin{definition}[Modello a soli inserimenti]
+Il flusso è una sequenza di aggiornamenti del tipo $(a_t,\Delta_t)$, con
+$a_t \in \mathcal{U}$ e $\Delta_t \ge 0$. Indicando con $A_t[j]$ la frequenza
+dell'elemento $j$ dopo i primi $t$ aggiornamenti, vale
 \[
 A_t[j] =
 \begin{cases}
-A_{t-1}[j] + \Delta_t & \text{se } a_t = j,\\
+A_{t-1}[j] + \Delta_t & \text{se } a_t = j \\
 A_{t-1}[j] & \text{altrimenti}
 \end{cases}
 \]
-con inizializzazione $A_0[j]=0$ per ogni $j \in \mathcal{U}$.
+con inizializzazione $A_0[j] = 0$ per ogni $j \in \mathcal{U}$
 \end{definition}
-Se la stream è una lista di valori, ogni elemento $x_i$ può essere visto come
-un aggiornamento $(x_i,1)$.
 
-Esistono tuttavia modelli più generali. Nel \emph{turnstile} sono ammessi
-anche aggiornamenti negativi, così che le frequenze possano aumentare o diminuire.
-Nel modello a \emph{sliding window} si considerano solo gli ultimi $W$ aggiornamenti
-della stream, scartando i più vecchi. Questi casi esulano dallo scopo della tesi,
-ma sono citati per completezza.
+Se il flusso è espresso direttamente come sequenza di valori, ogni elemento
+$x_i$ può essere interpretato come l'aggiornamento $(x_i,1)$.
 
-Fissato il modello, l'obiettivo principale della tesi è stimare la cardinalità
-dell'insieme dei distinti.
+Esistono modelli più generali, come il modello \emph{turnstile}, in cui sono ammessi aggiornamenti negativi 
+e il modello a finestra scorrevole (\emph{sliding window}), in cui si considerano soltanto gli ultimi $W$ aggiornamenti.
+Questi casi non rientrano nel nostro ambito, ma sono richiamati per collocare il problema
+nel contesto più ampio dello studio dei flussi di dati \cite{Muthukrishnan_2005}.
+
+L'obiettivo principale considerato nel seguito è la stima del numero di elementi distinti presenti nel flusso.
+
 \begin{definition}[Numero di distinti]
-Il \emph{numero di distinti} nella stream $S$ è:
+Il \emph{numero di elementi distinti} del flusso $S$ è
 \[
-F_0 = |\{ a \in \mathcal{U} \mid f(a) > 0 \}|
+F_0 = |\{a \in \mathcal{U} \mid f(a) > 0\}|
 \]
 \end{definition}
 
-più in generale, il numero di distinti è un caso particolare di una famiglia
-di misure note come \emph{frequency moments}.
-\begin{definition}[Frequency moments]
-Per ogni $k \ge 0$, il \emph{frequency moment} $F_k$ è definito come
+Il numero di distinti è il caso particolare $k=0$ di una famiglia di quantità più generale,
+i \emph{momenti di frequenza} (\emph{frequency moments}).
+
+\begin{definition}[Momenti di frequenza]
+Per ogni $k \ge 0$, il momento di frequenza $F_k$ è definito come
 \[
 F_k = \sum_{a \in \mathcal{U}} f(a)^k
 \]
-In particolare, $F_0$ corrisponde al numero di elementi distinti.
+In particolare, $F_0$ coincide con il numero di elementi distinti
 \end{definition}
 
-Poich\'e in streaming non possiamo calcolare esattamente $F_0$ mantenendo una quantità di
-memoria sublineare, adotteremo misure di accuratezza probabilistiche.
-Per valutare la qualità di una stima si introduce la nozione di approssimazione
-con dei parametri di accuratezza e confidenza.
-\begin{definition}[$(\varepsilon,\delta)$-approssimazione]
-Un algoritmo $A$ è detto \emph{$(\varepsilon,\delta)$-approssimante} per $F_0$ se, per ogni stream,
-produce una stima $\hat{F}_0$ tale che
-\[
-\Pr\bigl(|\hat{F}_0 - F_0| \le \varepsilon F_0\bigr) \ge 1 - \delta
-\]
-dove la probabilità è valutata rispetto alla randomizzazione interna dell'algoritmo
-\cite{BarYossef_Jayram_Kumar_Sivakumar_Trevisan_2002}. La forma relativa è
-intesa per $F_0>0$; nel caso $F_0=0$ si richiede, in modo naturale,
-$\Pr(\hat{F}_0=0)\ge 1-\delta$.
-\end{definition}
-\paragraph{Esempio.}
-Con $\varepsilon = 0{,}05$ e $\delta = 0{,}01$, l'algoritmo deve restituire una stima
-entro il $5\%$ di errore da $F_0$ con una probabilità pari ad almeno il $99\%$.
+Nel problema affrontato in questa tesi, l'interesse è concentrato sul numero di distinti $F_0$
+ma il richiamo ai momenti di frequenza è utile per mostrare che il conteggio degli elementi distinti
+è parte di una classe più ampia di problemi studiati nel modello dei flussi di dati.
 
-Supponiamo inoltre che l'universo abbia dimensione $n = |\mathcal{U}|$ e che ogni elemento $x_i$
-richieda $b$ bit per essere rappresentato.
+\section{Algoritmi per flussi di dati}
+Il modello appena descritto rende inapplicabili gli approcci classici basati su memorizzazione completa
+e analisi a posteriori. Per questo motivo si introducono algoritmi che elaborano il flusso in un solo passaggio
+e mantengono uno stato compatto da aggiornare dopo ogni nuovo elemento.
 
-Le garanzie di accuratezza devono convivere con vincoli stringenti di tempo e memoria.
-In questo contesto, un algoritmo di streaming deve:
-\begin{itemize}
-    \item processare ciascun elemento con costo $O(1)$ o quasi costante;
-    \item usare memoria molto più piccola di $|\mathcal{U}|$;
-    \item produrre una stima $\hat{F}_0$ con un errore controllato, utilizzando $m$ bit, dove $m \ll n$.
-\end{itemize}
-
-Per rispettare questi vincoli si ricorre a funzioni di hash che approssimano
-una distribuzione uniforme sugli elementi e a strutture compatte, chiamate \textbf{sketch} (successivamente verr\`a definito formalmente),
-che riassumono le informazioni essenziali del flusso senza conservarlo esplicitamente.
-
-Il vincolo più forte richiesto riguarda la memoria: si richiede che lo spazio cresca
-molto più lentamente della dimensione dell'universo.
-\begin{definition}[Spazio sublineare]
-Un algoritmo usa \emph{spazio sublineare} se la memoria $m$ cresce
-asintoticamente meno di $n$, cioè $m = o(n)$, dove $n = |\mathcal{U}|$.
-Si richiede che $m$ dipenda in modo polilogaritmico da $n$ e
-polinomiale da $1/\varepsilon$ e $\log(1/\delta)$.
-\end{definition}
-\paragraph{Esempio.}
-Per il problema trattato in questa tesi, cioè il conteggio degli elementi distinti esistono degli algoritmi che ottengono una
-$(1 \pm \varepsilon)$-approssimazione usando $O(\varepsilon^{-2} + \log n)$ bit
-\cite{Kane_Nelson_Woodruff_2010}, che è molto meno dei $\Omega(n)$ bit necessari
-per memorizzare l'insieme degli elementi unici.
-
-\section{Algoritmi di streaming}
-Il modello di stream di dati con le caratteristiche appena descritte, flussi potenzialmente infiniti, velocità
-non controllata e memoria limitata, rende inapplicabili gli approcci
-classici basati su memorizzazione completa e analisi a posteriori.
-
-Gli algoritmi di streaming nascono per produrre stime e
-statistiche utili durante l'arrivo dei dati, lavorando in un solo passaggio e
-mantenendo una sintesi compatta della stream.
-\begin{definition}[Algoritmo di streaming]
-Un algoritmo di streaming elabora una stream in un solo passaggio e mantiene
-uno stato interno $M$ di dimensione limitata $m$. Per ogni elemento $x_i$ della
-stream, lo stato viene aggiornato tramite una funzione
+\begin{definition}[Algoritmo per flussi di dati]
+Un algoritmo per flussi di dati elabora un flusso in un solo passaggio e mantiene uno stato interno $M$
+di dimensione limitata. Per ogni elemento $x_i$ si applica una funzione di aggiornamento
 \[
 M \leftarrow \mathrm{Update}(M, x_i)
 \]
-e in qualunque momento è possibile ottenere una risposta (o stima) tramite
+e in qualunque momento è possibile ottenere una risposta o una stima tramite
 \[
-\hat{F}_0 \leftarrow \mathrm{Query}(M)
+\hat{\theta} \leftarrow \mathrm{Query}(M)
 \]
-Nel modello classico si richiede che $m$ sia sublineare rispetto a $n$ e che
-il tempo per aggiornamento sia $O(1)$ o quasi costante \cite{Muthukrishnan_2005}.
+dove $\theta$ è la quantità d'interesse associata al flusso osservato
+\cite{Muthukrishnan_2005}
 \end{definition}
-Questa astrazione separa in modo netto il costo di aggiornamento per elemento
-dalla qualità della stima ottenuta interrogando lo stato compatto.
 
-Dopo ogni aggiornamento, l'elemento appena osservato
-può essere scartato: lo stato $M$ rappresenta una sintesi compatta dei dati,
-spesso chiamata \emph{sketch} \cite{Cormode_2017}.
+Questa astrazione separa il costo di aggiornamento per elemento dalla qualità della stima ottenuta interrogando lo stato.
+Nel seguito la quantità d'interesse principale sarà $F_0$, ma la definizione resta generale.
 
-La pipeline concettuale del processo di stima è mostrata in Figura~\ref{fig:streaming-pipeline}.
+Le prestazioni di un algoritmo per flussi di dati vengono tipicamente misurate in termini di numero di passaggi sul flusso,
+memoria impiegata, tempo per aggiornamento e accuratezza della risposta \cite{Prezza_2025}.
+Nel caso di algoritmi approssimati, l'accuratezza è espressa tramite parametri di errore e di confidenza.
+
+\begin{definition}[$(\varepsilon,\delta)$-approssimazione]
+Sia $\theta > 0$ una quantità d'interesse. Un algoritmo è detto \emph{$(\varepsilon,\delta)$-approssimante}
+per $\theta$ se produce una stima $\hat{\theta}$ tale che
+\[
+\Pr\bigl(|\hat{\theta} - \theta| \le \varepsilon \theta\bigr) \ge 1 - \delta
+\]
+dove la probabilità è valutata rispetto alla randomizzazione interna dell'algoritmo
+\cite{BarYossef_Jayram_Kumar_Sivakumar_Trevisan_2002}
+\end{definition}
+
+Nel caso specifico del numero di distinti, la definizione si applica alla scelta $\theta = F_0$ adottata nella tesi.
+Se il numero di distinti è nullo, si richiede in modo naturale che la stima sia anch'essa nulla con alta probabilità.
+
+L'altro vincolo fondamentale riguarda la memoria.
+
+\begin{definition}[Spazio sublineare]
+Un algoritmo usa \emph{spazio sublineare} se la memoria $m$ cresce asintoticamente meno di $n = |\mathcal{U}|$
+\[
+m = o(n)
+\]
+\end{definition}
+
+Per il problema del conteggio degli elementi distinti esistono algoritmi che producono una $(1 \pm \varepsilon)$-approssimazione
+usando spazio $\tilde{O}\bigl(\varepsilon^{-2}\log(1/\delta) + \log n\bigr)$ bit
+\cite{Alon_Matias_Szegedy_2002,Kane_Nelson_Woodruff_2010}
+
+I corrispondenti limiti inferiori mostrano che questa dipendenza è ottimale a livello di ordine di grandezza
+\cite{Kane_Nelson_Woodruff_2010}
+
+Ne segue un compromesso molto chiaro: ridurre $\varepsilon$ di un fattore due richiede circa quattro volte la memoria,
+mentre ridurre $\delta$ richiede soltanto un fattore logaritmico, ottenibile anche tramite ripetizioni indipendenti
+e combinazione delle risposte \cite{Motwani_Raghavan_1996}
+
+La Figura~\ref{fig:streaming-pipeline} riassume la sequenza logica del modello:
+gli elementi del flusso aggiornano uno stato compatto, e da questo stato viene poi estratta la stima della quantità d'interesse.
+
 \begin{figure}[htbp]
     \centering
     \includegraphics[width=\textwidth]{figures/modello_sketch2.png}
-    \caption{Pipeline del modello di algoritmi di streaming}
+    \caption{Schema concettuale di un algoritmo per flussi di dati}
     \label{fig:streaming-pipeline}
 \end{figure}
 
-Da qui derivano le metriche standard con cui la letteratura confronta gli
-algoritmi di streaming. In particolare, nel modello classico le prestazioni si
-misurano in termini di \textbf{passaggi} sulla stream, \textbf{memoria} usata,
-\textbf{tempo per elemento} e \textbf{accuratezza} della risposta. Per algoritmi
-di approssimazione, l'accuratezza è espressa tramite un rapporto di
-approssimazione e una probabilità di successo, spesso nel modello
-$(\varepsilon,\delta)$ \cite{Prezza_2025}.
+È utile distinguere gli algoritmi per flussi di dati dagli algoritmi in linea
+(\emph{online}).
+Entrambi operano senza disporre in anticipo dell'intero input, ma il modello dei flussi di dati
+è centrato soprattutto su memoria sublineare e approssimazione, e può anche ammettere
+l'elaborazione di piccoli blocchi di dati pur mantenendo uno stato molto compatto
+\cite{Muthukrishnan_2005,Prezza_2025}
 
-Per collocare questo modello nel panorama più ampio degli algoritmi che
-processano input incompleti, è utile confrontarlo con il modello online.
-Esiste una tipologia di algoritmi, chiamata algoritmi \textit{online} che sono molto simili \cite{OnlineAlgorithms_Notes}, perché
-operano senza disporre dell'intero input; tuttavia non sono identici, poiché nel
-modello streaming è possibile talvolta differire l'azione fino all'arrivo di
-piccoli blocchi di elementi, pur mantenendo una memoria molto limitata
-\cite{Muthukrishnan_2005,Prezza_2025}. Un possibile esempio è fornito dagli
-algoritmi per la \emph{sliding window}, che mantengono riassunti a blocchi per
-stimare statistiche recenti con memoria limitata
-\cite{Datar_Gionis_Indyk_Motwani_2002}. Nel nostro contesto, tutti gli algoritmi
-implementati e trattati sono anche \emph{online}, perché processano ogni elemento
-appena arriva, senza differire l'azione.
-
-Nel contesto degli algoritmi di streaming, un tema centrale è il
-trade-off tra precisione e memoria. Per il problema del calcolo degli elementi distinti, la
-letteratura evidenzia un legame diretto tra accuratezza e spazio: ridurre
-$\varepsilon$ implica un incremento della memoria necessaria. In particolare, si
-considerano efficienti gli algoritmi che usano solo spazio polinomiale in
-$1/\varepsilon$ e logaritmico nella lunghezza della stream e nella dimensione
-dell'universo, con un costo per elemento molto basso
-\cite{BarYossef_Jayram_Kumar_Sivakumar_Trevisan_2002}. Questo mette in evidenza
-il \textbf{trade-off} centrale tra precisione e spazio necessario dello sketch.
-
-Questi algoritmi sono spesso randomizzati: la probabilità nella definizione di $(\varepsilon,\delta)$
-è rispetto alle scelte casuali interne dell'algoritmo e rappresenta una
-garanzia probabilistica sulla qualità della stima
-\cite{BarYossef_Jayram_Kumar_Sivakumar_Trevisan_2002}. Nelle implementazioni
-pratiche, questa randomizzazione è tipicamente incarnata dalla funzione di hash,
-assunta sufficientemente vicina a una scelta casuale (o parametrizzata da un
-seed). La randomizzazione consente di ridurre drasticamente lo spazio rispetto
-alle soluzioni deterministiche, a patto di accettare un errore controllato con
-alta probabilità.
-
-Un'altra differenza rilevante rispetto all'analisi tradizionale è la distinzione tra stime in tempo reale e analisi
-\emph{offline}. Nei sistemi tradizionali, gli aggiornamenti vengono gestiti nei database operazionali, mentre le analisi
-complesse sono tipicamente demandate a un magazzino di dati (\emph{data warehouse}) mantenuto separato dai
-database operazionali~\cite{chaudhuri1997overview}. Nel modello
-di streaming, invece, molte applicazioni richiedono elaborazioni sofisticate in
-quasi tempo reale, come rilevamento di anomalie, monitoraggio di trend o
-cambiamenti improvvisi. 
-Questo condiziona la progettazione degli algoritmi
-\cite{Muthukrishnan_2005}.
-
-\`E importante notare che in contesti distribuiti è spesso necessario combinare
-riassunti di porzioni diverse della stream. Il concetto di \emph{mergeabilità}
-formalizza la possibilità di unire due sintesi in una sintesi della loro unione
-preservando le garanzie di errore e la dimensione dello stato: questo permette
-di scalare gli algoritmi a scenari paralleli o gerarchici ed è una proprietà
-centrale per gli sketch moderni \cite{Agarwal_Cormode_Huang_Phillips_Wei_Yi_2012}.
-Nel seguito questa proprietà verrà formalizzata a livello di struttura dati
-(\emph{sketch}) e di operatore di composizione.
+In questo specifico caso, tutti gli algoritmi considerati elaborano ogni elemento appena arriva
+e sono quindi anche algoritmi online. Per ottenere questo comportamento servono, in pratica,
+meccanismi di randomizzazione efficienti, tipicamente realizzati tramite funzioni di hash.
 
 \section{Funzioni di hash}
-Le funzioni di hash sono il principale strumento per
-``randomizzare'' il flusso e associare un universo molto pi\`u grande in un dominio più
-piccolo, rendendo possibile l'uso di strutture compatte. In molti sketch, la
-qualità della stima dipende direttamente dalle proprietà della funzione di hash utilizzata
-\cite{Vadhan_Mitzenmacher_2007,UniformHashing_Pagh_2007}.
-Gli sketch trattati in questa tesi trasformano infatti le chiavi in valori
-pseudo-casuali e poi estraggono statistiche semplici: per questo motivo, la
-qualità dell'hash entra direttamente nell'analisi dell'errore.
+Per rispettare i vincoli di tempo e spazio appena descritti, gli algoritmi per flussi di dati
+impiegano spesso funzioni di hash che trasformano le chiavi del dominio in valori pseudo-casuali
+appartenenti a un dominio finito \cite{Vadhan_Mitzenmacher_2007,UniformHashing_Pagh_2007}.
+Nel caso degli sketch per il conteggio degli elementi distinti, la qualità della stima dipende in modo diretto
+dalla qualità della funzione di hash utilizzata.
 
 \begin{definition}[Funzione di hash]
-Una funzione di hash $h$ è una funzione deterministica
+Una funzione di hash è una funzione deterministica
 \[
-h: \mathcal{U} \to V
+h : \mathcal{U} \to V
 \]
-che associa a ogni chiave dell'universo $\mathcal{U}$ un valore in un
-dominio $V$ di dimensione molto più piccola, tipicamente $V=\{0,1\}^w$ oppure
-$V=[0,1)$ tramite normalizzazione.
+dove $\mathcal{U}$ è l'universo delle chiavi e $V$ è un dominio finito di uscita
 \end{definition}
 
-Quindi, una funzione di hash associa dati di lunghezza
-arbitraria in un valore di lunghezza fissa, chiamato \emph{hash value}, 
-spesso usato per indicizzare delle strutture dati come le tabelle di hash.
+L'uso di un dominio finito rende inevitabili le collisioni, cioè i casi in cui chiavi distinte
+producono lo stesso valore di hash. Per questo motivo una buona funzione di hash deve essere veloce da calcolare
+e distribuire i valori in modo quanto più possibile uniforme sul dominio di uscita.
 
-Questa trasformazione permette accessi veloci e riduce lo spazio necessario
-rispetto alla memorizzazione diretta delle chiavi. 
+La Figura~\ref{fig:hash-uniformity} mostra in modo intuitivo come una funzione di hash possa essere vista
+come un meccanismo di partizionamento delle chiavi in un numero finito di celle o registri.
 
-Poiché più chiavi possono
-produrre lo stesso valore le \emph{collisioni} sono inevitabili: una buona
-funzione di hash deve essere veloce da calcolare e minimizzare la probabilità
-di collisione, idealmente distribuendo i valori in modo uniforme sul dominio
-\cite{Carter_Wegman_1979,Vadhan_Mitzenmacher_2007,UniformHashing_Pagh_2007}.
-In questo senso, uniformità e collisioni descrivono lo stesso fenomeno da due
-angoli: collisioni sistematiche indicano non-uniformità delle associazioni.
-
-La Figura~\ref{fig:hash-uniformity} mostra in modo intuitivo l'associazione 
-chiavi ai registri realizzata da una funzione di hash.
 \begin{figure}[htbp]
     \centering
     \includegraphics[width=0.7\textwidth]{figures/hash-table.png}
-    \caption{Schema di un esempio di tabella di hash}
+    \caption{Schema intuitivo del partizionamento tramite hash}
     \label{fig:hash-uniformity}
 \end{figure}
 
-Una buona funzione di hash richiede delle proprietà, tipicamente sono l'\textbf{uniformità} 
-(le chiavi sono distribuite in modo uniforme su $V$), la
-\textbf{bassa probabilità di collisione}, l'\textbf{indipendenza} tra le immagini di
-chiavi diverse e l'\textbf{efficienza} di calcolo. 
-
-Una funzione di hash con queste proprietà rende la stima degli sketch stabili e con varianza controllata
-\cite{Vadhan_Mitzenmacher_2007,UniformHashing_Pagh_2007}.
+Le proprietà rilevanti per il seguito sono soprattutto l'uniformità, la bassa probabilità di collisione,
+l'indipendenza tra immagini di chiavi diverse e l'efficienza di calcolo.
 
 \begin{definition}[Modello di hashing uniforme]
-Nel modello ideale, $h$ è scelta uniformemente a caso dall'insieme di tutte le
-funzioni $\mathcal{U}\to V$. In questo caso, per ogni chiave $x\in\mathcal{U}$,
-il valore $h(x)$ è uniforme in $V$ e le immagini di chiavi distinte sono
-indipendenti \cite{Vadhan_Mitzenmacher_2007,UniformHashing_Pagh_2007}.
+Nel modello ideale, $h$ è scelta uniformemente a caso dall'insieme di tutte le funzioni da $\mathcal{U}$ a $V$.
+In questo caso, per ogni chiave $x \in \mathcal{U}$ il valore $h(x)$ è uniforme in $V$
+e le immagini di chiavi distinte sono indipendenti
+\cite{Vadhan_Mitzenmacher_2007,UniformHashing_Pagh_2007}
 \end{definition}
 
-\begin{definition}[Famiglia universale \cite{Carter_Wegman_1979}]
-Una famiglia $\mathcal{H}$ di funzioni $\mathcal{U}\to V$ è \emph{universale} se,
-per ogni coppia di chiavi distinte $x\neq y$, vale
+\begin{definition}[Famiglia universale]
+Una famiglia $\mathcal{H}$ di funzioni $\mathcal{U} \to V$ è \emph{universale} se
+per ogni coppia di chiavi distinte $x \neq y$ vale
 \[
-\Pr_{h\leftarrow \mathcal{H}}\bigl[h(x)=h(y)\bigr] \le \frac{1}{|V|}
+\Pr_{h \leftarrow \mathcal{H}}\bigl[h(x)=h(y)\bigr] \le \frac{1}{|V|}
 \]
+\cite{Carter_Wegman_1979}
 \end{definition}
 
-\begin{definition}[$k$-wise indipendenza \cite{Vadhan_Mitzenmacher_2007}]
-Una famiglia $\mathcal{H}$ è \emph{$k$-wise indipendente} se, per ogni scelta di
-$k$ chiavi distinte $x_1,\dots,x_k$, il vettore
+\begin{definition}[$k$-wise indipendenza]
+Una famiglia $\mathcal{H}$ è \emph{$k$-wise indipendente} se, per ogni scelta di $k$ chiavi distinte
+$x_1,\dots,x_k$, il vettore
 \[
 \bigl(h(x_1),\dots,h(x_k)\bigr)
 \]
-è distribuito uniformemente in $V^k$ quando $h$ è scelta a caso da $\mathcal{H}$.
+è distribuito uniformemente in $V^k$ quando $h$ è scelta a caso da $\mathcal{H}$
+\cite{Vadhan_Mitzenmacher_2007}
 \end{definition}
 
-\textit{Assunzioni tipiche.} Nelle analisi teoriche si assume spesso il modello
-ideale di hashing uniforme; in alternativa si usa una famiglia con un grado
-limitato di indipendenza (ad esempio $k$-wise) o una famiglia universale
-\cite{Carter_Wegman_1979,Vadhan_Mitzenmacher_2007}. In pratica, l'uso di
-funzioni semplici è comune, ma le garanzie possono degradare rispetto al modello
-ideale se le assunzioni non sono soddisfatte.
+Nelle analisi teoriche si assume spesso il modello ideale di hashing uniforme, oppure famiglie
+con gradi limitati di indipendenza. In pratica si usano funzioni più semplici, ma una scarsa uniformità
+può introdurre collisioni sistematiche e correlazioni tra registri, con conseguente aumento del bias
+e della varianza degli stimatori \cite{Vadhan_Mitzenmacher_2007,UniformHashing_Pagh_2007}.
 
-\textit{Impatto delle scelte.} Una funzione di hash non sufficientemente uniforme può
-introdurre collisioni sistematiche o correlazioni tra registri, con un aumento
-del bias e della varianza degli stimatori \cite{Vadhan_Mitzenmacher_2007,UniformHashing_Pagh_2007}.
+Le funzioni di hash forniscono quindi il meccanismo con cui gli algoritmi trasformano il flusso
+in una rappresentazione compatta. La struttura che conserva questa rappresentazione
+è la struttura riassuntiva probabilistica, comunemente chiamata \emph{sketch}.
 
-\section{Sketch}
+\section{Strutture riassuntive probabilistiche}
 \label{sec:sketch}
-Uno \emph{sketch} è una struttura dati probabilistica che
-riassume una stream attraverso uno stato $M$ aggiornabile con operazioni
-\emph{update} e interrogabile con operazioni \emph{query}. Lo sketch non conserva
-gli elementi originali, ma solo le informazioni necessarie per stimare una
-quantità d'interesse con memoria limitata che deve essere molto inferiore rispetto a conservare i dati originali.
+Una struttura riassuntiva probabilistica, o \emph{sketch}, è una struttura dati che mantiene
+una sintesi compatta del flusso senza conservarne esplicitamente tutti gli elementi \cite{Cormode_2017}.
+Lo stato della struttura riassuntiva viene aggiornato man mano che arrivano nuovi dati ed è poi interrogato
+per ottenere una stima della quantità d'interesse.
 
-Come accennato prima negli algoritmi di streaming, nei contesti distribuiti, per ottenere un dato
-globale è necessario poter combinare due
-sketch costruiti su porzioni diverse della stream. Come possibile esempio, si pensi a due server che creano in maniera
-indipendente il loro sketch dei dati e che si voglia unire queste informazioni. Intuitivamente, ciò è
-possibile solo se gli sketch condividono gli stessi parametri strutturali e la stessa funzione di hash
-(o lo stesso seed), altrimenti l'unione può degradare la stima finale.
-\begin{definition}[Sketch mergeabile]
-  Sia $\theta(S)$ la quantità d'interesse associata alla stream $S$, sia
-  $\mathcal{K}(\cdot)$ la procedura che costruisce uno sketch, sia
-  $\hat{\theta}(\mathcal{K}(S))$ la stima prodotta dallo sketch costruito su
-  $S$, e sia $\oplus$ un operatore definito sullo stato dello sketch.
-  Uno sketch è \emph{mergeable} se, per due stream $S_1$ e $S_2$, lo sketch
-  ottenuto combinando $\mathcal{K}(S_1)$ e $\mathcal{K}(S_2)$ consente di stimare
-  la quantità d'interesse su $S_1 \cdot S_2$ con le stesse garanzie di errore,
-  oppure con una degradazione esplicitamente caratterizzata:
-  \[
-  \hat{\theta}\bigl(\mathcal{K}(S_1)\oplus\mathcal{K}(S_2)\bigr)
-  \approx
-  \hat{\theta}\bigl(\mathcal{K}(S_1\cdot S_2)\bigr)
-  \]
-  \end{definition}
-Nel caso specifico trattato in questa tesi del conteggio degli elementi distinti in una stream, si ha
-\(\theta = F_0\) e la concatenazione induce la stessa
-informazione rilevante dell'unione insiemistica delle chiavi osservate.
+Nel seguito è importante non solo che una struttura riassuntiva possa essere aggiornata in modo efficiente,
+ma anche che possa essere combinata con altre strutture riassuntive costruite su porzioni diverse del flusso.
+Questa proprietà è centrale nei contesti distribuiti, in cui più nodi elaborano partizioni diverse dei dati
+e devono poi produrre una stima globale.
 
-\begin{wrapfigure}{r}{0.6\textwidth}
-    \vspace{-6pt}
+\begin{definition}[Mergeable Sketch]
+Sia $\theta(S)$ la quantità d'interesse associata al flusso $S$, sia $\mathcal{K}(\cdot)$
+la procedura che costruisce una struttura riassuntiva, sia $\hat{\theta}\bigl(\mathcal{K}(S)\bigr)$
+la stima prodotta dalla struttura riassuntiva costruita su $S$, e sia $\oplus$ un operatore definito sullo stato.
+Una struttura riassuntiva è \emph{mergeabile} se, per due flussi $S_1$ e $S_2$, vale
+\[
+\hat{\theta}\bigl(\mathcal{K}(S_1)\oplus\mathcal{K}(S_2)\bigr)
+\approx
+\hat{\theta}\bigl(\mathcal{K}(S_1 \cdot S_2)\bigr)
+\]
+cioè se il merge di due strutture riassuntive consente di ottenere la stessa informazione che si otterrebbe
+elaborando serialmente la concatenazione dei due flussi, con le stesse garanzie di errore
+oppure con una degradazione esplicitamente caratterizzata
+\cite{Agarwal_Cormode_Huang_Phillips_Wei_Yi_2012}
+\end{definition}
+
+Come nei casi precedenti la quantità d'interesse coincide con il numero di distinti $F_0$ considerato nel seguito.
+In questo contesto, la concatenazione dei flussi preserva esattamente l'informazione rilevante
+per il conteggio dei distinti.
+
+\begin{figure}[htbp]
     \centering
-    \captionsetup{justification=raggedleft, singlelinecheck=false, font=scriptsize, textfont=normalfont, labelfont=bf}
-    \includegraphics[width=0.45\textwidth]{figures/sketch_merge.png}
+    \includegraphics[width=0.56\textwidth]{figures/sketch_merge.png}
     \caption{Merge di sketch in un contesto distribuito}
     \label{fig:merge-distributed}
-    \vspace{-6pt}
-\end{wrapfigure}
+\end{figure}
+
+La Figura~\ref{fig:merge-distributed} illustra lo scenario tipico in cui più nodi producono sketch locali
+e li aggregano gerarchicamente.
 
 \begin{definition}[Operatore chiuso]
-Sia $\mathcal{S}$ lo spazio degli stati di uno sketch. Un operatore
-$\oplus$ è \emph{chiuso} se
+Sia $\mathcal{S}$ lo spazio degli stati di una struttura riassuntiva. Un operatore $\oplus$ è \emph{chiuso} se
 \[
-\oplus:\mathcal{S}\times\mathcal{S}\to\mathcal{S},
+\oplus : \mathcal{S} \times \mathcal{S} \to \mathcal{S}
 \]
-ovvero se la combinazione di due stati produce ancora uno stato valido dello
-stesso tipo.
+cioè se la combinazione di due stati produce ancora uno stato valido dello stesso tipo
 \end{definition}
 
-La Figura~\ref{fig:merge-distributed} illustra lo scenario tipico in cui più
-nodi producono sketch locali che vengono aggregati gerarchicamente.
+Per aggregazioni robuste è inoltre desiderabile che l'operatore di merge sia commutativo e associativo.
+In molti casi è utile anche l'idempotenza, perché permette di tollerare duplicazioni accidentali dei contributi.
 
-In pratica, l'operatore $\oplus$ deve essere \emph{chiuso} sullo stato
-(ad esempio utilizzando la funzione di massimo per registro o la funzione di somma per componente) e, per aggregazioni
-robuste, è preferibile che sia \emph{commutativo} e \emph{associativo};
-in molti casi è utile anche l'\emph{idempotenza} per tollerare duplicazioni.
+Per gli sketch a registri considerati in questa tesi, come LogLog, HyperLogLog e HyperLogLog++,
+il merge nativo coincide con il massimo componente-per-componente, ma questa operazione è semanticamente corretta
+solo quando gli sketch condividono parametri strutturali compatibili e la stessa semantica di hash.
 
-\textit{Osservazione: } Per gli sketch a registri considerati in questa tesi
-(LogLog, HLL e HLL++), se due sketch hanno stessi parametri e stessa funzione di
-hash/seed, l'operatore di merge è il massimo componente-per-componente.
-Con queste condizioni, lo sketch ottenuto dal merge coincide con quello
-costruito processando la concatenazione delle due stream.
-
-Nel seguito della tesi conviene distinguere due assi concettualmente separati:
-\begin{itemize}
-    \item la \emph{compatibilità semantica} della coppia di sketch, cioè se la
-    coppia ammetta o meno un merge corretto;
-    \item la \emph{strategia operativa} scelta dal framework, cioè quale azione
-    applicare in presenza di una certa coppia di sketch.
-\end{itemize}
+Una volta definito l'operatore, conviene distinguere due assi concettualmente separati:
+la compatibilità semantica della coppia di sketch e la strategia operativa scelta dal sistema
+una volta nota tale compatibilità.
 
 \begin{definition}[Compatibilità semantica del merge]
-Nel seguito, una coppia di sketch è classificata in una delle tre categorie
-seguenti.
+Nel seguito, una coppia di sketch è classificata in una delle tre categorie seguenti.
 \begin{itemize}
-    \item \texttt{valid}: il merge è semanticamente corretto così com'è. Nel
-    caso degli sketch della famiglia simil a HLL, questo significa che l'operazione
-    \emph{register-wise max} rappresenta davvero la stessa unione che si
-    otterrebbe processando serialmente i dati con la stessa specifica di
-    sketch. Nel contesto di HLL++, il caso tipico è: stessa famiglia, stessa
-    precisione \(p\) e stessa semantica di hash. Anche rappresentazioni diverse
-    dello stesso sketch, ad esempio \emph{sparse} e \emph{dense}, restano
-    \texttt{valid} se condividono \(p\) e hash.
-    \item \texttt{recoverable}: la coppia non è direttamente mergeabile, ma può
-    diventarlo dopo una normalizzazione esplicita e ben definita. In questo
-    caso il merge non è già corretto; è recuperabile mediante una procedura che
-    porta i due sketch in uno spazio comune. Nel piano sperimentale della tesi,
-    il caso tipico è HLL++ con precisioni diverse ma stessa semantica di hash,
-    normalizzati riducendo entrambi alla precisione più bassa prima del merge.
-    \item \texttt{invalid}: nel perimetro della tesi non esiste un merge
-    semanticamente corretto della coppia. Il problema non è una semplice perdita
-    di accuratezza, ma il fatto che i registri non rappresentano più la stessa
-    semantica. Casi tipici sono HLL++ con hash diverse, HLL++ con stessa
-    famiglia ma seed diversi quando il seed modifica la semantica della hash, o
-    sketch di famiglie diverse. In tali casi il massimo componente-per-componente
-    non va interpretato come merge corretto, ma solo come operazione su stati
-    incompatibili.
+    \item \texttt{valid}: il merge è semanticamente corretto così com'è. Nel caso degli sketch della famiglia HLL,
+    questo significa che l'operazione di massimo componente-per-componente rappresenta davvero la stessa unione
+    che si otterrebbe elaborando serialmente i dati con la stessa specifica di sketch. Un caso tipico è una coppia
+    di sketch HLL++ con la stessa precisione e la stessa semantica di hash.
+    \item \texttt{recoverable}: la coppia non è direttamente mergeabile, ma può diventarlo dopo una normalizzazione
+    esplicita e ben definita. Nel contesto della tesi, il caso tipico è HLL++ con precisioni diverse ma stessa semantica di hash,
+    da riportare prima a una precisione comune.
+    \item \texttt{invalid}: nel perimetro della tesi non esiste un merge semanticamente corretto della coppia.
+    È il caso, ad esempio, di sketch costruiti con funzioni di hash diverse oppure di famiglie differenti.
 \end{itemize}
 \end{definition}
 
 \begin{definition}[Strategia di merge]
-La strategia di merge è la politica operativa scelta dal framework una volta
-nota la compatibilità semantica della coppia. Nel seguito si usano le quattro
-strategie seguenti.
+La strategia di merge è la politica operativa scelta dal sistema una volta nota la compatibilità semantica della coppia.
 \begin{itemize}
-    \item \texttt{direct}: applica direttamente il merge nativo dello sketch. È
-    la strategia appropriata quando la coppia è \texttt{valid}.
-    \item \texttt{reject}: non tenta il merge e registra che il caso è
-    incompatibile o non supportato. È la strategia naturale per i casi
-    \texttt{invalid} e rappresenta anche una scelta conservativa per i casi
-    \texttt{recoverable} quando non si vuole implementare la normalizzazione.
-    \item \texttt{reduce\_then\_merge}: applica prima una normalizzazione, poi
-    il merge nativo. È la strategia tipica per i casi \texttt{recoverable}; nel
-    caso HLL++ con precisioni diverse, consiste nel ridurre entrambi gli sketch
-    alla precisione minima \(\min(p_1,p_2)\) e poi applicare il merge.
-    \item \texttt{unsafe\_naive\_merge}: forza il merge come se la coppia fosse
-    \texttt{valid}, anche quando non lo è. Questa strategia non va interpretata
-    come merge corretto: serve solo come controllo negativo sperimentale per
-    misurare quanto si degrada il risultato ignorando i vincoli semantici.
+    \item \texttt{direct}: applica direttamente il merge nativo dello sketch
+    \item \texttt{reject}: non tenta il merge e registra il caso come non supportato o incompatibile
+    \item \texttt{reduce\_then\_merge}: applica prima una normalizzazione e poi il merge nativo
+    \item \texttt{unsafe\_naive\_merge}: forza il merge come se la coppia fosse valida, anche quando non lo è,
+    con finalità esclusivamente sperimentali
 \end{itemize}
 \end{definition}
 
+Questa distinzione sarà ripresa nei capitoli sperimentali per analizzare in modo sistematico
+il comportamento del merge nei casi omogenei ed eterogenei.
+
+\section{Famiglia di algoritmi per il conteggio dei distinti}
+Il conteggio esatto di $F_0$ in un flusso di dati richiede, nel caso generale, memoria proporzionale
+al numero di chiavi distinte osservate. Gli algoritmi basati su strutture riassuntive rinunciano all'esattezza
+e producono una stima $\hat{F}_0$ con garanzie probabilistiche usando spazio sublineare
+e aggiornamenti a costo costante \cite{BarYossef_Jayram_Kumar_Sivakumar_Trevisan_2002}.
+
+Una linea storica fondamentale parte dal \emph{Probabilistic Counting} di Flajolet e Martin
+\cite{Flajolet_Martin_1985}, che utilizza funzioni di hash per trasformare le chiavi
+in sequenze pseudo-casuali e ricava la cardinalità osservandone i pattern nei bit.
+
+LogLog \cite{Durand_Flajolet_2003} e HyperLogLog \cite{Flajolet_Fusy_Gandouet_Meunier_2007}
+introducono poi una struttura a registri, ottenuti partizionando il dominio tramite hash,
+in cui ogni aggiornamento memorizza informazioni sulla posizione del primo bit a uno nel suffisso dell'hash.
+L'aggregazione dell'informazione su più registri riduce la varianza della stima.
+
+HyperLogLog++ \cite{Heule_Nunkesser_Hall_2013} mantiene la stessa idea di base,
+ma introduce correzioni pratiche per ridurre il bias in regimi diversi di cardinalità,
+in particolare nel caso di piccola cardinalità, e una doppia rappresentazione,
+sparsa e densa, per migliorare l'efficienza dell'uso della memoria.
+
+Per HyperLogLog e HyperLogLog++, l'errore standard relativo (RSE) ha ordine $\Theta(1/\sqrt{m})$
+rispetto al numero di registri $m$ \cite{Flajolet_Fusy_Gandouet_Meunier_2007}
+
+Questa relazione è importante anche dal punto di vista sperimentale, perché rende esplicito
+il compromesso tra spazio e accuratezza che verrà verificato nei capitoli successivi.
+
+\section{Altri obiettivi delle strutture riassuntive}
+Sebbene il focus della tesi sia il conteggio degli elementi distinti, lo stesso quadro concettuale
+si estende anche ad altri problemi. Esempi classici sono il Count-Min Sketch per la stima di frequenze
+e il Bloom filter per la verifica approssimata di appartenenza
+\cite{Cormode_CountMinSketch_Encyclopedia,Bloom_1970,Agarwal_Trachtenberg_2006}
+
+Questi casi verranno richiamati nel capitolo successivo per collocare la famiglia
+FM a HLL++ nel panorama più ampio delle strutture riassuntive probabilistiche.
+
 \section{Stimatori}
 \label{sec:stimatori}
-In statistica, uno \emph{stimatore} è una funzione dei
-dati osservati che restituisce una stima di un parametro d'interesse. Nel
-contesto dello streaming dei dati, la stima dipende sia dalla stream osservata sia dalla
-randomizzazione interna dell'algoritmo (ad esempio la funzione di hash)
-\cite{VanDeGeer_2015}.
-Nel seguito, la stima $\hat{F}_0$ prodotta da uno sketch viene quindi trattata
-come variabile aleatoria e descritta con il lessico standard della stima
-statistica.
+Per interpretare correttamente le stime prodotte dalle strutture riassuntive è utile richiamare alcune nozioni elementari
+della teoria della stima. Nel seguito, la stima prodotta da una struttura riassuntiva viene trattata come variabile aleatoria,
+perché dipende sia dal flusso osservato sia dalla randomizzazione interna dell'algoritmo \cite{VanDeGeer_2015}.
 
-Adesso andremo a definire alcuni concetti essenziali affinché sia possibile valutare la qualità di una stima e confrontare diversi algoritmi.
+Quando serve esplicitare la dipendenza dalla struttura riassuntiva costruita sul flusso $S$
+scriveremo $\hat{\theta}\bigl(\mathcal{K}(S)\bigr)$ in forma esplicita.
+In assenza di ambiguità, si userà la notazione più compatta $\hat{\theta}$ nel resto della sezione.
 
 \begin{definition}[Stimatore]
-Sia $\theta$ un parametro d'interesse e siano $X$ i dati osservati. Uno
-\emph{stimatore} è una funzione misurabile $T$ tale che
+Sia $\theta$ un parametro d'interesse e siano $X$ i dati osservati. Uno \emph{stimatore}
+è una funzione misurabile $T$ tale che
 \[
-\hat{\theta} = T(X),
+\hat{\theta} = T(X)
 \]
-dove $\hat{\theta}$ è una variabile aleatoria \cite{VanDeGeer_2015}.
+dove $\hat{\theta}$ è una variabile aleatoria
+\cite{VanDeGeer_2015}
 \end{definition}
 
 \begin{definition}[Bias e correttezza]
 Il \emph{bias} di uno stimatore è
 \[
-\mathrm{Bias}(\hat{\theta}) = \mathbb{E}[\hat{\theta}] - \theta.
+\mathrm{Bias}(\hat{\theta}) = \mathbb{E}[\hat{\theta}] - \theta
 \]
-Lo stimatore è \emph{corretto} (unbiased) se il bias è nullo; altrimenti è
-\emph{biased} \cite{VanDeGeer_2015}.
+Lo stimatore è \emph{corretto} se il bias è nullo.
 \end{definition}
 
 Un bias positivo indica una tendenza sistematica a sovrastimare il valore vero,
-mentre un bias negativo indica una sottostima. Un bias nullo non garantisce
-stima precisa in ogni run, ma elimina lo spostamento medio.
+mentre un bias negativo indica una sottostima. Un bias nullo, tuttavia, non garantisce da solo
+che la stima sia stabile.
 
 \begin{definition}[Varianza ed errore standard]
 La \emph{varianza} di uno stimatore è
 \[
-\mathrm{Var}(\hat{\theta}) = \mathbb{E}\bigl[(\hat{\theta}-\mathbb{E}[\hat{\theta}])^2\bigr],
+\mathrm{Var}(\hat{\theta}) =
+\mathbb{E}\bigl[(\hat{\theta}-\mathbb{E}[\hat{\theta}])^2\bigr]
 \]
-mentre l'\emph{errore standard} è la sua radice quadrata
-\(\mathrm{SE}(\hat{\theta})=\sqrt{\mathrm{Var}(\hat{\theta})}\)
-\cite{VanDeGeer_2015}.
+L'\emph{errore standard} è la sua radice quadrata
+\[
+\mathrm{SE}(\hat{\theta}) = \sqrt{\mathrm{Var}(\hat{\theta})}
+\]
 \end{definition}
 
-La varianza descrive quanto le stime oscillano tra esecuzioni: valori piccoli
-indicano stabilità, valori grandi indicano dispersione. L'errore standard è
-una misura nella stessa unità di $\theta$ e fornisce una scala naturale della
-variabilità.
+La varianza misura quanto le stime oscillano tra esecuzioni indipendenti.
+Valori piccoli indicano maggiore stabilità, mentre valori grandi indicano una dispersione elevata.
 
 \begin{definition}[Errore di stima e rischio]
 L'\emph{errore di stima} è la variabile aleatoria
 \[
-E = \hat{\theta} - \theta.
+E = \hat{\theta} - \theta
 \]
-Dato una funzione di \emph{loss} $L(E)$, il \emph{rischio} (o rischio atteso) è
+Data una funzione di perdita $L(E)$, il \emph{rischio} è
 \[
-R(\hat{\theta}) = \mathbb{E}[L(E)].
+R(\hat{\theta}) = \mathbb{E}[L(E)]
 \]
-Delle scelte comuni per la funzione di loss sono $L(E)=|E|$ (rischio assoluto) e $L(E)=E^2$ (MSE)
-\cite{VanDeGeer_2015}.
 \end{definition}
 
-L'errore di stima misura lo scostamento puntuale dalla verità, mentre il
-rischio riassume l'errore atteso secondo una loss scelta. Loss diverse
-privilegiano aspetti diversi: l'errore assoluto è più robusto, l'errore
-quadratico penalizza maggiormente gli scostamenti grandi.
+Scelte comuni per la funzione di perdita sono il valore assoluto e il quadrato dell'errore.
 
-\begin{definition}[MAE e MSE]
-Il \emph{Mean Absolute Error} (MAE) è
+\begin{definition}[Errore assoluto medio ed errore quadratico medio]
+L'\emph{errore assoluto medio} (MAE) è
 \[
-\mathrm{MAE} = \mathbb{E}\bigl[|\hat{\theta}-\theta|\bigr],
+\mathrm{MAE} = \mathbb{E}\bigl[|\hat{\theta}-\theta|\bigr]
 \]
-mentre il \emph{Mean Squared Error} (MSE) è
+L'\emph{errore quadratico medio} (MSE) è
 \[
-\mathrm{MSE} = \mathbb{E}\bigl[(\hat{\theta}-\theta)^2\bigr].
+\mathrm{MSE} = \mathbb{E}\bigl[(\hat{\theta}-\theta)^2\bigr]
 \]
-Il MAE misura l'errore medio assoluto, mentre l'MSE penalizza maggiormente
-gli errori grandi \cite{VanDeGeer_2015}.
 \end{definition}
 
-Il MAE è facilmente interpretabile come distanza media dalla verità. L'MSE (e
-la sua radice, l'RMSE) enfatizza gli errori grandi e quindi è sensibile a
-outlier o code pesanti nelle stime.
+Il MAE è facilmente interpretabile come distanza media dalla verità, mentre l'MSE penalizza maggiormente gli errori più grandi.
 
 \begin{definition}[Errore relativo]
 L'\emph{errore relativo} è definito come
 \[
-\mathrm{RE} = \frac{|\hat{\theta}-\theta|}{|\theta|},
+\mathrm{RE} = \frac{|\hat{\theta}-\theta|}{|\theta|}
 \]
-quando $\theta \neq 0$.
+quando $\theta \neq 0$
 \end{definition}
 
-L'errore relativo normalizza lo scarto rispetto alla grandezza del vero valore
-e rende confrontabili stime su dataset di scala diversa.
+Questa normalizzazione rende confrontabili stime prodotte su problemi di scala diversa.
 
 \begin{definition}[Consistenza]
-Una sequenza di stimatori $\hat{\theta}_n$ è \emph{consistente} se
+Una successione di stimatori $\hat{\theta}_n$ è \emph{consistente} se
 \[
-\hat{\theta}_n \xrightarrow[]{P} \theta \quad \text{quando } n \to \infty,
+\hat{\theta}_n \xrightarrow[]{P} \theta
+\quad \text{quando } n \to \infty
 \]
-ossia se la stima converge al valore vero al crescere della quantità di
-informazione disponibile \cite{VanDeGeer_2015}.
 \end{definition}
 
-Nei capitoli successivi si parlerà anche di \textbf{bias correction}, cioè di
-tecniche che riducono lo spostamento medio della stima tramite calibrazione
-empirica o aggiustamenti analitici delle formule. Queste tecniche non
-eliminano necessariamente la varianza, ma migliorano l'accuratezza media.
+La consistenza esprime il fatto che, al crescere dell'informazione disponibile,
+la stima converge al valore vero in probabilità. A partire da queste definizioni teoriche,
+si introducono ora le metriche empiriche usate nei capitoli sperimentali.
 
-\section{Metriche di errore}
-A seguire vengono definite le metriche usate per valutare empiricamente gli
-stimatori della Sezione~\ref{sec:stimatori}. Vengono fatte $R$ esecuzioni indipendenti, chiamate \textit{run}, con
-stime $\hat{F}_0^{(r)}$ e valori veri $F_0^{(r)}$.
+\section{Metriche empiriche di valutazione}
+Le definizioni precedenti sono di natura teorica. Nei capitoli sperimentali si useranno invece grandezze empiriche
+calcolate su repliche indipendenti. Nel seguito si torna al caso specifico del numero di distinti
+e quindi la quantità d'interesse coincide con $F_0$ nelle formule che seguono.
 
-Per una singola run $r$ vengono calcolati l'errore di stima, il suo valore assoluto e l'errore relativo:
+Per ogni replica $r = 1,\dots,R$ con stima $\hat{F}_0^{(r)}$ e valore vero $F_0^{(r)}$
+si considerano l'errore di stima, il suo valore assoluto e l'errore relativo
 \[
-e^{(r)}=\hat{F}_0^{(r)}-F_0^{(r)}, \qquad |e^{(r)}|, \qquad
-\mathrm{RE}^{(r)}=\frac{|e^{(r)}|}{F_0^{(r)}} \ \ (\text{se } F_0^{(r)}>0).
+e^{(r)} = \hat{F}_0^{(r)} - F_0^{(r)}
+\]
+\[
+|e^{(r)}|
+\]
+\[
+\mathrm{RE}^{(r)} =
+\frac{|e^{(r)}|}{F_0^{(r)}}
+\quad \text{se } F_0^{(r)} > 0
 \]
 
-Successivamente, vengono calcolati il bias, la varianza, l'errore standard e per collegarsi alla letteratura 
-sugli sketch, si usa la \emph{Relative Standard Error} (RSE), che
-normalizza la deviazione standard rispetto alla scala del problema.
-
-Siccome nel nostro framework le run
-sono eseguite su sottoinsiemi potenzialmente diversi, si introduce la media degli stimatori per il numero di elementi
-distinti:
+Quando le repliche sono eseguite su casi diversi ma confrontabili, è utile introdurre
+le medie dei valori veri e delle stime
 \[
-\bar{F}_0 = \frac{1}{R}\sum_{r=1}^{R} F_0^{(r)}, \qquad
-\bar{\hat{F}}_0 = \frac{1}{R}\sum_{r=1}^{R} \hat{F}_0^{(r)}.
-\]
-Nel seguito distinguiamo la varianza teorica $\mathrm{Var}(\hat{F}_0)$ dalla
-\emph{varianza campionaria} delle run sperimentali:
-\[
-\widehat{\mathrm{Var}}(\hat{F}_0) = \frac{1}{R-1}\sum_{r=1}^{R}\bigl(\hat{F}_0^{(r)}-\bar{\hat{F}}_0\bigr)^2,
+\bar{F}_0 = \frac{1}{R}\sum_{r=1}^{R} F_0^{(r)}
 \qquad
-\widehat{\sigma}=\sqrt{\widehat{\mathrm{Var}}(\hat{F}_0)}.
+\bar{\hat{F}}_0 = \frac{1}{R}\sum_{r=1}^{R} \hat{F}_0^{(r)}
 \]
-Come per l'errore, viene stimato il bias, il suo valore assoluto e il suo errore relativo:
+
+La varianza campionaria delle stime è
 \[
-\widehat{\mathrm{Bias}}(\hat{F}_0) = \bar{\hat{F}}_0 - \bar{F}_0,
-\qquad
-\mathrm{AB}=|\widehat{\mathrm{Bias}}(\hat{F}_0)|,
-\qquad
-\mathrm{RB}=\frac{\widehat{\mathrm{Bias}}(\hat{F}_0)}{\bar{F}_0}\ (\bar{F}_0\neq 0).
+\widehat{\mathrm{Var}}(\hat{F}_0) =
+\frac{1}{R-1}\sum_{r=1}^{R}
+\bigl(\hat{F}_0^{(r)}-\bar{\hat{F}}_0\bigr)^2
 \]
-L'\emph{errore relativo medio} empirico (Mean Relative Error, MRE) è
+e la corrispondente deviazione standard campionaria è
 \[
-\mathrm{MRE}=\frac{1}{R}\sum_{r=1}^{R}\frac{|\hat{F}_0^{(r)}-F_0^{(r)}|}{F_0^{(r)}},
+\widehat{\sigma} =
+\sqrt{\widehat{\mathrm{Var}}(\hat{F}_0)}
 \]
-e le metriche aggregate empiriche usate nei risultati includono il Mean
-Absolute Error (MAE) e il Root Mean Squared Error (RMSE):
+
+Il bias empirico, il suo valore assoluto e il bias relativo sono
 \[
-\mathrm{MAE}=\frac{1}{R}\sum_{r=1}^{R}|\hat{F}_0^{(r)}-F_0^{(r)}|,
-\qquad
-\mathrm{RMSE}=\sqrt{\frac{1}{R}\sum_{r=1}^{R}\bigl(\hat{F}_0^{(r)}-F_0^{(r)}\bigr)^2}.
+\widehat{\mathrm{Bias}}(\hat{F}_0) =
+\bar{\hat{F}}_0 - \bar{F}_0
 \]
-
-Queste quantità sono stime empiriche dei corrispondenti concetti teorici
-presentati nella sezione precedente.
-
-La \emph{RSE osservata} è stimata come
 \[
-\mathrm{RSE}_{\text{obs}}=\frac{\widehat{\sigma}}{\bar{F}_0}.
+\mathrm{AB} =
+\bigl|\widehat{\mathrm{Bias}}(\hat{F}_0)\bigr|
 \]
-Questa formula è valida per $\bar{F}_0>0$. Se la cardinalità media è nulla,
-anche la deviazione standard campionaria risulta nulla e la RSE osservata viene
-posta convenzionalmente a $0$.
-Quando il valore vero è lo stesso in tutte le run ($F_0^{(r)}\equiv F_0$),
-questa definizione si riduce a $\widehat{\sigma}/F_0$. Quando disponibile, si
-confronta l'RSE osservata con una \emph{RSE teorica} fornita dalla letteratura
-(ad esempio formule del tipo $c/\sqrt{m}$), per verificare la coerenza tra
-predizioni teoriche e risultati sperimentali.
-Quando invece $F_0^{(r)}$ varia tra run, $\mathrm{RSE}_{\text{obs}}$ va
-interpretata come normalizzazione rispetto alla scala media del problema, e non
-rispetto a un unico valore vero fisso.
+\[
+\mathrm{RB} =
+\frac{\widehat{\mathrm{Bias}}(\hat{F}_0)}{\bar{F}_0}
+\quad \text{se } \bar{F}_0 \neq 0
+\]
 
-\section{Famiglia di algoritmi per count-distinct}
-Il calcolo esatto del numero di distinti $F_0$ in streaming richiede, nel caso generale,
-memoria proporzionale al numero di chiavi distinte osservate, poiché occorre
-mantenere informazione sufficiente a distinguere chiavi già viste da chiavi nuove.
-Gli algoritmi di sketching rinunciano all'esattezza e producono una stima $\hat{F}_0$
-con garanzie probabilistiche $(\varepsilon,\delta)$ usando spazio sublineare e update
-a costo costante \cite{BarYossef_Jayram_Kumar_Sivakumar_Trevisan_2002}.
+Tra le metriche aggregate usate nei risultati rientrano l'errore relativo medio (MRE),
+l'errore assoluto medio (MAE) e la radice dell'errore quadratico medio (RMSE)
+\[
+\mathrm{MRE} =
+\frac{1}{R}\sum_{r=1}^{R}
+\frac{|\hat{F}_0^{(r)}-F_0^{(r)}|}{F_0^{(r)}}
+\]
+\[
+\mathrm{MAE} =
+\frac{1}{R}\sum_{r=1}^{R}
+|\hat{F}_0^{(r)}-F_0^{(r)}|
+\]
+\[
+\mathrm{RMSE} =
+\sqrt{
+\frac{1}{R}\sum_{r=1}^{R}
+\bigl(\hat{F}_0^{(r)}-F_0^{(r)}\bigr)^2
+}
+\]
 
-Una linea storica fondamentale per il count-distinct parte dal
-\emph{Probabilistic Counting} di Flajolet--Martin \cite{Flajolet_Martin_1985},
-che usa una funzione di hash per trasformare le chiavi in bitstring pseudo-casuali
-e ricavare $F_0$ da statistiche sui pattern di bit.
-In tutti questi approcci, l'hash rende i bit osservati simili a campioni
-casuali e la cardinalità viene ricostruita da statistiche di rarità, come
-pattern rari o sequenze lunghe di zeri.
-Successivamente, LogLog \cite{Durand_Flajolet_2003} e HyperLogLog \cite{Flajolet_Fusy_Gandouet_Meunier_2007}
-introducono una struttura a $m$ registri (ottenuti partizionando via hash), aggiornata
-tramite il numero di zeri iniziali: l'aggregazione su più registri riduce la varianza
-e porta a un errore relativo che decresce tipicamente come $O(1/\sqrt{m})$.
-HyperLogLog++ \cite{Heule_Nunkesser_Hall_2013} mantiene l'impianto a registri ma introduce
-correzioni e accorgimenti pratici (ad esempio per il small-range) che riducono il bias
-e migliorano l'accuratezza su diverse scale di cardinalità.
+Per collegarsi alla letteratura sulle strutture riassuntive è utile considerare anche l'errore standard relativo osservato,
+indicato con $\mathrm{RSE}_{\text{obs}}$
+\[
+\mathrm{RSE}_{\text{obs}} =
+\frac{\widehat{\sigma}}{\bar{F}_0}
+\]
+nel caso in cui $\bar{F}_0 > 0$. Se la cardinalità media è nulla, anche la deviazione standard campionaria è nulla
+e l'errore standard relativo osservato viene posto convenzionalmente uguale a zero.
 
-Questi algoritmi condividono inoltre una proprietà operativa importante: essendo lo stato
-basato su aggiornamenti monotoni per registro, l'unione di sketch costruiti su partizioni
-disgiunte della stream è naturale (ad esempio tramite massimo componente-per-componente),
-rendendo tali metodi adatti a scenari distribuiti \cite{Flajolet_Fusy_Gandouet_Meunier_2007,Agarwal_Cormode_Huang_Phillips_Wei_Yi_2012}.
-Il Capitolo~3 riprende questa linea evolutiva confrontando, per ogni algoritmo,
-la struttura dello sketch e i meccanismi di correzione dell'errore.
-
-\section{Altri obiettivi di sketching}
-Sebbene il focus principale della tesi sia il count-distinct, il framework permette
-di includere anche sketch con obiettivi diversi.
-
-\begin{definition}[Stima di frequenza puntuale]
-Dato un elemento $a\in\mathcal{U}$, una query di frequenza restituisce una stima
-$\hat f(a)$ della frequenza reale $f(a)$. Nei metodi approssimati, la garanzia è
-tipicamente espressa come errore additivo controllato con probabilità alta.
-\end{definition}
-
-\begin{definition}[Verifica di membership approssimata]
-Data una chiave $x$, una query di membership decide se $x$ appartiene
-all'insieme osservato. Le strutture approssimate sono spesso progettate per non
-produrre falsi negativi, accettando una probabilità controllata di falsi
-positivi.
-\end{definition}
-
-Nel Capitolo~3, oltre alla famiglia FM$\to$HLL++, verranno quindi introdotti
-anche Count-Min Sketch per frequenze e Bloom filter per membership
-\cite{Cormode_CountMinSketch_Encyclopedia,Bloom_1970,Agarwal_Trachtenberg_2006}.
-
-
-\section{Spazio e accuratezza}
-Analizzando algoritmi di streaming per il count-distinct, è importante
-caratterizzare il rapporto tra spazio e accuratezza. Senza entrare nei dettagli
-di uno specifico algoritmo, esistono limiti teorici generali che guidano la
-progettazione degli sketch.
-
-Utilizzando il modello probabilistico $(\varepsilon,\delta)$ per la qualità della stima, esistono degli algoritmi
-di streaming che producono una $(1\pm\varepsilon)$-approssimazione di $F_0$ con probabilità almeno
-$1-\delta$ usando spazio $\tilde{O}\bigl(\varepsilon^{-2}\log(1/\delta) + \log n\bigr)$
-bit, dove $n=|\mathcal{U}|$ e $\tilde{O}$ nasconde fattori polilogaritmici
-\cite{Alon_Matias_Szegedy_2002,Kane_Nelson_Woodruff_2010}. 
-
-Inoltre, esistono limiti inferiori dello stesso ordine di grandezza, per cui tale dipendenza è
-ottimale a livello di ordine \cite{Kane_Nelson_Woodruff_2010}.
-
-Di conseguenza, ridurre $\varepsilon$ di un fattore 2 richiede
-circa 4 volte la memoria, poiché lo spazio cresce come $\varepsilon^{-2}$.
-
-Mentre, ridurre $\delta$ richiede solo un fattore logaritmico, ottenibile
-tramite ripetizioni indipendenti e combinazione (ad esempio il \emph{median trick} \cite{Motwani_Raghavan_1996}).
-
-Questo andamento rende naturale ottimizzare soprattutto la dipendenza da
-$\varepsilon$, mentre $\delta$ viene spesso gestito tramite amplificazione della
-probabilità di successo.
-
-Nel caso di HyperLogLog, la deviazione standard relativa (RSE) scala come $\Theta(1/\sqrt{m})$, dove $m$ è il numero di
-registri; in altre parole, raddoppiare $m$ riduce l'errore di un fattore circa
-$\sqrt{2}$ \cite{Flajolet_Fusy_Gandouet_Meunier_2007}.
-Nei capitoli sperimentali questa relazione verrà verificata empiricamente
-variando $m$ e osservando l'andamento di RSE.
+Quando il valore vero è lo stesso in tutte le repliche, questa definizione si riduce al rapporto $\widehat{\sigma}/F_0$
+usato come riferimento comune.
+Quando invece $F_0^{(r)}$ varia tra le repliche, il termine $\mathrm{RSE}_{\text{obs}}$ va interpretato
+come normalizzazione rispetto alla scala media del problema. Nei capitoli sperimentali questa quantità sarà confrontata,
+quando disponibile, con formule teoriche del tipo $c/\sqrt{m}$ per verificare la coerenza
+tra predizioni asintotiche e risultati osservati.

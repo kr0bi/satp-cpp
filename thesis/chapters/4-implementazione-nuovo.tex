@@ -1,16 +1,19 @@
 \chapter{Implementazione}
 \label{chp:implementazione_nuovo}
 
-Questo capitolo descrive l'implementazione del sistema sperimentale sviluppato
-per confrontare algoritmi di stima della cardinalità su flussi (\emph{stream})
-e per studiare le loro proprietà in modalità di flusso e di fusione
-(\emph{merge}). Il capitolo è costruito
+In seguito viene descritta l'implementazione del sistema sperimentale sviluppato
+per confrontare algoritmi di stima della cardinalità sui flussi di dati.
+
+Lo studio degli algoritmi avviene in due modalità, una che simula la ricezione dei dati come 
+in un servizio di streaming e l'altra che va a analizzare come le varie sketch prodotte dagli algoritmi
+si comportino alla loro unione.
+
+Il capitolo è costruito
 attorno a tre nuclei principali:
 \begin{itemize}
     \item gli algoritmi, la loro interfaccia comune e le scelte adottate per
-    tradurre in codice le strutture descritte nella letteratura;
-    \item le funzioni di hash, il loro ruolo nella semantica delle strutture
-    di riassunto (\emph{sketch}) e la
+    la stesura in codice delle strutture descritte nella letteratura;
+    \item le funzioni di hash, il loro ruolo nella semantica degli (\emph{sketch}) e la
     ragione della loro selezione;
     \item l'infrastruttura di valutazione (\emph{framework}), cioè il modo in
     cui dataset, algoritmi,
@@ -18,9 +21,8 @@ attorno a tre nuclei principali:
     catena di esecuzione (\emph{pipeline}) riproducibile.
 \end{itemize}
 
-Il nucleo del sistema è implementato in \texttt{C++}, mentre in \texttt{Python}
-sono stati sviluppati il generatore del dataset sintetico usato nella tesi e
-gli script di orchestrazione batch degli esperimenti.
+I principali componenti del sistema sono stati implementati in \texttt{C++}, mentre in \texttt{Python}
+sono stato sviluppati gli script di generazione del dataset usato e di orchestrazione degli esperimenti.
 
 \section{Obiettivi progettuali}
 

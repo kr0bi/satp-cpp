@@ -7,27 +7,28 @@
 In questa sezione si raccolgono le notazioni utilizzate nel resto della tesi.
 \begin{itemize}
     \item $\mathcal{U}$: universo degli elementi.
-    \item $S = \langle x_1, \dots, x_s \rangle$: stream di dati.
-    \item $S_1 \cdot S_2$: concatenazione di due stream.
+    \item $S = \langle x_1, \dots, x_s \rangle$: flusso di dati.
+    \item $S_1 \cdot S_2$: concatenazione di due flussi.
     \item $n = |\mathcal{U}|$: dimensione dell'universo.
     \item $f(a)$: frequenza di $a \in \mathcal{U}$.
     \item $(a_t,\Delta_t)$: aggiornamento al tempo $t$, con chiave $a_t$ e incremento $\Delta_t$.
     \item $A_t[j]$: frequenza dell'elemento $j$ dopo i primi $t$ aggiornamenti.
-    \item $A_0[j]=0$: condizione iniziale del modello insertion-only.
+    \item $A_0[j]=0$: condizione iniziale del modello a soli inserimenti.
     \item $f \in \mathbb{N}^{|\mathcal{U}|}$: vettore delle frequenze (componenti $f(a)$).
-    \item $\|f\|_1 = \sum_{a\in\mathcal{U}} f(a)$: lunghezza totale della stream.
-    \item $F_k$: frequency moments.
-    \item $F_0$: numero di distinti nella stream.
+    \item $\|f\|_1 = \sum_{a\in\mathcal{U}} f(a)$: lunghezza totale del flusso.
+    \item $F_k$: momenti di frequenza.
+    \item $F_0$: numero di distinti nel flusso.
     \item $\hat{F}_0$: stima di $F_0$ prodotta da un algoritmo.
     \item $\theta$: quantità d'interesse da stimare.
-    \item $\hat{\theta}$: stimatore o stima della quantità $\theta$.
+    \item $\hat{\theta}$: stima della quantità $\theta$.
+    \item $\hat{\theta}(\mathcal{K}(S))$: stima della quantità $\theta$ quando si vuole esplicitare la dipendenza dalla struttura riassuntiva costruita sul flusso $S$.
     \item $F_0^{\ast}$: valore obiettivo della cardinalità distinta usato per interpolare i grafici della modalità di flusso.
-    \item $\bar{F}_0$: media dei valori veri su $R$ run.
-    \item $\bar{\hat{F}}_0$: media delle stime su $R$ run.
+    \item $\bar{F}_0$: media dei valori veri su $R$ repliche.
+    \item $\bar{\hat{F}}_0$: media delle stime su $R$ repliche.
     \item $(\varepsilon,\delta)$: parametri di accuratezza; $\varepsilon$ è l'errore relativo ammesso e $1-\delta$ è la probabilità di successo.
-    \item $m$: memoria dello sketch (tipicamente espressa in bit); nelle sezioni su LogLog/HLL/HLL++ il numero di registri è indicato anch'esso con $m=2^p$, quindi lo spazio complessivo dipende anche dalla larghezza di ciascun registro.
-    \item $M$: stato interno dell'algoritmo di streaming (lo sketch).
-    \item $\mathcal{K}(\cdot)$: procedura che costruisce uno sketch da una stream.
+    \item $m$: memoria della struttura riassuntiva (tipicamente espressa in bit); nelle sezioni su LogLog/HLL/HLL++ il numero di registri è indicato anch'esso con $m=2^p$, quindi lo spazio complessivo dipende anche dalla larghezza di ciascun registro.
+    \item $M$: stato interno dell'algoritmo per flussi di dati.
+    \item $\mathcal{K}(\cdot)$: procedura che costruisce una struttura riassuntiva da un flusso.
     \item $V$: dominio di uscita di una funzione di hash.
     \item $h:\mathcal{U}\to V$: funzione di hash.
     \item $\mathcal{H}$: famiglia di funzioni di hash.
@@ -48,24 +49,24 @@ In questa sezione si raccolgono le notazioni utilizzate nel resto della tesi.
     \item $m_{\text{bf}}$: numero di bit del Bloom filter.
     \item $k_{\text{bf}}$: numero di funzioni hash del Bloom filter.
     \item $n_{\text{ins}}$: numero di elementi inseriti in un Bloom filter.
-    \item $\mathcal{S}$: spazio degli stati di uno sketch.
-    \item $\oplus$: operatore di merge tra stati di sketch.
-    \item $R$: numero di run (ripetizioni) sperimentali.
+    \item $\mathcal{S}$: spazio degli stati di una struttura riassuntiva.
+    \item $\oplus$: operatore di merge tra stati di strutture riassuntive.
+    \item $R$: numero di repliche sperimentali.
     \item $\sigma$: deviazione standard campionaria delle stime.
-    \item $\widehat{\mathrm{Var}}(\hat{F}_0)$: varianza campionaria delle stime su $R$ run.
+    \item $\widehat{\mathrm{Var}}(\hat{F}_0)$: varianza campionaria delle stime su $R$ repliche.
     \item $\widehat{\sigma}$: deviazione standard campionaria (\(\widehat{\sigma}=\sqrt{\widehat{\mathrm{Var}}(\hat{F}_0)}\)).
     \item $\mathrm{RE}$: errore relativo.
-    \item $\mathrm{RSE}$: relative standard error.
-    \item $\mathrm{RSE}_{\text{obs}}$: relative standard error osservata, definita come \(\widehat{\sigma}/\bar{F}_0\).
-    \item $\Delta_{abs}$: differenza assoluta tra stima da fusione e riferimento seriale.
-    \item $\Delta_{rel}$: differenza relativa tra stima da fusione e riferimento seriale.
-    \item $D$: rapporto di degrado tra errore della fusione ed errore del riferimento seriale, valutato punto per punto e poi mediato sui casi osservati.
+    \item $\mathrm{RSE}$: errore standard relativo.
+    \item $\mathrm{RSE}_{\text{obs}}$: errore standard relativo osservato, definito come \(\widehat{\sigma}/\bar{F}_0\).
+    \item $\Delta_{abs}$: differenza assoluta tra stima da merge e riferimento seriale.
+    \item $\Delta_{rel}$: differenza relativa tra stima da merge e riferimento seriale.
+    \item $D$: rapporto di degrado tra errore del merge ed errore del riferimento seriale, valutato punto per punto e poi mediato sui casi osservati.
     \item $\mathrm{Bias}(\hat{\theta})$: bias di uno stimatore.
     \item $\mathrm{Var}(\hat{\theta})$: varianza di uno stimatore.
-    \item $\widehat{\mathrm{Bias}}(\hat{F}_0)$: stima empirica del bias su $R$ run.
-    \item $\mathrm{AB}$: absolute bias.
-    \item $\mathrm{RB}$: relative bias.
-    \item $\mathrm{MRE}$: mean relative error.
-    \item $\mathrm{MAE}$: mean absolute error.
-    \item $\mathrm{RMSE}$: root mean squared error.
+    \item $\widehat{\mathrm{Bias}}(\hat{F}_0)$: stima empirica del bias su $R$ repliche.
+    \item $\mathrm{AB}$: valore assoluto del bias empirico.
+    \item $\mathrm{RB}$: bias relativo.
+    \item $\mathrm{MRE}$: errore relativo medio.
+    \item $\mathrm{MAE}$: errore assoluto medio.
+    \item $\mathrm{RMSE}$: radice dell'errore quadratico medio.
 \end{itemize}
