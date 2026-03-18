@@ -37,18 +37,23 @@ In questa sezione si raccolgono le notazioni utilizzate nel resto della tesi.
     \item $p$: parametro di precisione; tipicamente $m=2^p$.
     \item $p'$: precisione usata nella rappresentazione sparsa di HLL++.
     \item $k_{\text{sp}}$: numero di entry non nulle nella rappresentazione sparsa di HLL++.
+    \item $m_{\text{pcsa}}$: numero di bitmap usate da PCSA.
     \item $\rho_t=t/F_0(t)$: rapporto tra elementi processati e distinti al tempo $t$.
     \item $\rho(\cdot)$: posizione del primo bit a 1 nel suffisso hash.
+    \item $\rho_{\text{pc}}(\cdot)$: posizione del primo bit a 1 letta dal lato meno significativo nel conteggio probabilistico originario.
+    \item $\rho_{\text{reg}}(\cdot)$: posizione del primo bit a 1 nel suffisso hash letto da sinistra verso destra nelle famiglie LogLog, HyperLogLog e HyperLogLog++.
     \item $j(x)$: indice del registro selezionato dai $\log_2 m$ bit più significativi di $h(x)$.
     \item $w(x)$: suffisso di $h(x)$ usato per calcolare $\rho(w(x))$ nel registro $j(x)$.
     \item $\alpha_m$: costante di normalizzazione dipendente da $m$.
     \item $\phi$: costante di calibrazione di PCSA ($\phi\approx 0.77351$).
+    \item $\beta(E,p)$: correzione empirica del bias usata in HyperLogLog++ per la precisione $p$.
     \item $V_0$: numero di registri a zero (in HLL/HLL++).
     \item $w_{\text{cm}}$: numero di colonne nel Count-Min Sketch.
     \item $d$: numero di righe/funzioni hash nel Count-Min Sketch.
     \item $m_{\text{bf}}$: numero di bit del Bloom filter.
     \item $k_{\text{bf}}$: numero di funzioni hash del Bloom filter.
     \item $n_{\text{ins}}$: numero di elementi inseriti in un Bloom filter.
+    \item $p_{\text{fp}}$: probabilità di falso positivo di un Bloom filter.
     \item $\mathcal{S}$: spazio degli stati di una struttura riassuntiva.
     \item $\oplus$: operatore di merge tra stati di strutture riassuntive.
     \item $R$: numero di repliche sperimentali.
