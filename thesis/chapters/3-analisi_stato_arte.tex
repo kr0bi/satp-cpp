@@ -59,41 +59,38 @@ che usa una funzione di massimo sul rango dei registri, quindi a una stima armon
 e infine a una variante pratica che aggiunge correzione del bias e
 rappresentazione sparsa.
 
-\subsection{Probabilistic Counting}
-Il lavoro di Flajolet e Martin \cite{Flajolet_Martin_1985} introduce il
-conteggio probabilistico osservando il numero di zeri consecutivi prima del
-primo bit a uno in un valore di hash. L'idea è che eventi rari di questo tipo
-diventino più probabili quando cresce il numero di distinti nel flusso.
-
 \begin{definition}[Probabilistic Counting]
-Sia $h:\mathcal{U}\rightarrow\{0,1\}^{L}$ una funzione di hash uniforme. Nella
-versione elementare del metodo si mantiene una sola bitmap
-$B=(b_1,\dots,b_L)\in\{0,1\}^{L}$ inizializzata a zero.
+  Sia $h:\mathcal{U}\rightarrow\{0,1\}^{L}$ una funzione di hash uniforme. Nella
+  versione elementare del metodo si mantiene una sola bitmap
+  $B=(b_1,\dots,b_L)\in\{0,1\}^{L}$ inizializzata a zero.
 
-Per un valore hash $y$, nella convenzione finita usata qui si definisce
-\[
-\rho_{\text{pc}}(y)=\min\{1+\nu_2(y),L\}
-\]
-dove $\nu_2(y)$ è il numero di zeri consecutivi a partire dal bit meno
-significativo
+  Per ogni valore hash $y$, si considera la quantità $\rho(y)$, che rappresenta
+  la posizione della bitmap da porre a uno. In altre parole, $\rho(y)$ misura
+  quanti zeri consecutivi compaiono a partire dal bit meno significativo di $y$,
+  più uno. Nella convenzione usata qui si pone
+  \[
+  \rho(y)=\min\{1+\nu_2(y),L\}
+  \]
+  dove $\nu_2(y)$ è il numero di zeri consecutivi a partire dal bit meno
+  significativo.
 
-Per ogni elemento $x$ del flusso si aggiorna la bitmap ponendo
-\[
-b_{\rho_{\text{pc}}(h(x))}\leftarrow 1
-\]
+  Per ogni elemento $x$ del flusso si aggiorna quindi la bitmap ponendo
+  \[
+  b_{\rho(h(x))}\leftarrow 1
+  \]
 
-Indicando con
-\[
-R(B)=\min\bigl(\{r\geq 1 : b_r=0\}\cup\{L+1\}\bigr)
-\]
-la posizione del primo zero nella bitmap, con la convenzione che se la bitmap è
-interamente a uno si ponga $R(B)=L+1$. La stima assume quindi la forma
-\[
-\hat{F}_0 \approx \frac{2^{R(B)}}{\phi}
-\]
-dove $\phi$ è una costante di calibrazione empirica
-\cite{Flajolet_Martin_1985}
-\end{definition}
+  Indicando con
+  \[
+  R(B)=\min\bigl(\{r\geq 1 : b_r=0\}\cup\{L+1\}\bigr)
+  \]
+  la posizione del primo zero nella bitmap, con la convenzione che se la bitmap è
+  interamente a uno si ponga $R(B)=L+1$, la stima assume la forma
+  \[
+  \hat{F}_0 \approx \frac{2^{R(B)}}{\phi}
+  \]
+  dove $\phi$ è una costante di calibrazione empirica
+  \cite{Flajolet_Martin_1985}
+  \end{definition}
 
 La struttura è estremamente compatta e mostra già il principio fondamentale del
 conteggio probabilistico, ma una sola bitmap produce una varianza elevata. Per
@@ -104,14 +101,14 @@ partenza concettuale e come riferimento storico.
     \caption{Probabilistic Counting}
     \label{alg:pc}
     \begin{algorithmic}
-        \STATE Scegli una bitmap $B[1],\dots,B[L]$ e inizializzala a $0$
-        \STATE Scegli una funzione di hash uniforme $h:\mathcal{U}\rightarrow\{0,1\}^{L}$
-        \FOR{ogni elemento $x$ nel flusso}
+        \STATE chose a bitmap $B[1],\dots,B[L]$ and inizialize it to $0$
+        \STATE chose an uniform hash function $h:\mathcal{U}\rightarrow\{0,1\}^{L}$
+        \FOR{each element $x$ in the stream}
             \STATE $y \leftarrow h(x)$
-            \STATE $r \leftarrow \rho_{\text{pc}}(y)$
-            \STATE Poni $B[r]\leftarrow 1$
+            \STATE $r \leftarrow \rho(y)$
+            \STATE $B[r]\leftarrow 1$
         \ENDFOR
-        \STATE $R \leftarrow \textsc{PrimoZero}(B)$
+        \STATE $R \leftarrow \textsc{FirstRightmostZero}(B)$
         \STATE \textbf{restituisci} $\hat{F}_0 \leftarrow 2^R/\phi$
     \end{algorithmic}
 \end{algorithm}
@@ -129,12 +126,12 @@ B=[11110]
 \]
 quindi il primo zero si trova in posizione $R(B)=5$ e la stima è circa
 $2^5/\phi$. L'esempio è volutamente minimo, ma mostra bene la logica del
-metodo: gli eventi rari osservati sull'hash vengono trasformati in una scala di
+metodo: gli eventi pi\`u rari osservati sull'hash vengono trasformati in una scala di
 cardinalità.
 
 \paragraph{Errore e limiti}
 La versione a bitmap singola è molto rumorosa. Il vantaggio è la semplicità,
-ma l'errore resta troppo elevato per un uso pratico competitivo. È proprio da
+ma l'errore resta troppo elevato per un uso pratico effettivo. È proprio da
 questa debolezza che nasce il passo successivo, cioè PCSA.
 
 \paragraph{Complessità}
@@ -142,7 +139,7 @@ Lo spazio è
 \[
 S_{\text{PC}}(L)=\Theta(L)\,\text{bit}
 \]
-Il tempo di aggiornamento è $\Theta(1)$ per elemento. L'interrogazione richiede
+Il tempo di aggiornamento è $\Theta(1)$ per elemento. Il tempo di query richiede
 $\Theta(L)$ nel caso diretto, oppure tempo costante se si mantiene
 informazione ausiliaria sul primo zero.
 
@@ -192,7 +189,7 @@ che raccolgono informazione in modo mediato.
             \STATE $y \leftarrow h(x)$
             \STATE $j \leftarrow y \bmod m_{\text{pcsa}}$
             \STATE $t \leftarrow \lfloor y/m_{\text{pcsa}} \rfloor$
-            \STATE $r \leftarrow \rho_{\text{pc}}(t)$
+            \STATE $r \leftarrow \rho(t)$
             \STATE Poni $B[j,r]\leftarrow 1$
         \ENDFOR
         \FOR{$j=0$ \TO $m_{\text{pcsa}}-1$}
