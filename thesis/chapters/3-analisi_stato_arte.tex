@@ -101,15 +101,15 @@ partenza concettuale e come riferimento storico.
     \caption{Probabilistic Counting}
     \label{alg:pc}
     \begin{algorithmic}
-        \STATE chose a bitmap $B[1],\dots,B[L]$ and inizialize it to $0$
-        \STATE chose an uniform hash function $h:\mathcal{U}\rightarrow\{0,1\}^{L}$
+        \STATE Choose a bitmap $B[1],\dots,B[L]$ and initialize it to $0$
+        \STATE Choose a uniform hash function $h:\mathcal{U}\rightarrow\{0,1\}^{L}$
         \FOR{each element $x$ in the stream}
             \STATE $y \leftarrow h(x)$
             \STATE $r \leftarrow \rho(y)$
             \STATE $B[r]\leftarrow 1$
         \ENDFOR
         \STATE $R \leftarrow \textsc{FirstRightmostZero}(B)$
-        \STATE \textbf{restituisci} $\hat{F}_0 \leftarrow 2^R/\phi$
+        \STATE \textbf{return} $\hat{F}_0 \leftarrow 2^R/\phi$
     \end{algorithmic}
 \end{algorithm}
 
@@ -118,8 +118,8 @@ Supponiamo di usare una bitmap di lunghezza $L=5$. Consideriamo la sequenza di
 valori hash
 $00101_2$, $00010_2$, $11100_2$, $01000_2$
 
-Nel primo caso $\rho_{\text{pc}}=1$, nel secondo $\rho_{\text{pc}}=2$, nel
-terzo $\rho_{\text{pc}}=3$ e nel quarto $\rho_{\text{pc}}=4$. Dopo questi
+Nel primo caso $\rho=1$, nel secondo $\rho=2$, nel
+terzo $\rho=3$ e nel quarto $\rho=4$. Dopo questi
 quattro aggiornamenti la bitmap vale
 \[
 B=[11110]
@@ -130,18 +130,15 @@ metodo: gli eventi pi\`u rari osservati sull'hash vengono trasformati in una sca
 cardinalità.
 
 \paragraph{Errore e limiti}
-La versione a bitmap singola è molto rumorosa. Il vantaggio è la semplicità,
+La versione a bitmap singola è soggetta molto alla varianza. Il vantaggio è la semplicità,
 ma l'errore resta troppo elevato per un uso pratico effettivo. È proprio da
 questa debolezza che nasce il passo successivo, cioè PCSA.
 
 \paragraph{Complessità}
-Lo spazio è
-\[
-S_{\text{PC}}(L)=\Theta(L)\,\text{bit}
-\]
-Il tempo di aggiornamento è $\Theta(1)$ per elemento. Il tempo di query richiede
-$\Theta(L)$ nel caso diretto, oppure tempo costante se si mantiene
-informazione ausiliaria sul primo zero.
+Lo spazio è $\Theta(L)\,\text{bit}$, mentre la complessita in tempo è $\Theta(1)$ per elemento. 
+Il tempo di query richiede
+$\Theta(L)$ nel caso diretto, oppure tempo costante se si mantengono informazioni ausiliari
+sulla posizione del primo zero.
 
 \subsection{Probabilistic Counting with Stochastic Averaging}
 Nello stesso lavoro del 1985, Flajolet e Martin introducono
@@ -151,57 +148,66 @@ sola bitmap, ma distribuire l'informazione su più bitmap virtuali ottenute
 tramite partizione del flusso.
 
 \begin{definition}[PCSA]
-Siano $m_{\text{pcsa}}$ il numero di bitmap e $L$ la loro lunghezza. Ogni
+Siano $m$ il numero di bitmap e $L$ la loro lunghezza. Ogni
 elemento $x$ viene trasformato in un valore hash $y=h(x)$ e da esso si
 ricavano:
 \[
-j_{\text{pcsa}}(x)= y \bmod m_{\text{pcsa}}
+j(x)= y \bmod m
 \]
 \[
-t_{\text{pcsa}}(x)= \lfloor y/m_{\text{pcsa}} \rfloor
+t(x)= \lfloor y/m \rfloor
 \]
 
-Il valore $j_{\text{pcsa}}(x)$ seleziona la bitmap da aggiornare, mentre
-$t_{\text{pcsa}}(x)$ viene usato per calcolare il rango
-$\rho_{\text{pc}}(t_{\text{pcsa}}(x))$
+Il valore $j(x)$ seleziona la bitmap da aggiornare, mentre
+$t(x)$ viene usato per calcolare il rango $\rho(t(x))$
 
 Per ciascuna bitmap $B[j]$ si calcola il primo zero $R_j$ e la stima finale usa
 la media dei valori osservati:
 \[
-\bar{R}=\frac{1}{m_{\text{pcsa}}}\sum_{j=0}^{m_{\text{pcsa}}-1} R_j
+\bar{R}=\frac{1}{m}\sum_{j=0}^{m-1} R_j
 \]
 \[
-\hat{F}_0 \approx \frac{m_{\text{pcsa}}}{\phi}\cdot 2^{\bar{R}}
+\hat{F}_0 \approx \frac{m}{\phi}\cdot 2^{\bar{R}}
 \]
 \end{definition}
 
 In questo modo la partizione è virtuale e dipende soltanto dalla funzione di
 hash. Non vengono create più sequenze fisiche separate, ma più sottostrutture
-che raccolgono informazione in modo mediato.
+che raccolgono informazione in modo calcolato.
+
+Sotto l'ipotesi che il valore usato per aggiornare ciascuna bitmap sia
+uniforme, la variabile $\rho(z)$ conserva coda geometrica:
+\[
+\Pr[\rho(z)\ge \tau]=2^{-(\tau-1)}
+\]
+Questa proprietà è il fondamento probabilistico del metodo. PCSA conserva la
+stessa idea del conteggio probabilistico originario, ma la applica su più
+bitmap virtuali, riducendo la varianza della stima attraverso la media dei
+contributi osservati.
 
 \begin{algorithm}[htbp]
     \caption{PCSA}
     \label{alg:pcsa}
     \begin{algorithmic}
-        \STATE Scegli $m_{\text{pcsa}}$ bitmap $B[0],\dots,B[m_{\text{pcsa}}-1]$ di lunghezza $L$ e inizializzale a $0$
-        \STATE Scegli una funzione di hash uniforme $h:\mathcal{U}\rightarrow\{0,1\}^{L}$
-        \FOR{ogni elemento $x$ nel flusso}
+        \STATE Choose $m$ bitmaps $B[0],\dots,B[m-1]$ of length $L$ and initialize them to $0$
+        \STATE Choose a uniform hash function $h:\mathcal{U}\rightarrow\{0,1\}^{L}$
+        \FOR{each element $x$ in the stream}
             \STATE $y \leftarrow h(x)$
-            \STATE $j \leftarrow y \bmod m_{\text{pcsa}}$
-            \STATE $t \leftarrow \lfloor y/m_{\text{pcsa}} \rfloor$
+            \STATE $j \leftarrow y \bmod m$
+            \STATE $t \leftarrow \lfloor y/m \rfloor$
             \STATE $r \leftarrow \rho(t)$
-            \STATE Poni $B[j,r]\leftarrow 1$
+            \STATE Set $B[j,r]\leftarrow 1$
         \ENDFOR
-        \FOR{$j=0$ \TO $m_{\text{pcsa}}-1$}
-            \STATE $R_j \leftarrow \textsc{PrimoZero}(B[j])$
+        \FOR{$j=0$ \TO $m-1$}
+            \STATE $R_j \leftarrow \textsc{FirstZero}(B[j])$
         \ENDFOR
-        \STATE $\bar{R} \leftarrow \frac{1}{m_{\text{pcsa}}}\sum_{j=0}^{m_{\text{pcsa}}-1} R_j$
-        \STATE \textbf{restituisci} $\hat{F}_0 \leftarrow \frac{m_{\text{pcsa}}}{\phi}\cdot 2^{\bar{R}}$
+        \STATE $\bar{R} \leftarrow \frac{1}{m}\sum_{j=0}^{m-1} R_j$
+        \STATE \textbf{return} $\hat{F}_0 \leftarrow \frac{m}{\phi}\cdot 2^{\bar{R}}$
     \end{algorithmic}
 \end{algorithm}
 
 \paragraph{Esempio}
-Consideriamo $m_{\text{pcsa}}=4$ bitmap di lunghezza $4$ e rappresentiamo ogni
+Consideriamo $m=4$ bitmap di lunghezza $4$ e rappresentiamo ogni
 bitmap come $[b_1b_2b_3b_4]$, dove $b_r=1$ indica che la posizione $r$ è stata
 osservata almeno una volta.
 
@@ -213,7 +219,7 @@ osservata almeno una volta.
     \resizebox{\textwidth}{!}{%
     \begin{tabular}{|c|c|c|c|c|c|c|c|c|}
         \hline
-        Passo & $x$ & $y=h(x)$ & $j=y\bmod 4$ & $t=\lfloor y/4\rfloor$ & $r=\rho_{\text{pc}}(t)$ & Aggiornamento & Stato bitmap $(B_0|B_1|B_2|B_3)$ & $\hat{F}_0$ \\
+        Passo & $x$ & $y=h(x)$ & $j=y\bmod 4$ & $t=\lfloor y/4\rfloor$ & $r=\rho(t)$ & Aggiornamento & Stato bitmap $(B_0|B_1|B_2|B_3)$ & $\hat{F}_0$ \\
         \hline
         1 & $a$ & 25 & 1 & $6\;(110_2)$ & 2 & $B[1,2]\leftarrow 1$ & $0000\;|\;0100\;|\;0000\;|\;0000$ & $\approx 10.34$ \\
         \hline
@@ -233,23 +239,18 @@ La tabella mostra che gli elementi vengono distribuiti tra sottostrutture
 diverse. La stima finale non dipende più da una sola bitmap, ma dalla media dei
 primi zeri osservati in più bitmap.
 
-\paragraph{Errore}
 Per PCSA la costante $\phi$ viene stimata empiricamente. L'errore relativo
-standard atteso è circa
-\[
-0.78/\sqrt{m_{\text{pcsa}}}
-\]
+standard atteso è circa $0.78/\sqrt{m}$.
+
 Gli autori riportano anche ordini di grandezza pratici: con
-$m_{\text{pcsa}}=64$ si ottiene tipicamente un errore intorno al $10\%$, mentre
-con $m_{\text{pcsa}}=256$ si scende intorno al $5\%$
+$m=64$ si ottiene tipicamente un errore intorno al $10\%$, mentre
+$m=256$ si scende intorno al $5\%$
 
 \paragraph{Complessità}
-Lo spazio è
-\[
-S_{\text{PCSA}}(m_{\text{pcsa}},L)=\Theta(m_{\text{pcsa}}L)\,\text{bit}
-\]
-L'aggiornamento richiede tempo $\Theta(1)$ per elemento. L'interrogazione
-richiede $\Theta(m_{\text{pcsa}}L)$ nel caso diretto, oppure $\Theta(m_{\text{pcsa}})$
+Lo spazio per questa struttura dati, dato $m$ ed $L$ \`e $\Theta(mL)\,\text{bit}$.
+
+L'aggiornamento della struttura richiede un tempo $\Theta(1)$ per elemento. Mentre 
+fare una query sulla struttura richiede $\Theta(mL)$ nel caso diretto, oppure $\Theta(m)$
 se si mantiene informazione ausiliaria sul primo zero di ciascuna bitmap.
 
 Il limite principale di PCSA non è più solo la varianza, ma anche il costo di
@@ -260,14 +261,14 @@ introdotto da LogLog.
 LogLog sostituisce la bitmap con un array di registri e applica la mediazione
 stocastica in modo più efficiente \cite{Durand_Flajolet_2003}. Il prefisso
 dell'hash seleziona il registro da aggiornare, mentre il suffisso determina il
-rango da propagare come massimo.
+rango da propagare come massimo. La stima finale usa una media geometrica normalizzata.
 
 \begin{definition}[LogLog]
 Sia $m=2^p$ il numero di registri. Per ogni elemento $x$ si calcola un valore
 di hash $y=h(x)$, si usa il prefisso di $p$ bit per selezionare il registro
-$j(x)$, e il suffisso $w(x)$ per calcolare il rango
+\(j(x)\), e il suffisso \(w(x)\) per calcolare il rango
 \[
-\rho_{\text{reg}}(w)=
+\rho(w)=
 \begin{cases}
 \min\{r\geq 1 : w_r=1\}, & \text{se esiste un bit a }1 \\[1mm]
 |w|+1, & \text{altrimenti}
@@ -275,9 +276,9 @@ $j(x)$, e il suffisso $w(x)$ per calcolare il rango
 \]
 dove i bit del suffisso sono letti da sinistra verso destra
 
-La regola di aggiornamento è
+L'update della struttura viene fatto, quindi come:
 \[
-M[j(x)] \leftarrow \max\{M[j(x)],\rho_{\text{reg}}(w(x))\}
+M[j(x)] \leftarrow \max\{M[j(x)],\rho(w(x))\}
 \]
 
 Indicando con
@@ -288,7 +289,7 @@ lo stimatore LogLog ha forma
 \[
 \hat{F}_0 = \alpha_m \cdot m \cdot 2^{A}
 \]
-dove $\alpha_m$ è una costante di calibrazione
+dove $\alpha_m$ è una costante di calibrazione (asintoticamente circa $0.397$).
 \end{definition}
 
 La relazione con $F_0$ può essere letta anche in modo esplicito: il numero
@@ -299,16 +300,16 @@ massimi dei registri tendono a concentrarsi attorno a $\log_2(F_0/m)$.
     \caption{LogLog}
     \label{alg:loglog}
     \begin{algorithmic}
-        \STATE Scegli la precisione $p$ e poni $m=2^p$
-        \STATE Inizializza i registri $M[0],\dots,M[m-1]\leftarrow 0$
-        \FOR{ogni elemento $x$ nel flusso}
+        \STATE Choose the precision $p$ and set $m=2^p$
+        \STATE Initialize the registers $M[0],\dots,M[m-1]\leftarrow 0$
+        \FOR{each element $x$ in the stream}
             \STATE $y \leftarrow h(x)$
-            \STATE $j \leftarrow \textsc{Prefisso}_p(y)$
-            \STATE $w \leftarrow \textsc{Suffisso}_{L-p}(y)$
-            \STATE $M[j] \leftarrow \max\{M[j],\rho_{\text{reg}}(w)\}$
+            \STATE $j \leftarrow \textsc{Prefix}_p(y)$
+            \STATE $w \leftarrow \textsc{Suffix}_{L-p}(y)$
+            \STATE $M[j] \leftarrow \max\{M[j],\rho(w)\}$
         \ENDFOR
         \STATE $A \leftarrow \frac{1}{m}\sum_{j=0}^{m-1} M[j]$
-        \STATE \textbf{restituisci} $\hat{F}_0 \leftarrow \alpha_m \cdot m \cdot 2^A$
+        \STATE \textbf{return} $\hat{F}_0 \leftarrow \alpha_m \cdot m \cdot 2^A$
     \end{algorithmic}
 \end{algorithm}
 
@@ -325,7 +326,7 @@ suffisso.
     \resizebox{\textwidth}{!}{%
     \begin{tabular}{|c|c|c|c|c|c|c|c|c|}
         \hline
-        Passo & $x$ & $y=h(x)$ & $j$ & $w$ & $\rho_{\text{reg}}(w)$ & Aggiornamento & Stato registri $(M_0,M_1,M_2,M_3)$ & $\hat{F}_0$ \\
+        Passo & $x$ & $y=h(x)$ & $j$ & $w$ & $\rho(w)$ & Aggiornamento & Stato registri $(M_0,M_1,M_2,M_3)$ & $\hat{F}_0$ \\
         \hline
         1 & $a$ & $10010100_2$ & $2$ & $010100_2$ & $2$ & $M[2]\leftarrow 2$ & $(0,0,2,0)$ & $\approx 1.77$ \\
         \hline
@@ -411,18 +412,18 @@ stima più stabile di quella ottenuta con LogLog.
     \caption{HyperLogLog}
     \label{alg:hll}
     \begin{algorithmic}
-        \STATE Scegli la precisione $p$ e poni $m=2^p$
-        \STATE Inizializza i registri $M[0],\dots,M[m-1]\leftarrow 0$
-        \FOR{ogni elemento $x$ nel flusso}
+        \STATE Choose the precision $p$ and set $m=2^p$
+        \STATE Initialize the registers $M[0],\dots,M[m-1]\leftarrow 0$
+        \FOR{each element $x$ in the stream}
             \STATE $y \leftarrow h(x)$
-            \STATE $j \leftarrow \textsc{Prefisso}_p(y)$
-            \STATE $w \leftarrow \textsc{Suffisso}_{L-p}(y)$
-            \STATE $M[j] \leftarrow \max\{M[j],\rho_{\text{reg}}(w)\}$
+            \STATE $j \leftarrow \textsc{Prefix}_p(y)$
+            \STATE $w \leftarrow \textsc{Suffix}_{L-p}(y)$
+            \STATE $M[j] \leftarrow \max\{M[j],\rho(w)\}$
         \ENDFOR
         \STATE $Z \leftarrow \sum_{j=0}^{m-1} 2^{-M[j]}$
         \STATE $E \leftarrow \alpha_m m^2 / Z$
         \IF{$E \leq \frac{5}{2}m$}
-            \STATE $V_0 \leftarrow$ numero di registri nulli
+            \STATE $V_0 \leftarrow$ number of zero registers
             \IF{$V_0 \neq 0$}
                 \STATE $E^\star \leftarrow m\log(m/V_0)$
             \ELSE
@@ -433,7 +434,7 @@ stima più stabile di quella ottenuta con LogLog.
         \ELSE
             \STATE $E^\star \leftarrow -2^{L}\log(1-E/2^{L})$
         \ENDIF
-        \STATE \textbf{restituisci} $\hat{F}_0 \leftarrow E^\star$
+        \STATE \textbf{return} $\hat{F}_0 \leftarrow E^\star$
     \end{algorithmic}
 \end{algorithm}
 
@@ -501,7 +502,7 @@ E, & \text{altrimenti}
 dove $\beta(E,p)$ è il termine di bias tabulato per la precisione $p$
 
 La scelta finale tra conteggio lineare e stima corretta usa una soglia empirica
-\textsc{Soglia}$(p)$ applicata alla stima prodotta nei regimi di cardinalità
+\textsc{Threshold}$(p)$ applicata alla stima prodotta nei regimi di cardinalità
 bassa
 
 La formulazione del lavoro del 2013 usa inoltre due precisioni: $p$ per la
@@ -516,45 +517,45 @@ memoria, lo sketch passa alla rappresentazione densa.
     \caption{HyperLogLog++}
     \label{alg:hllpp}
     \begin{algorithmic}
-        \STATE Ingresso: flusso $S$, precisioni $p$ e $p'$ con $p \le p' \le 64$
+        \STATE Input: stream $S$, precisions $p$ and $p'$ with $p \le p' \le 64$
         \STATE $m \leftarrow 2^p$, \quad $m' \leftarrow 2^{p'}$
-        \STATE Inizializza rappresentazione sparsa, insieme temporaneo e registri densi
-        \FOR{ogni elemento $x$ in $S$}
+        \STATE Initialize sparse representation, temporary set, and dense registers
+        \FOR{each element $x$ in $S$}
             \STATE $y \leftarrow h_{64}(x)$
-            \IF{la struttura è in formato sparso}
-                \STATE Codifica il valore sparso associato a $y$
-                \STATE Inserisci il valore nell'insieme temporaneo
-                \IF{l'insieme temporaneo è troppo grande}
-                    \STATE Integra l'insieme temporaneo nella lista sparsa
+            \IF{the structure is in sparse format}
+                \STATE Encode the sparse value associated with $y$
+                \STATE Insert the value into the temporary set
+                \IF{the temporary set is too large}
+                    \STATE Merge the temporary set into the sparse list
                 \ENDIF
-                \IF{la rappresentazione sparsa non è più conveniente}
-                    \STATE Converti lo sketch in formato denso
+                \IF{the sparse representation is no longer convenient}
+                    \STATE Convert the sketch to dense format
                 \ENDIF
             \ELSE
-                \STATE Estrai $(j,\rho)$ da $y$
+                \STATE Extract $(j,\rho)$ from $y$
                 \STATE $M[j] \leftarrow \max\{M[j],\rho\}$
             \ENDIF
         \ENDFOR
-        \IF{la struttura è in formato sparso}
-            \STATE $k_{\text{sp}} \leftarrow$ numero di entry non nulle nella rappresentazione sparsa
-            \STATE \textbf{restituisci} $\textsc{ConteggioLineare}(m',m'-k_{\text{sp}})$
+        \IF{the structure is in sparse format}
+            \STATE $k_{\text{sp}} \leftarrow$ number of nonzero entries in the sparse representation
+            \STATE \textbf{return} $\textsc{LinearCounting}(m',m'-k_{\text{sp}})$
         \ELSE
-            \STATE Calcola la stima grezza $E$
+            \STATE Compute the raw estimate $E$
             \IF{$E \le 5m$}
                 \STATE $E_{\mathrm{corr}} \leftarrow E-\beta(E,p)$
             \ELSE
                 \STATE $E_{\mathrm{corr}} \leftarrow E$
             \ENDIF
-            \STATE $V_0 \leftarrow$ numero di registri nulli
+            \STATE $V_0 \leftarrow$ number of zero registers
             \IF{$V_0>0$}
-                \STATE $H \leftarrow \textsc{ConteggioLineare}(m,V_0)$
+                \STATE $H \leftarrow \textsc{LinearCounting}(m,V_0)$
             \ELSE
                 \STATE $H \leftarrow E_{\mathrm{corr}}$
             \ENDIF
-            \IF{$H \leq \textsc{Soglia}(p)$}
-                \STATE \textbf{restituisci} $H$
+            \IF{$H \leq \textsc{Threshold}(p)$}
+                \STATE \textbf{return} $H$
             \ELSE
-                \STATE \textbf{restituisci} $E_{\mathrm{corr}}$
+                \STATE \textbf{return} $E_{\mathrm{corr}}$
             \ENDIF
         \ENDIF
     \end{algorithmic}
@@ -678,7 +679,7 @@ riassumere la traiettoria storica con due tabelle di confronto.
         \hline
         Probabilistic Counting & $\Theta(L)$ bit & $\Theta(1)$ & $\Theta(L)$ & elevato, poco stabile \\
         \hline
-        PCSA & $\Theta(m_{\text{pcsa}}L)$ bit & $\Theta(1)$ & $\Theta(m_{\text{pcsa}}L)$ o $\Theta(m_{\text{pcsa}})$ & $\approx 0.78/\sqrt{m_{\text{pcsa}}}$ \\
+        PCSA & $\Theta(mL)$ bit & $\Theta(1)$ & $\Theta(mL)$ o $\Theta(m)$ & $\approx 0.78/\sqrt{m}$ \\
         \hline
         LogLog & $\Theta(m\log(L-p+2))$ bit & $\Theta(1)$ & $\Theta(m)$ & $\approx 1.30/\sqrt{m}$ \\
         \hline
@@ -723,18 +724,18 @@ p_{\text{fp}}\approx\left(1-e^{-k_{\text{bf}}n_{\text{ins}}/m_{\text{bf}}}\right
     \caption{Bloom filter}
     \label{alg:bloom}
     \begin{algorithmic}
-        \STATE Scegli $k_{\text{bf}}$ funzioni di hash e un vettore di $m_{\text{bf}}$ bit
-        \STATE Inizializza tutti i bit a zero
-        \FOR{ogni inserimento dell'elemento $x$}
+        \STATE Choose $k_{\text{bf}}$ hash functions and a bit vector of length $m_{\text{bf}}$
+        \STATE Initialize all bits to zero
+        \FOR{each insertion of element $x$}
             \FOR{$j=1$ \TO $k_{\text{bf}}$}
-                \STATE Poni $B[h_j(x)]\leftarrow 1$
+                \STATE Set $B[h_j(x)]\leftarrow 1$
             \ENDFOR
         \ENDFOR
-        \FOR{ogni interrogazione di appartenenza su $x$}
-            \IF{$B[h_j(x)]=1$ per ogni $j$}
-                \STATE \textbf{restituisci} ``presente''
+        \FOR{each membership query on $x$}
+            \IF{$B[h_j(x)]=1$ for every $j$}
+                \STATE \textbf{return} ``present''
             \ELSE
-                \STATE \textbf{restituisci} ``assente''
+                \STATE \textbf{return} ``absent''
             \ENDIF
         \ENDFOR
     \end{algorithmic}
@@ -818,15 +819,15 @@ f(x)\le \hat f(x)\le f(x)+\varepsilon\|f\|_1
     \caption{Count-Min Sketch}
     \label{alg:cms}
     \begin{algorithmic}
-        \STATE Scegli $d$ funzioni di hash e una matrice $C$ di dimensione $d\times w_{\text{cm}}$
-        \STATE Inizializza tutti i contatori a zero
-        \FOR{ogni aggiornamento dell'elemento $x$}
+        \STATE Choose $d$ hash functions and a matrix $C$ of size $d\times w_{\text{cm}}$
+        \STATE Initialize all counters to zero
+        \FOR{each update of element $x$}
             \FOR{$j=1$ \TO $d$}
-                \STATE Incrementa $C[j,h_j(x)]$
+                \STATE Increment $C[j,h_j(x)]$
             \ENDFOR
         \ENDFOR
-        \FOR{ogni interrogazione su $x$}
-            \STATE \textbf{restituisci} $\min_{j\in[d]} C[j,h_j(x)]$
+        \FOR{each query on $x$}
+            \STATE \textbf{return} $\min_{j\in[d]} C[j,h_j(x)]$
         \ENDFOR
     \end{algorithmic}
 \end{algorithm}

@@ -3,12 +3,12 @@
 \chapter{Fondamenti teorici}
 \label{chp:background}
 A seguire vengono introdotte le nozioni teoriche utilizzate.
-Si parte dal modello di flusso di dati, si presentano gli algoritmi per flussi di dati,
+Si parte dal modello di streaming di dati, si presentano gli algoritmi per flussi di dati,
 il ruolo delle funzioni di hash e delle strutture probabilistiche, 
 infine si richiamano i concetti statistici necessari per interpretare le metriche sperimentali.
 
-\section{Modello di flusso di dati}
-Il modello di flusso di dati descrive situazioni in cui gli elementi arrivano in modo continuo
+\section{Modello di streaming}
+Il modello di streaming descrive situazioni in cui gli elementi arrivano in modo continuo
 e devono essere elaborati nell'ordine in cui vengono osservati \cite{Leskovec_Rajaraman_Ullman_2014}.
 A differenza dei contesti tradizionali, non si assume di poter memorizzare interamente l'input
 prima di interrogarlo, di conseguenza lo spazio disponibile è limitato e il numero totale di elementi
@@ -88,7 +88,7 @@ Nel problema affrontato in questa tesi, l'interesse è concentrato sul numero di
 ma il richiamo ai momenti di frequenza è utile per mostrare che il conteggio degli elementi distinti
 è parte di una classe più ampia di problemi studiati nel modello dei flussi di dati.
 
-\section{Algoritmi per flussi di dati}
+\section{Algoritmi di streaming}
 Il modello appena descritto rende inapplicabili gli approcci classici basati su memorizzazione completa
 e analisi a posteriori. Per questo motivo si introducono algoritmi che elaborano il flusso in un solo passaggio
 e mantengono uno stato compatto da aggiornare dopo ogni nuovo elemento.
@@ -235,7 +235,7 @@ Le funzioni di hash forniscono quindi il meccanismo con cui gli algoritmi trasfo
 in una rappresentazione compatta. La struttura che conserva questa rappresentazione
 è la struttura riassuntiva probabilistica, comunemente chiamata \emph{sketch}.
 
-\section{Strutture riassuntive probabilistiche}
+\section{Sketches}
 \label{sec:sketch}
 Una struttura riassuntiva probabilistica, o \emph{sketch}, è una struttura dati che mantiene
 una sintesi compatta del flusso senza conservarne esplicitamente tutti gli elementi \cite{Cormode_2017}.
