@@ -115,24 +115,26 @@ grafici o la struttura dei notebook.
 
 \section{Algoritmi di sketching}
 
-\subsection{Criteri di scelta degli algoritmi}
+\subsection{Criteri di scelta}
 
 Il nucleo algoritmico del progetto è dedicato al problema della stima del numero
 di elementi distinti. Le implementazioni presenti seguono una progressione
 storica e metodologica coerente con la letteratura studiata nei capitoli
 precedenti.
 
-La prima implementazione è \texttt{NaiveCounting}, usata come riferimento esatto
-interno. Questa classe non viene esposta come algoritmo degli esperimenti
+Prima dell'implementazione vera e propria degli algoritmi discussi precedentemente, è presente anche
+un implementazione basica, che è stata inizialemente utilizzata come riferimento per gli altri algoritmi.
+
+Essa è \texttt{NaiveCounting}. Questa classe non viene esposta come algoritmo degli esperimenti
 principali, ma è essenziale nei test del framework perché fornisce un
 riferimento privo di errore di stima.
 
-La seconda famiglia è \texttt{ProbabilisticCounting}, che deriva dal lavoro di
+Il primo algoritmo vero e proprio implementato è \texttt{ProbabilisticCounting}, che deriva dal lavoro di
 Flajolet e Martin \cite{Flajolet_Martin_1985}. Questa implementazione è
 interessante perché rappresenta il primo punto della linea evolutiva degli
 algoritmi probabilistici per il conteggio dei distinti.
 
-La terza famiglia comprende \texttt{LogLog} e \texttt{HyperLogLog}, che
+Vengono poi a seguire \texttt{LogLog} e \texttt{HyperLogLog}, che
 discendono rispettivamente dai lavori di Durand e Flajolet
 \cite{Durand_Flajolet_2003} e di Flajolet, Fusy, Gandouet e Meunier
 \cite{Flajolet_Fusy_Gandouet_Meunier_2007}. Questi due algoritmi condividono la
@@ -142,8 +144,7 @@ qualità della stima a parità di idea architetturale di base.
 L'ultima implementazione è \texttt{HyperLogLog++}, che segue la variante pratica
 proposta da Heule, Nunkesser e Hall \cite{Heule_Nunkesser_Hall_2013}. È
 l'algoritmo più importante della base di codice perché rappresenta sia il riferimento
-per i confronti in modalità di flusso sia il punto di partenza per lo studio del
-merge eterogeneo.
+per i confronti in modalità di flusso sia il punto di partenza per lo studio del comportamento dell'unione tra sketch in casi non ottimali.
 
 La selezione degli algoritmi non è quindi casuale. Essa copre:
 \begin{itemize}
@@ -189,15 +190,17 @@ solo ad alcuni algoritmi.
 Nel framework esiste anche un controllo di concetto a livello di compilazione,
 definito in \codepath{SketchFactory.h}, che
 impedisce di usare nelle modalità di merge algoritmi privi dell'operazione di
-fusione richiesta.
+unione richiesta.
 
 \subsection{Scelte progettuali comuni}
 
 Pur seguendo lavori diversi, le implementazioni condividono alcune convenzioni.
 
-La prima convenzione è la validazione esplicita dei parametri nel costruttore.
-I limiti di \texttt{ProbabilisticCounting}, \texttt{LogLog},
-\texttt{HyperLogLog} e \texttt{HyperLogLog++} non sono lasciati a vincoli
+La prima convenzione è la validazione esplicita dei parametri nel costruttore. 
+Ogni algoritmo ha dei limiti provenienti dal loro articolo in cui sono stati definiti, nei parametri che utilizza 
+come, ad esempio, la dimensione dei registri o la lunghezza della bitmap.
+
+I limiti degli algoritmi non sono lasciati a vincoli
 impliciti, ma producono eccezioni \texttt{invalid\_argument} se la
 configurazione non appartiene al dominio supportato.
 
@@ -210,7 +213,7 @@ di compatibilità parametrica.
 
 La terza convenzione è l'uso di identificatori canonici separati dal nome
 stampato. Il catalogo algoritmico centralizza infatti la traduzione tra
-identificatori brevi, usati dalla riga di comando e dai percorsi dei risultati,
+identificatori brevi, usati dalla riga di comando e dai percorsi dei risultati
 e nomi completi, usati nei file \texttt{CSV} e nella tesi.
 
 La quarta convenzione è la separazione tra stato interno dello sketch e logica
@@ -225,7 +228,7 @@ risultati e ricostruzione degli esperimenti.
 
 \paragraph{Baseline esatta}
 \texttt{NaiveCounting} mantiene un insieme ordinato di identificatori distinti
-tramite \texttt{std::set<uint32\_t>}. Il metodo \texttt{process} inserisce un
+tramite \texttt{uint32}. Il metodo \texttt{process} inserisce un
 elemento solo se non è già presente, il metodo \texttt{count} restituisce la
 cardinalità dell'insieme e il merge esegue un'unione insiemistica. Questa classe
 riceve comunque una funzione di hash, per uniformità di interfaccia, ma non la
@@ -244,7 +247,7 @@ l'operatore OR bit per bit e richiede uguaglianza del parametro \(L\) nei due
 sketch.
 
 \paragraph{LogLog}
-\texttt{LogLog} usa un vettore di registri \texttt{uint8\_t} e mantiene in modo
+L'implementazione usa un vettore di registri \texttt{uint8\_t} e mantiene in modo
 incrementale la somma dei registri nella quantità \(\sum_j M[j]\) aggiornata a
 ogni inserimento. Questa scelta evita di ricalcolare l'intera somma a ogni
 chiamata di \texttt{count}. Il costruttore impone un'implementazione aderente
@@ -273,7 +276,7 @@ ricalcola le grandezze aggregate sullo stato risultante.
 \paragraph{HyperLogLog++}
 \texttt{HyperLogLog++} è l'implementazione più articolata della base di codice.
 Il parametro costruttivo è memorizzato come \(p\) ma nel resto del framework viene
-serializzato uniformemente come \texttt{k=<valore>} per mantenere un formato dei
+serializzato uniformemente come \texttt{k} per mantenere un formato dei
 parametri coerente tra famiglie algoritmiche. Nel dominio supportato con
 \(p \in [4,18]\) questa implementazione, a differenza di \texttt{HyperLogLog},
 usa sempre l'hash a 64 bit.
@@ -415,26 +418,33 @@ Dal lato metodologico, dovevano essere supportate tre modalità diverse:
 \begin{itemize}
     \item una modalità di flusso, per osservare l'evoluzione della stima lungo i
     prefissi;
-    \item una modalità di fusione omogenea, per confrontare fusione e riferimento
+    \item una modalità di merge omogenea, per confrontare merge e riferimento
     seriale;
-    \item una modalità di fusione eterogenea, per descrivere casi validi,
+    \item una modalità di merge eterogenea, per descrivere casi validi,
     recuperabili o non validi e misurarne il comportamento.
 \end{itemize}
+
+La distinzione tra le due modalità di merge era necessaria, per verificare che l'intero sistema
+si comportasse in maniera accurata nel caso di merge con parametri sbagliati.
+
+Inizialmente, non si voleva far accadere erroneamente che ci potessero essere dei merge tra algoritmi diversi o con parametri diversi.
 
 Dal lato operativo, il sistema doveva derivare automaticamente dai metadati del
 dataset il numero di partizioni, la dimensione della partizione e il seed, così
 da evitare configurazioni incoerenti tra dataset e sessione di esecuzione.
 
+Uno dei punti più importanti era che il seed fosse uniforme in tutto il processo, a partire dalla generazione del dataset fino all'ottenimento dei risultati.
+
 \subsection{Struttura del framework}
 
-La struttura pubblica è organizzata in tre coordinatori principali:
+La struttura pubblica è organizzata in tre moduli principali:
 \begin{itemize}
-    \item \codepath{satp::cli::Cli} come frontiera interattiva verso
+    \item \codepath{Cli} come interfaccia interattiva verso
     l'utente;
     \item il modulo pubblico del dataset, esposto da
     \codepath{Dataset.h}, come punto di accesso
     all'indicizzazione e al caricamento delle partizioni;
-    \item \codepath{satp::evaluation::EvaluationFramework}, riesportato da
+    \item \codepath{EvaluationFramework}, riesportato da
     \codepath{Simulation.h}, come coordinatore delle modalità
     di valutazione.
 \end{itemize}
