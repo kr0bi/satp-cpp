@@ -59,6 +59,8 @@ che usa una funzione di massimo sul rango dei registri, quindi a una stima armon
 e infine a una variante pratica che aggiunge correzione del bias e
 rappresentazione sparsa.
 
+Il primo algoritmo che andiamo ad analizzare è Probabilistic Counting.
+
 \begin{definition}[Probabilistic Counting]
   Sia $h:\mathcal{U}\rightarrow\{0,1\}^{L}$ una funzione di hash uniforme. Nella
   versione elementare del metodo si mantiene una sola bitmap
@@ -129,12 +131,10 @@ $2^5/\phi$. L'esempio è volutamente minimo, ma mostra bene la logica del
 metodo: gli eventi pi\`u rari osservati sull'hash vengono trasformati in una scala di
 cardinalità.
 
-\paragraph{Errore e limiti}
 La versione a bitmap singola è soggetta molto alla varianza. Il vantaggio è la semplicità,
 ma l'errore resta troppo elevato per un uso pratico effettivo. È proprio da
 questa debolezza che nasce il passo successivo, cioè PCSA.
 
-\paragraph{Complessità}
 Lo spazio è $\Theta(L)\,\text{bit}$, mentre la complessita in tempo è $\Theta(1)$ per elemento. 
 Il tempo di query richiede
 $\Theta(L)$ nel caso diretto, oppure tempo costante se si mantengono informazioni ausiliari
