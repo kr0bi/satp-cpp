@@ -92,7 +92,7 @@ di utilizzo tra di essi e il rapporto con gli strumenti esterni in
 
 Dal punto di vista operativo, la catena di esecuzione completa è la seguente:
 \begin{enumerate}
-    \item il dataset sintetico viene generato in \texttt{Python} e serializzato
+    \item il dataset viene generato in \texttt{Python} e serializzato
     nel formato binario compresso usato dal framework;
     \item la riga di comando carica il dataset, ne legge i metadati e costruisce
     il contesto di esecuzione;
@@ -225,7 +225,7 @@ più semplice mantenere coerenti descrizione testuale, nomi dei file dei
 risultati e ricostruzione degli esperimenti.
 
 \subsection{Implementazione dei singoli algoritmi}
-
+A seguire vengono descritte le implementazioni degli algoritmi precedentemente descritti.
 \paragraph{Baseline esatta}
 \texttt{NaiveCounting} mantiene un insieme ordinato di identificatori distinti
 tramite \texttt{uint32}. Il metodo \texttt{process} inserisce un
@@ -311,8 +311,10 @@ modo coerente per entrambi i confronti.
 
 \subsection{Ruolo dell'hash negli sketch}
 
-Negli algoritmi implementati l'hash non serve solo a ottenere un identificatore
-apparente uniforme. Esso è parte integrante della semantica del metodo.
+Negli algoritmi implementati l'hash non serve solo a ottenere un valore di hash uniforme. 
+Esso è parte integrante della funzionalit\`a degli algoritmi, per due principali ragioni: per questioni di
+scegliere in maniera libera quale funzione di hash utilizzare e per poter sperimentare 
+il merge eterogeneo in caso di funzioni di hash differenti.
 
 In \texttt{ProbabilisticCounting}, i bit dell'hash determinano la posizione del
 primo uno osservato nella bitmap. In \texttt{LogLog} e \texttt{HyperLogLog}, i
@@ -322,7 +324,7 @@ viene estesa al caso a 64 bit e viene riutilizzata sia nella rappresentazione
 densa sia in quella sparsa.
 
 Da questa osservazione discende una conseguenza importante per tutta la tesi: il
-processo di fusione corretto non dipende soltanto dal tipo dell'algoritmo, ma anche dalla
+processo di merge corretto non dipende soltanto dal tipo dell'algoritmo, ma anche dalla
 semantica condivisa dell'hash. Due sketch costruiti con hash o seed diversi non
 stanno necessariamente rappresentando gli stessi sottoflussi logici.
 
@@ -346,8 +348,7 @@ algoritmi diversi operano su ampiezze di parola diverse.
 \subsection{Funzioni scelte e motivazione}
 
 La selezione delle funzioni di hash è centralizzata in
-\codepath{HashFactory.cpp}. Il sistema supporta quattro nomi
-canonici:
+\codepath{HashFactory.cpp}. Il sistema, attualmente, supporta quattro funzioni di hash:
 \texttt{splitmix64}, \texttt{xxhash64}, \texttt{murmurhash3}, \texttt{siphash24}.
 
 Questa scelta risponde a un criterio di copertura del dominio sperimentale,
@@ -379,7 +380,7 @@ essere mantenuta costante oppure modificata in modo controllato.
 
 \subsection{Seed e riproducibilità}
 
-Il seed entra nel sistema in due punti distinti. Il primo è il seed del dataset,
+Il seed entra nel sistema in due punti distinti. Il primo luogo in cui viene definito è il seed del dataset,
 che viene memorizzato nell'header binario e propagato nel contesto runtime. Il
 secondo è il seed locale della funzione di hash, che nel caso del merge
 eterogeneo può essere impostato separatamente per lato sinistro e destro.
@@ -413,6 +414,10 @@ diversi.
 Dal lato algoritmico, doveva essere possibile usare lo stesso schema di
 esecuzione per sketch differenti senza duplicare codice di attraversamento del
 dataset.
+
+Essenzialmente, si voleva rendere disaccoppiati il framework e la parte algoritmica/hashing.
+
+Deve essere possibile aggiungere algoritmi o funzioni di hashing con il minimo cambiamento all'interno del framework.
 
 Dal lato metodologico, dovevano essere supportate tre modalità diverse:
 \begin{itemize}
@@ -467,7 +472,7 @@ ogni coppia con \codepath{getHashFunctionBy(...)} usando i campi
 \texttt{homogeneousBaseline} del descrittore.
 
 Il livello \codepath{cli} non implementa direttamente gli algoritmi. Esso
-costruisce piuttosto oggetti \texttt{AlgorithmJob} tramite
+costruisce piuttosto oggetti del tipo \texttt{AlgorithmJob} tramite
 \codepath{JobFactory.cpp}, uno per ogni combinazione di algoritmo, parametri,
 hash e modalità richiesta. Questo permette di tenere separata la logica di
 configurazione dalla logica di esecuzione.
@@ -534,7 +539,7 @@ Questa scelta evita di accoppiare la logica di misura al dettaglio della
 serializzazione.
 
 I percorsi dei risultati sono costruiti da
-\codepath{path\_utils::buildResultCsvPath(...)} secondo lo schema generale
+\codepath{buildResultCsvPath(...)} secondo lo schema generale
 \begin{center}
 \small
 \codepath{results/<namespace>/<mode>/<algorithm>/<hash>/<params>/results_*.csv}
@@ -568,9 +573,8 @@ Nella forma completa, il record separa esplicitamente:
     omogeneo.
 \end{itemize}
 
-Questa decisione è coerente con l'obiettivo scientifico della tesi: non basta
-registrare una stima da fusione, ma è necessario descrivere anche il contesto
-semantico in cui essa è stata ottenuta.
+Questa decisione \`e stata presa con l'obiettivo di non registrare solamente l'unione di due sketch
+ma \`e necessaria per riprodurre correttamente quale fosse il contesto dell'unione.
 
 \subsection{Motivazioni architetturali}
 
