@@ -586,10 +586,10 @@ hash diverse senza cambiare le classi degli sketch.
 
 La seconda è la derivazione di \texttt{runs}, \texttt{sample\_size} e
 \texttt{seed} direttamente dal dataset. In questo modo i metadati del dataset
-sono la sorgente autorevole della configurazione sperimentale.
+sono l'unica sorgente autorevole della configurazione sperimentale.
 
 La terza è la separazione tra valutazione e serializzazione. Le modalità del
-framework producono strutture dati in memoria; il livello della riga di comando si
+framework producono strutture dati in memoria; lo strato architetturale della parte da riga di comando si
 occupa poi di trasformarle in file persistenti.
 
 La quarta è l'uso di unità di esecuzione descrittive. Invece di incorporare grandi blocchi
@@ -599,12 +599,13 @@ ciascuno con specifica, parametri e funzione di esecuzione. Questa scelta
 riduce l'accoppiamento tra configurazione e logica operativa.
 
 \section{Dataset e riproducibilità}
+Il sistema usa un solo protocollo di generazione dei dati, chiamato
+\texttt{prefix\_constant\_rho}. 
 
-La tesi usa un solo protocollo di generazione dei dati, chiamato
-\texttt{prefix\_constant\_rho}. Questa sezione non è il centro del capitolo, ma
-resta necessaria perché il framework di misura dipende direttamente da alcune
-proprietà del dataset, in particolare dalla disponibilità della verità di
-prefisso.
+In questa sezione non entreremo in dettaglio, poich\'e verr\`a trattato
+nel capitolo \ref{chp:risultati_nuovo}.
+Ma resta necessaria perché la misurazione dei risultati dipende direttamente da alcune
+proprietà del dataset, in particolare dalla struttura in cui \`e caratterizzato il dataset.
 
 \subsection{Formato binario e caricamento per partizione}
 
@@ -646,7 +647,7 @@ contiene i campi \texttt{values\_offset}, \texttt{values\_byte\_size},
 \end{table}
 
 La scelta progettuale importante è che il framework carica in memoria una sola
-partizione alla volta tramite \codepath{satp::dataset::PartitionReader}. Il
+partizione alla volta tramite \codepath{PartitionReader}. Il
 costo in memoria è quindi proporzionale alla partizione corrente e non
 all'intero dataset.
 
@@ -661,20 +662,20 @@ F_0(t)=\sum_{i=1}^{t} b_i
 \]
 
 Questa informazione rende possibile la valutazione in modalità di flusso senza
-dover ricostruire ogni volta un insieme esplicito dei distinti visti fino al
-checkpoint corrente.
+dover ricostruire ogni volta un insieme esplicito dei valori distinti visti fino al
+punto corrente.
 
 \subsection{Protocollo \texttt{prefix\_constant\_rho}}
 \label{sec:prefix-constant-rho}
 
-I dataset della tesi sono generati con
-\codepath{scripts/generate_prefix_constant_rho_dataset_bin.py}. Il generatore
-impone il vincolo
+I dataset utilizzati sono stati generati con uno script
+\codepath{generate_prefix_constant_rho_dataset_bin.py}. Il generatore
+impone il vincolo che:
 \[
 n \bmod d = 0
 \]
 
-In questo modo il rapporto
+In questo modo il rapporto degli elementi totali rispetto al numero di elementi distinti:
 \[
 \rho=\frac{n}{d}
 \]
@@ -692,55 +693,27 @@ quattro passi:
     uniformemente tra gli identificatori già osservati.
 \end{enumerate}
 
-Da questa costruzione segue la proprietà fondamentale del dataset:
-\[
-F_0(j \cdot \rho)=j
-\]
+Poiché ogni blocco di lunghezza $\rho$ introduce esattamente una nuova prima
+  occorrenza, al termine del $j$-esimo blocco il prefisso contiene esattamente
+  $j$ elementi distinti:
+  \[
+  F_0(j \cdot \rho)=j
+  \]
+
+Ricordiamo che $F_0(t)$ \`e il numero di elementi distinti osservati nel prefisso di lunghezza $t$.
 
 Il protocollo separa quindi in modo controllato la crescita della cardinalità
 reale dal numero medio di ripetizioni. Questa proprietà è ciò che rende leggibili
 e confrontabili i grafici del capitolo sperimentale.
 
-\subsection{Verifica grafica della proprietà del dataset}
-
-Per visualizzare l'andamento del dataset sui checkpoint reali del framework è
-stata analizzata anche la quantità
-\[
-\rho_t=\frac{t}{F_0(t)}
-\]
-
-Questa coincide esattamente con \(\rho\) ai bordi dei blocchi e varia
-all'interno del blocco perché \(t\) cresce mentre \(F_0(t)\) resta costante fino
-alla successiva prima occorrenza.
-
-\begin{figure}[htbp]
-    \centering
-    \includegraphics[width=0.96\textwidth]{figures/results/ratio_processed_vs_distinct_streaming_linear.png}
-    \caption{Rapporto \(\rho_t=t/F_0(t)\) osservato sui checkpoint di streaming del dataset \texttt{prefix\_constant\_rho}}
-    \label{fig:dataset-rho-ratio-linear}
-\end{figure}
-
-\begin{figure}[htbp]
-    \centering
-    \includegraphics[width=0.96\textwidth]{figures/results/ratio_processed_vs_distinct_streaming_boundary_linear.png}
-    \caption{Rapporto \(\rho_t\) osservato ai bordi di blocco, dove per costruzione vale \(\rho_t=\rho\)}
-    \label{fig:dataset-rho-ratio-boundary}
-\end{figure}
-
-La Figura~\ref{fig:dataset-rho-ratio-linear} mostra la traiettoria completa
-osservata ai checkpoint del framework, mentre la
-Figura~\ref{fig:dataset-rho-ratio-boundary} evidenzia il comportamento teorico ai
-soli multipli di \(\rho\) nei punti di bordo dei blocchi.
-
 \subsection{Riproducibilità del dataset}
 
 La riproducibilità del dataset è garantita da tre elementi:
 \begin{itemize}
-    \item il seed globale è scritto nell'header del file;
-    \item ogni partizione usa un seed derivato in modo deterministico tramite
-    \codepath{_derive_partition_seed(seed, partition\_index)};
-    \item il generatore è testato esplicitamente in
-    \codepath{scripts/tests/test_generate_prefix_constant_rho_dataset.py}.
+    \item il seed globale è descritto nell'header del file;
+    \item ogni partizione usa un seed derivato in modo deterministico tramite una funzione nel framework;
+    \item il generatore è testato esplicitamente con dei test di unit\`a in
+    \codepath{test_generate_prefix_constant_rho_dataset.py}.
 \end{itemize}
 
 I test verificano la correttezza del formato binario, oltre alla proprietà
@@ -766,19 +739,15 @@ In \codepath{tests/algorithms} sono presenti test che coprono:
     mismatch non ammessi.
 \end{itemize}
 
-Questa parte della validazione è importante perché i limiti di dominio non sono
-assunti solo nel testo della tesi, ma difesi direttamente dalle classi concrete.
-
 \subsection{Test del framework}
 
-Il file \codepath{tests/simulation/EvaluationFrameworkTest.cpp} controlla che:
+Il file \codepath{simulation/EvaluationFrameworkTest.cpp} controlla che:
 \begin{itemize}
     \item i metadati del framework siano derivati dal dataset e non da valori
     impostati manualmente;
     \item in modalità di flusso il riferimento esatto produca sempre
     \(\hat{F}_0(t)=F_0(t)\) per ogni punto di controllo;
-    \item il pianificatore dei punti di controllo copra correttamente il flusso e rispetti il
-    budget configurato;
+    \item il pianificatore dei punti di controllo copra correttamente il flusso e rispetti la configurazione, cio\`e che avvengano esattamente un certo numero di checkpoint;
     \item il merge del riferimento esatto coincida con il riferimento seriale;
     \item la serializzazione dei file \texttt{CSV} sia coerente con gli header
     previsti;
@@ -799,34 +768,6 @@ In particolare, i test sul merge eterogeneo verificano quattro regimi:
 
 La componente \texttt{Python} è validata da test dedicati sui generatori. In
 aggiunta, gli script di orchestrazione costruiscono payload di comandi per la
-riga di comando in modo deterministico, fissando namespace dei risultati,
+riga di comando in modo deterministico, fissando il nome dei file risultanti e del loro percorso,
 funzioni di hash e griglie parametriche. Anche questa scelta contribuisce alla
 riproducibilità complessiva della catena di esecuzione.
-
-\section{Considerazioni progettuali}
-
-La struttura implementativa adottata in questa tesi riflette una scelta precisa:
-mettere al centro non un singolo algoritmo, ma la possibilità di confrontare
-famiglie algoritmiche diverse in un ambiente coerente.
-
-Dal punto di vista algoritmico, la scelta più importante è l'uso di una
-interfaccia comune con validazione rigorosa dei domini e con merge esposto come
-operazione di primo livello. Questo rende confrontabili gli sketch non solo in
-termini di accuratezza, ma anche in termini di semantica operativa.
-
-Dal punto di vista dell'hashing, la decisione cruciale è stata trattare la
-funzione di hash come dipendenza esplicita e non come dettaglio nascosto delle
-classi concrete. Questa scelta è ciò che rende possibile, nel capitolo
-sperimentale, distinguere in modo netto tra casi omogenei, casi recuperabili e
-casi non validi.
-
-Dal punto di vista del framework, la scelta più utile è stata separare dataset,
-coordinamento, valutazione e serializzazione. In questo modo gli esperimenti del
-capitolo sperimentale non sono stati costruiti come script ad hoc, ma come
-istanze diverse della stessa infrastruttura.
-
-Infine, la presenza del dataset \texttt{prefix\_constant\_rho} con bitset di
-verità integrato chiude il cerchio metodologico: gli algoritmi sono implementati
-come componenti indipendenti, l'hashing è controllabile, il framework li misura
-in modo uniforme e il dataset fornisce il riferimento esatto necessario per
-leggere correttamente i risultati.
