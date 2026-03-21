@@ -1,47 +1,39 @@
 \chapter{Risultati sperimentali}
 \label{chp:risultati_nuovo}
 
-In questo capitolo sono presentati i risultati sperimentali ottenuti con
-l'infrastruttura descritta nel Capitolo~\ref{chp:implementazione_nuovo}.
-La progressione segue il flusso reale del lavoro: prima la validazione del
-contesto sperimentale, poi i risultati in modalità di flusso, quindi l'analisi
-della fusione in condizioni omogenee ed eterogenee.
+I risultati sperimentali raccolti seguono la stessa progressione con cui è
+stato costruito il lavoro. Si parte dalla verifica del
+contesto sperimentale, cioè dal controllo empirico del dataset
+\texttt{prefix\_constant\_rho} e dalla scelta di un seed stabile per gli
+esperimenti successivi. Su questa base vengono poi confrontati gli algoritmi, 
+osservando come evolve la stima lungo i prefissi e come
+essa cambi al variare del rapporto tra elementi processati e distinti e del
+parametro di precisione.
 
-\section{Introduzione al capitolo}
+La seconda parte è dedicata al merge di sketch. Il punto di partenza è il caso
+omogeneo, usato come controllo di correttezza dell'infrastruttura. Si passa poi
+ai casi eterogenei, distinguendo tra situazioni \texttt{valid},
+\texttt{invalid} e \texttt{recoverable}. Gli esperimenti su funzioni di hash
+diverse e su mismatch di precisione servono da un lato a verificare quanto
+emerso nella letteratura, dall'altro a mostrare che il framework costruito
+consente di studiare in modo sistematico casi di merge non ideali.
 
-Gli esperimenti hanno due obiettivi principali:
-\begin{itemize}
-    \item misurare il comportamento degli algoritmi su flussi di dati con cardinalità
-    reale nota in ogni prefisso;
-    \item caratterizzare la correttezza e il degrado della fusione quando il
-    contesto è omogeneo oppure eterogeneo.
+\paragraph{Ambiente di test}
+I risultati sono stati ottenuti su una workstation con processore AMD Ryzen 7
+9700X, 32 GB di memoria DDR5 e unità a stato solido NVMe da 1 TB, con sistema
+operativo CachyOS e ambiente grafico COSMIC.
+
+La catena di compilazione utilizzata è:
+\begin{itemize}[noitemsep]
+    \item CMake 4.3.0;
+    \item Clang 22.1.1;
+    \item target \texttt{x86\_64-pc-linux-gnu}.
 \end{itemize}
-
-La parte dedicata alla fusione è organizzata con un filo interpretativo unico:
-\texttt{valid}, \texttt{invalid}, \texttt{recoverable}.
-Questa distinzione permette di separare i casi in cui la fusione è
-semanticamente corretta dai casi in cui è necessario rifiutare la fusione o
-applicare una normalizzazione esplicita.
 
 \section{Validazione del contesto sperimentale}
-
-\subsection{Ambiente di test}
-
-I risultati sono stati ottenuti su un notebook Apple MacBook Pro 13'' (2020)
-con processore Apple M1, 16 GB di memoria ad accesso casuale (RAM) e unità a
-stato solido (SSD) da 512 GB con interfaccia Non-Volatile Memory Express
-(NVMe), oltre al sistema operativo macOS Sequoia
-15.7.2.
-La catena di compilazione utilizzata è:
-\begin{itemize}
-    \item CMake 4.2.3;
-    \item Apple Clang 17.0.0 (\texttt{clang-1700.0.13.5});
-    \item target \texttt{arm64-apple-darwin24.6.0}.
-\end{itemize}
-
 \subsection{Verifica empirica del dataset a prefisso costante}
 
-Gli esperimenti usano il dataset \texttt{prefix\_constant\_rho} con:
+Gli esperimenti usano il dataset a prefisso costante con le seguenti configurazioni:
 \[
 n=10^7,\qquad p=50,\qquad seed=21041998,\qquad
 d \in \{10^5,2\cdot 10^5,5\cdot 10^5,10^6,2\cdot 10^6,5\cdot 10^6,10^7\}
@@ -60,6 +52,13 @@ effettivamente usati nella modalità di flusso, mentre la seconda isola i soli
 punti di bordo dei blocchi, nei quali il rapporto assume il valore costante
 previsto dalla costruzione.
 
+Dalle figure si osserva che il comportamento atteso è rispettato. All'interno
+  di ciascun blocco la cardinalità distinta non cresce, perché non vengono
+  introdotte nuove prime occorrenze, mentre ai bordi di blocco essa aumenta di una
+  sola unità. Ne segue che il rapporto \(\rho_t=t/F_0(t)\) assume il valore
+  teorico \(\rho\) esattamente nei punti \(t=j\cdot\rho\), in accordo con la
+  costruzione del dataset.
+
 \begin{figure}[htbp]
     \centering
     \includegraphics[width=0.96\textwidth]{figures/results/ratio_processed_vs_distinct_streaming_linear.png}
@@ -75,24 +74,49 @@ previsto dalla costruzione.
 \end{figure}
 
 \subsection{Scelta del seed}
-
 Una verifica preliminare, svolta nelle prime iterazioni degli esperimenti, ha
-indicato che l'effetto del seed resta secondario rispetto alle differenze tra
-algoritmi e tra regimi di fusione.
+indicato che l'effetto del seed resta ininfluente rispetto alle differenze tra
+algoritmi e tra le varie modalit\`a di merge.
+
+Non sono stati fatti confronti con pi\`u dataset con seed diversi ma stessi parametri
+anche per una questione di spazio richiesto. 
+
+Ogni dataset pesa nell'ordine dei 2 GB dopo la compressione, per 50 milioni di elementi.
+Le configurazioni testate sono tante e sarebbe diventato arduo testarle tutte.
+
 Per questo motivo gli esperimenti principali fissano un seed unico pari a
 \(21041998\).
 
-I risultati in formato valori separati da virgola (CSV) di questa verifica non
-sono presenti nell'insieme di dati rigenerato più di recente.
-Per questo motivo la sezione conserva solo il ruolo di giustificazione
-metodologica della scelta del seed e non viene trattata come sezione
-quantitativa autonoma.
+\section{Esperimenti sugli algoritmi}
+Gli esperimenti sugli algoritmi sono organizzati in due gruppi complementari.
+  Il primo ha lo scopo di osservare come cambia la qualità della stima al variare
+  della cardinalità reale del prefisso e del rapporto tra elementi processati e
+  distinti. L'interesse non è limitato al solo errore medio, ma comprende anche
+  la dispersione della stima, così da distinguere chiaramente tra fenomeni di
+  bias e fenomeni di scarsa robustezza.
 
-\section{Risultati in modalità di flusso}
+  Per isolare questi effetti sono state considerate due viste del problema. Nella
+  prima si fissa il rapporto
+  \[
+  \rho=\frac{n}{d}
+  \]
+  e si osserva la stima in funzione della cardinalità reale del prefisso. Nella
+  seconda si fissano valori obiettivo della cardinalità reale e si studia la
+  stima in funzione del rapporto medio di ripetizione del prefisso,
+  \[
+  \rho_t=\frac{t}{F_0(t)}
+  \]
+  in modo da separare, per quanto possibile, l'effetto della crescita dei distinti
+  da quello delle ripetizioni medie.
 
-\subsection{Impostazione degli esperimenti di flusso}
+  Il secondo gruppo di esperimenti mantiene fisso il contesto di esecuzione e
+  varia invece il parametro interno di precisione di ciascun algoritmo. Questa
+  analisi serve a capire non solo quale algoritmo sia più accurato nel complesso,
+  ma anche quanto il suo comportamento dipenda dalla scelta del parametro e se il
+  miglioramento ottenuto all'aumentare delle risorse sia regolare oppure no.
+\subsection{Configurazione utilizzata}
 
-Gli esperimenti di flusso usano il dataset:
+Gli esperimenti usano il dataset:
 \begin{center}
 \small
 \codepath{datasets/prefix_constant_rho/dataset_n_10000000_d_<d>_p_50_s_21041998.bin}
@@ -114,11 +138,46 @@ Le metriche principali osservate sono:
     comparativa tra algoritmi.
 \end{itemize}
 
-\subsection{Stima in funzione della cardinalità reale del prefisso}
+\subsection{Analisi della robustezza degli algoritmi}
+L'obiettivo di questa parte è capire rispetto a quali parametri gli algoritmi si
+  comportino bene o male. I due parametri considerati sono il numero reale di
+  elementi distinti osservati in un prefisso e il rapporto tra elementi processati
+  e distinti, cioè il numero medio di ripetizioni del prefisso.
+
+  L'analisi tiene conto di due aspetti diversi della qualità della stima. Il primo
+  è il bias, cioè lo scostamento sistematico tra il valore medio stimato e il
+  numero corretto di elementi distinti. Il secondo è la robustezza, cioè la
+  dispersione della stima attorno al suo valore medio: uno stimatore può anche
+  essere corretto in media, ma restare comunque molto sensibile al rumore e quindi
+  presentare una varianza elevata. Per questa ragione, nei grafici vengono
+  mostrati insieme il valore medio della stima e la sua dispersione.
+
+  Per studiare separatamente la dipendenza da questi due parametri, sono stati
+  adottati due protocolli sperimentali distinti.
+
+  Nel primo caso, chiamato per facilit\`a caso $A$, si fissa il rapporto
+  \[
+  \rho=\frac{n}{d}
+  \]
+  e si osserva l'andamento della stima al variare del numero reale di elementi
+  distinti presenti nel prefisso. In questo modo si analizza come cambino bias e
+  dispersione a parità di ripetizione media.
+
+  Nel secondo caso, chiamato caso $B$, si fissano alcuni valori target della cardinalità reale e si
+  osserva la stima in funzione del rapporto medio di ripetizione del prefisso,
+  calcolato come
+  \[
+  \rho_t=\frac{t}{F_0(t)}
+  \]
+  Questa scelta è necessaria perché usare il numero grezzo di elementi processati
+  come ascissa introdurrebbe implicitamente anche una dipendenza dal numero di
+  elementi distinti. Il rapporto \(\rho_t\) permette invece di isolare meglio
+  l'effetto delle ripetizioni medie sul comportamento degli algoritmi.
+\subsubsection{Stima in funzione della cardinalità reale del prefisso}
 \label{sec:ch5-streaming-f0}
 
 Questa analisi corrisponde ai grafici precedentemente indicati come
-analisi A.
+analisi del caso A.
 L'ascissa riporta la cardinalità reale \(F_0(t)\), l'ordinata la stima
 \(\hat{F}_0(t)\), e i pannelli sono separati per ciascun valore di \(\rho\).
 
@@ -160,11 +219,11 @@ L'ascissa riporta la cardinalità reale \(F_0(t)\), l'ordinata la stima
     \label{fig:ch5-stream-f0-hll}
 \end{figure}
 
-\subsection{Stima in funzione del rapporto tra elementi processati e distinti}
+\subsubsection{Stima in funzione del rapporto tra elementi processati e distinti}
 \label{sec:ch5-streaming-rho}
 
 Questa analisi corrisponde ai grafici precedentemente indicati come
-analisi B.
+analisi del caso B.
 Per ciascun valore obiettivo
 \[
 F_0^{\ast} \in \{1000,2000,5000,10000,20000,50000,100000\}
@@ -213,8 +272,7 @@ e la cui ordinata è la stima corrispondente.
     \label{fig:ch5-stream-rho-hll}
 \end{figure}
 
-\subsection{Sintesi quantitativa della modalità di flusso}
-
+\subsubsection{Risultati sulla robustezza e unbiasedness}
 Le osservazioni principali emerse dai riassunti ai punti finali osservati sono:
 \begin{itemize}
     \item nella vista rispetto alla cardinalità reale del prefisso,
@@ -249,32 +307,35 @@ stessa evidenza: Probabilistic Counting resta nettamente separato dagli altri
 algoritmi, mentre HyperLogLog++ mantiene il comportamento più regolare e
 accurato nel confronto complessivo.
 
-\subsection{Variazione del parametro di precisione nella modalità di flusso}
+\subsection{Analisi sulla variazione dei parametro degli algoritmi}
+Per analizzare il comportamento degli algoritmi al variare della precisione, 
+\`e necessario isolare l'effetto del parametro.
 
-Per isolare l'effetto del parametro di precisione, è stato eseguito un secondo
-insieme di esperimenti di flusso in cui sono stati fissati lo stesso insieme di
+Di conseguenza, \`e stato fatto un secondo insieme di esperimenti in cui 
+sono stati fissati lo stesso insieme di
 dati, lo stesso seed e la stessa funzione di hash, variando solo il parametro
 interno di ciascun
 algoritmo.
-L'impostazione comune è:
+
+L'impostazione scelta per questo esperimento comprende:
 \begin{itemize}
-    \item funzione di hash \texttt{splitmix64}
-    \item seed fissato a \(21041998\)
-    \item tre regimi rappresentativi con \(\rho \in \{1,10,100\}\)
+    \item l'utilizzo della funzione di hash \texttt{splitmix64}
+    \item un seed fissato a \(21041998\)
+    \item tre valori rappresentativi per \(\rho \in \{1,10,100\}\)
     \item HyperLogLog++ con \(k \in \{8,10,12,14,16,18\}\)
     \item HyperLogLog e LogLog con \(k \in \{4,6,8,10,12,14,16\}\) e \(L=32\)
     \item Probabilistic Counting con \(L \in \{4,8,12,16,20,24,28,31\}\)
 \end{itemize}
 
-L'analisi usa tre rappresentazioni complementari.
-La prima riassume l'errore relativo medio al punto finale per ogni coppia di
-valori tra \(\rho\) e il parametro.
-La seconda mantiene la forma del confronto rispetto alla cardinalità reale del
-prefisso, sostituendo però il confronto tra algoritmi con il confronto tra
-valori del parametro per uno stesso algoritmo.
-La terza fissa invece una cardinalità obiettivo \(F_0^\ast\) e osserva come
-varia la stima prodotta ai diversi valori del parametro.
+Per analizzare il comportamento degli algoritmi al variare della precisione, 
+sono stati realizzati due tipi di grafici.
 
+Il primo, tramite una heatmap, riassume l'errore relativo medio alla fine 
+del flusso di streaming per ogni coppia di
+valori tra \(\rho\) e il parametro dell'algoritmo.
+
+Il secondo sia in scala lineare che in scala logaritmica, fissando $\rho$, mette a confronto la cardinalità reale del flusso 
+e la stima, dove ogni retta \`e una diversa precisione dell'algoritmo.
 \begin{figure}[htbp]
     \centering
     \includegraphics[width=0.98\textwidth]{figures/results/streaming_precision_sweep_endpoint_heatmaps.png}
@@ -303,27 +364,6 @@ varia la stima prodotta ai diversi valori del parametro.
     \label{fig:ch5-stream-precision-typea}
 \end{figure}
 
-\begin{figure}[p]
-    \centering
-    \begin{subfigure}[t]{0.78\textwidth}
-        \centering
-        \includegraphics[height=0.33\textheight,keepaspectratio]{figures/results/streaming_precision_sweep_typeB_grid_linear.png}
-        \caption{Scala lineare}
-        \label{fig:ch5-stream-precision-typeb-linear}
-    \end{subfigure}
-
-    \vspace{0.6em}
-
-    \begin{subfigure}[t]{0.78\textwidth}
-        \centering
-        \includegraphics[height=0.33\textheight,keepaspectratio]{figures/results/streaming_precision_sweep_typeB_grid_loglog.png}
-        \caption{Scala logaritmica}
-        \label{fig:ch5-stream-precision-typeb-loglog}
-    \end{subfigure}
-    \caption{Confronto a cardinalità obiettivo fissata nell'analisi del parametro di precisione. Le righe corrispondono agli algoritmi e le colonne ai tre valori di \(\rho\)}
-    \label{fig:ch5-stream-precision-typeb}
-\end{figure}
-
 \begin{table}[htbp]
     \centering
     \footnotesize
@@ -346,50 +386,53 @@ varia la stima prodotta ai diversi valori del parametro.
     \label{tab:ch5-stream-precision-best}
 \end{table}
 
-Le Figure~\ref{fig:ch5-stream-precision-heatmaps},
-\ref{fig:ch5-stream-precision-typea} e
-\ref{fig:ch5-stream-precision-typeb} mostrano quattro comportamenti distinti.
+\subsubsection{Risultati sulla precisione per ogni algoritmo}
 
+Le Figure~\ref{fig:ch5-stream-precision-heatmaps} e
+  \ref{fig:ch5-stream-precision-typea} mostrano che l'aumento del parametro di
+  precisione non produce lo stesso effetto per tutti gli algoritmi.
+
+  HyperLogLog++ \`e l'algoritmo con l'andamento pi\`u regolare. Nel dominio
+  osservato, all'aumentare di \(k\) l'errore tende a ridursi in modo stabile e il
+  valore migliore coincide sempre con \(k=18\), indipendentemente dal valore di
+  \(\rho\). Questo comportamento indica che l'algoritmo non solo \`e accurato in
+  media, ma risponde anche in modo prevedibile all'aumento delle risorse
+  disponibili.
+
+  HyperLogLog mostra una tendenza simile, ma meno uniforme. In media il parametro
+  migliore \`e \(k=16\), tuttavia nel caso \(\rho=1\) il beneficio si stabilizza
+  gi\`a attorno a \(k=10\). L'aumento del parametro continua quindi a migliorare
+  la stima, ma con un guadagno meno regolare rispetto a HyperLogLog++.
+
+  LogLog presenta invece un comportamento pi\`u irregolare. Il parametro migliore
+  medio risulta \(k=14\), ma il vantaggio non cresce in modo monotono al crescere
+  di \(k\): il valore \(k=16\) migliora il caso intermedio \(\rho=10\), ma non si
+  mantiene ottimale negli altri regimi osservati. Questo suggerisce una maggiore
+  sensibilit\`a alla scelta del parametro.
+
+  Probabilistic Counting resta nettamente separato dagli altri algoritmi. Anche
+  nel caso del parametro migliore, pari a \(L=20\), l'errore finale rimane molto
+  pi\`u elevato e il miglioramento ottenuto aumentando \(L\) non \`e sufficiente a
+  portare l'algoritmo su livelli comparabili con quelli delle famiglie a
+  registri.
+
+  Questo esperimento aggiunge quindi un'informazione che i confronti precedenti
+  non mostravano direttamente. Non basta osservare quale algoritmo sia pi\`u
+  accurato nel complesso: \`e altrettanto importante capire se la qualit\`a della
+  stima migliori in modo regolare al variare del parametro. Sotto questo aspetto,
+  HyperLogLog++ risulta l'algoritmo pi\`u stabile e pi\`u robusto, mentre LogLog e
+  soprattutto Probabilistic Counting mostrano una dipendenza molto pi\`u marcata
+  dalla scelta del parametro.
+
+\section{Analisi del merge distribuito}
+
+\subsection{Casi confrontati}
+
+Negli esperimenti di merge il criterio interpretativo è separato in tre classi:
 \begin{itemize}
-    \item HyperLogLog++ è l'algoritmo con andamento più regolare: nel dominio
-    osservato i valori migliori si concentrano stabilmente nella parte alta
-    dell'intervallo esplorato, e il parametro migliore resta sempre il valore
-    \(k=18\) con errore
-    medio globale al punto finale pari a circa \(0.00134\) nel riepilogo
-    complessivo;
-    \item HyperLogLog beneficia anch'esso dell'aumento di \(k\), ma in modo
-    meno uniforme: il valore migliore medio coincide con \(k=16\), mentre per
-    \(\rho=1\) il minimo osservato è già raggiunto dal valore \(k=10\) nel
-    sottoinsieme esaminato;
-    \item LogLog mostra il comportamento meno monotono tra gli algoritmi a
-    registri: il valore medio migliore coincide con \(k=14\), mentre \(k=16\) migliora
-    solo il caso intermedio \(\rho=10\) e peggiora invece il caso
-    \(\rho=100\) nel confronto diretto;
-    \item Probabilistic Counting resta nettamente separato dagli altri
-    algoritmi per tutto il dominio osservato: il miglior compromesso medio è
-    ottenuto con \(L=20\) ma l'errore finale resta comunque elevato, con media
-    intorno a \(0.592\) e valore superiore a \(0.864\) nel caso \(\rho=1\) nel
-    riepilogo finale.
-\end{itemize}
-
-Questo esperimento aggiunge un'informazione che i confronti precedenti non
-mostravano direttamente.
-Non basta sapere quale algoritmo sia mediamente più accurato: nel dominio
-osservato è altrettanto importante capire se l'aumento del parametro produca un
-miglioramento regolare oppure un comportamento irregolare.
-In questo senso HyperLogLog++ risulta il candidato più robusto anche rispetto
-alla scelta del parametro, mentre LogLog e Probabilistic Counting mostrano una
-sensibilità molto più marcata.
-
-\section{Analisi della fusione}
-
-\subsection{Filo interpretativo: casi \texttt{valid}, \texttt{invalid}, \texttt{recoverable}}
-
-Negli esperimenti di fusione il criterio interpretativo è separato in tre classi:
-\begin{itemize}
-    \item \texttt{valid}: fusione semanticamente corretta in modo diretto;
-    \item \texttt{invalid}: fusione non semanticamente corretta;
-    \item \texttt{recoverable}: fusione non corretta in modo diretto ma
+    \item \texttt{valid}: merge semanticamente corretta in modo diretto;
+    \item \texttt{invalid}: merge non semanticamente corretta;
+    \item \texttt{recoverable}: merge non corretta in modo diretto ma
     recuperabile con normalizzazione esplicita.
 \end{itemize}
 
@@ -437,7 +480,7 @@ in tutte le coppie.
 Il controllo omogeneo chiude il caso \texttt{valid} e fornisce la base per
 attribuire gli scostamenti successivi ai soli fattori di eterogeneità.
 
-\section{Fusione eterogenea: casi \texttt{invalid}}
+\section{Merge eterogeneo: casi \texttt{invalid}}
 
 \subsection{Esperimento su disallineamento della funzione di hash}
 
@@ -464,7 +507,7 @@ un totale di 1800 righe:
     \begin{subfigure}[t]{0.98\textwidth}
         \centering
         \includegraphics[width=\linewidth]{figures/results/merge_hpp_hash_mismatch_overview.png}
-        \caption{Controllo omogeneo e andamento medio della fusione forzata nei casi \texttt{invalid}}
+        \caption{Controllo omogeneo e andamento medio del merge forzato nei casi \texttt{invalid}}
         \label{fig:ch5-hash-mismatch-overview}
     \end{subfigure}
 
@@ -473,18 +516,18 @@ un totale di 1800 righe:
     \begin{subfigure}[t]{0.78\textwidth}
         \centering
         \includegraphics[width=\linewidth]{figures/results/merge_hpp_hash_mismatch_unsafe_heatmap.png}
-        \caption{Errore relativo medio della fusione forzata per scenario e \(\rho\)}
+        \caption{Errore relativo medio del merge forzato per scenario e \(\rho\)}
         \label{fig:ch5-hash-mismatch-heatmap}
     \end{subfigure}
-    \caption{Esperimento di fusione eterogenea con disallineamento della funzione di hash}
+    \caption{Esperimento di merge eterogeneo con disallineamento della funzione di hash}
     \label{fig:ch5-hash-mismatch}
 \end{figure}
 
 Nella tabella seguente, \(\overline{\varepsilon}_{merge}\) e
 \(\overline{\varepsilon}_{serial}\) indicano rispettivamente l'errore relativo
-medio della fusione e del riferimento seriale.
+medio del merge e del riferimento seriale.
 La colonna finale riporta invece il degrado medio, cioè la media del rapporto
-punto per punto tra errore della fusione ed errore del riferimento seriale.
+punto per punto tra errore del merge ed errore del riferimento seriale.
 Le etichette \texttt{seed\_xx} e \texttt{seed\_murmur} indicano un
 disallineamento di seed all'interno della stessa famiglia di hash, mentre
 \texttt{family} e \texttt{family\_rev} indicano il confronto tra famiglie
@@ -514,18 +557,18 @@ diverse nelle due direzioni.
         \texttt{family\_rev} & 225 & 0.352802 & 0.005832 & 1.009634 & 130.76 \\
         \hline
     \end{tabular}
-    \caption{Sintesi globale della fusione eterogenea con disallineamento della funzione di hash}
+    \caption{Sintesi globale del merge eterogeneo con disallineamento della funzione di hash}
     \label{tab:ch5-hash-mismatch-summary}
 \end{table}
 
-Nei casi \texttt{invalid}, la fusione forzata non produce una semplice perdita
+Nei casi \texttt{invalid}, il merge forzato non produce una semplice perdita
 graduale ma un degrado strutturale.
 Per \(\rho=1\) l'errore relativo medio raggiunge valori prossimi o superiori a
 1, con massimo 1.009634.
 La strategia \texttt{reject} mantiene invece tracciabile il caso incompatibile
-senza introdurre una fusione semanticamente scorretta.
+senza introdurre un merge semanticamente scorretta.
 
-\section{Fusione eterogenea: casi \texttt{recoverable}}
+\section{Merge eterogeneo: casi \texttt{recoverable}}
 
 \subsection{Esperimento su disallineamento di precisione}
 
@@ -550,7 +593,7 @@ un totale di 1350 righe:
 \subsection{Correttezza della normalizzazione \texttt{reduce\_then\_merge}}
 
 Nei casi \texttt{recoverable} la normalizzazione alla precisione minima produce
-coincidenza tra stima da fusione e riferimento seriale.
+coincidenza tra stima da merge e riferimento seriale.
 La stessa coincidenza è osservata anche rispetto al riferimento omogeneo alla
 precisione più bassa.
 
@@ -568,15 +611,15 @@ precisione più bassa.
     \begin{subfigure}[t]{0.78\textwidth}
         \centering
         \includegraphics[width=\linewidth]{figures/results/merge_hpp_precision_mismatch_unsafe_heatmap.png}
-        \caption{Errore relativo medio della fusione forzata per gruppo di precisioni e \(\rho\)}
+        \caption{Errore relativo medio del merge forzato per gruppo di precisioni e \(\rho\)}
         \label{fig:ch5-precision-mismatch-heatmap}
     \end{subfigure}
-    \caption{Esperimento di fusione eterogenea con disallineamento di precisione}
+    \caption{Esperimento di merge eterogeneo con disallineamento di precisione}
     \label{fig:ch5-precision-mismatch}
 \end{figure}
 
 Anche nella tabella seguente, l'ultima colonna riporta il degrado medio, cioè
-la media del rapporto punto per punto tra errore della fusione ed errore del
+la media del rapporto punto per punto tra errore del merge ed errore del
 riferimento seriale.
 
 \begin{table}[htbp]
@@ -595,13 +638,13 @@ riferimento seriale.
         \texttt{reduce\_then\_merge} & 450 & 0.016651 & 0.016651 & 0.057418 & 1.00 \\
         \hline
     \end{tabular}
-    \caption{Sintesi globale della fusione eterogenea con disallineamento di precisione}
+    \caption{Sintesi globale del merge eterogeneo con disallineamento di precisione}
     \label{tab:ch5-precision-mismatch-summary}
 \end{table}
 
-\subsection{Degrado della fusione forzata nel caso \texttt{recoverable}}
+\subsection{Degrado del merge forzato nel caso \texttt{recoverable}}
 
-Senza normalizzazione, la fusione forzata mostra un degrado marcato:
+Senza normalizzazione, il merge forzato mostra un degrado marcato:
 \begin{itemize}
     \item per \(\rho=100\) errore medio tra 0.0081 e 0.0290;
     \item per \(\rho=10\) errore medio tra 0.0498 e 0.0563;
@@ -627,23 +670,23 @@ Nella stessa analisi, HyperLogLog converge verso \(k=16\), LogLog mostra un
 ottimo intermedio intorno a \(k=14\), mentre Probabilistic Counting resta
 instabile anche nel suo punto migliore.
 
-Il secondo punto riguarda la fusione omogenea: quando il caso è \texttt{valid},
-le stime da fusione e seriali coincidono in modo sistematico nel dominio
+Il secondo punto riguarda il merge omogeneo: quando il caso è \texttt{valid},
+le stime del merge e seriale coincidono in modo sistematico nel dominio
 misurato.
 
-Il terzo punto riguarda la fusione eterogenea: nei casi \texttt{invalid} emerge
+Il terzo punto riguarda il merge eterogeneo: nei casi \texttt{invalid} emerge
 un degrado strutturale, mentre nei casi \texttt{recoverable} la normalizzazione
 esplicita riporta il comportamento al riferimento corretto.
 
 \begin{figure}[htbp]
     \centering
     \includegraphics[width=0.98\textwidth]{figures/results/merge_hpp_cross_case_summary.png}
-    \caption{Sintesi trasversale dei casi osservati nella fusione di HyperLogLog++. Il pannello sinistro confronta i casi a livello globale, mentre quello destro mostra come il degrado varia al variare di \(\rho\)}
+    \caption{Sintesi trasversale dei casi osservati nel merge di HyperLogLog++. Il pannello sinistro confronta i casi a livello globale, mentre quello destro mostra come il degrado varia al variare di \(\rho\)}
     \label{fig:ch5-merge-cross-case-summary}
 \end{figure}
 
 In questo senso gli esperimenti confermano quanto assunto in letteratura sulle
-condizioni di compatibilità della fusione e, allo stesso tempo, mostrano che
+condizioni di compatibilità del merge e, allo stesso tempo, mostrano che
 l'infrastruttura realizzata consente di analizzare in modo sistematico nuovi scenari
 eterogenei. La Figura~\ref{fig:ch5-merge-cross-case-summary} rende evidente in
 un unico quadro la differenza tra i tre regimi osservati: controllo omogeneo,
@@ -653,12 +696,12 @@ precisione.
 \section{Conclusione del capitolo}
 
 Il capitolo ha presentato una progressione completa dagli esperimenti di flusso
-agli esperimenti di fusione.
+agli esperimenti di merge.
 Dopo la verifica del contesto sperimentale, il confronto tra algoritmi è stato
 esteso anche alla variazione del parametro di precisione, mettendo in evidenza
 regolarità e irregolarità che non emergono dal solo confronto a parametri
 fissati.
-Successivamente, il processo di fusione è stato analizzato in tre regimi
+Successivamente, il processo di merge è stato analizzato in tre regimi
 semantici distinti:
 \texttt{valid}, \texttt{invalid}, \texttt{recoverable}.
 Questa impostazione rende i risultati leggibili in modo uniforme e prepara in
