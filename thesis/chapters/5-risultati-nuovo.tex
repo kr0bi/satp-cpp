@@ -439,6 +439,14 @@ mentre i due esperimenti
 eterogenei permettono di osservare separatamente un caso \texttt{invalid} e un
 caso \texttt{recoverable}.
 
+ Nella lettura dei risultati eterogenei è utile osservare anche gli scenari
+  invertiti tra lato sinistro e lato destro, indicati con il suffisso
+  \texttt{rev}. Questa scelta non serve a verificare una nuova proprietà
+  algebrica del merge eterogeneo, ma a controllare se il degrado osservato cambi
+  quando si scambiano i due contesti locali. La proprietà matematica di
+  commutatività del merge è invece già verificata nei test del caso omogeneo,
+  insieme all'idempotenza e alla coerenza con il riferimento seriale.
+
 \subsection{Caso omogeneo}
 Affinch\'e si possa fare degli esperimenti nel caso di merge omogeneo, \`e
 necessario effettuare il merge mantenendo identici la stessa funzione di hash, lo stesso seed
@@ -500,105 +508,129 @@ richiede quindi una lettura diversa dei risultati.
 
 \subsubsection{Hash mismatch}
 
-La prima analisi eterogenea riguarda il confronto tra due sketch che utilizzano
-funzioni di hash differenti.
-La configurazione considerata \`e stata:
-\[
-n=10^7,\qquad p=50,\qquad seed=21041998,\qquad
-d\in\{10^5,10^6,10^7\}
-\]
-con precisione fissata a \(k=14\), da $n$ e $d$, si ricava $\rho\in\{100,10,1\}$. 
+  La prima analisi eterogenea riguarda il caso in cui i due sketch vengono
+  costruiti usando funzioni di hash differenti, oppure la stessa famiglia di hash
+  ma con seed diversi. L'obiettivo è capire come si comporti l'unione di sketch
+  quando la semantica dell'hash non è più condivisa tra i due lati.
 
-La configurazione \texttt{hash mismatch} include anche uno scenario \texttt{ctrl}
-  omogeneo, usato come riferimento locale nella stessa figura e nella stessa
-  tabella. Questo controllo non costituisce un esperimento autonomo distinto dal
-  caso omogeneo discusso in precedenza, ma ne rappresenta un sottoinsieme con
-  HyperLogLog++ e \(k=14\), utile per confrontare direttamente i casi
-  \texttt{invalid} con la baseline corretta.
+  Da questo esperimento ci si aspetta sicuramente una degradazione della stima. Poich\'e
+  lo stesso numero rappresentato da due funzioni di hash differenti verr\`a rappresentato
+  differentemente. L'esperimento vuole vedere quanto effettivamente viene degradata la stima.
 
-Il controllo omogeneo è eseguito con
-strategia \texttt{direct}, mentre i casi \texttt{invalid} sono analizzati con
-\texttt{reject} e \texttt{unsafe\_naive\_merge}.
+  La configurazione considerata è stata:
+  \[
+  n=10^7,\qquad p=50,\qquad seed=21041998,\qquad
+  d\in\{10^5,10^6,10^7\}
+  \]
+  da cui si ricava
+  \[
+  \rho\in\{100,10,1\}
+  \]
+  con precisione fissata a \(k=14\).
 
-L'esperimento copre 1800 righe complessive, distribuite su 72 file in formato
-CSV:
-\begin{itemize}
-    \item 300 coppie nel controllo omogeneo;
-    \item 750 coppie \texttt{invalid} con \texttt{reject};
-    \item 750 coppie \texttt{invalid} con \texttt{unsafe\_naive\_merge}.
-\end{itemize}
+  Le funzioni di hash considerate in questa configurazione minima sono
+  \texttt{splitmix64}, \texttt{xxhash64}, \texttt{murmurhash3} e
+  \texttt{siphash24}. Gli scenari osservati sono sette:
+  \begin{itemize}
+      \item \texttt{ctrl}: controllo omogeneo locale, con la stessa funzione di
+      hash sui due lati e seed del dataset su entrambi;
+      \item \texttt{seed\_xx} e \texttt{seed\_xx\_rev}: stessa hash
+      \texttt{xxhash64}, ma seed diversi nei due lati;
+      \item \texttt{seed\_murmur} e \texttt{seed\_murmur\_rev}: stessa hash
+      \texttt{murmurhash3}, ma seed diversi nei due lati;
+      \item \texttt{family} e \texttt{family\_rev}: confronto tra
+      \texttt{xxhash64} e una funzione di hash diversa tra
+      \texttt{splitmix64}, \texttt{murmurhash3} e \texttt{siphash24}.
+  \end{itemize}
 
-\begin{figure}[htbp]
-    \centering
-    \begin{subfigure}[t]{0.98\textwidth}
-        \centering
-        \includegraphics[width=\linewidth]{figures/results/merge_hpp_hash_mismatch_overview.png}
-        \caption{Controllo omogeneo e andamento medio del merge forzato nei casi \texttt{invalid}}
-        \label{fig:ch5-hash-mismatch-overview}
-    \end{subfigure}
+  I casi di \emph{seed mismatch} sono stati testati solo su
+  \texttt{xxhash64} e \texttt{murmurhash3}, perché in questa configurazione minima sono
+  le due famiglie per cui l'utilizzo di seed differenti è stato usato come fattore
+  di eterogeneità. Nei casi \texttt{family} e \texttt{family\_rev}, invece,
+  l'eterogeneità riguarda direttamente l'utilizzo di funzioni di hash.
 
-    \vspace{0.8em}
+  Lo scenario \texttt{ctrl} è presente anche in questo esperimento come
+  riferimento locale nella stessa figura e nella stessa tabella. Non rappresenta
+  un esperimento distinto dal caso omogeneo discusso in precedenza, ma un suo
+  sottoinsieme su HyperLogLog++ con \(k=14\), utile per confrontare direttamente
+  i casi \texttt{invalid} con il comportamento corretto.
 
-    \begin{subfigure}[t]{0.78\textwidth}
-        \centering
-        \includegraphics[width=\linewidth]{figures/results/merge_hpp_hash_mismatch_unsafe_heatmap.png}
-        \caption{Errore relativo medio del merge forzato per scenario e \(\rho\)}
-        \label{fig:ch5-hash-mismatch-heatmap}
-    \end{subfigure}
-    \caption{Esperimento di merge eterogeneo con disallineamento della funzione di hash}
-    \label{fig:ch5-hash-mismatch}
-\end{figure}
+  Nel controllo omogeneo la strategia usata è \texttt{direct}. Nei casi
+  \texttt{invalid}, invece, vengono osservate due strategie:
+  \texttt{reject} e \texttt{unsafe\_naive\_merge}. La prima non produce una stima
+  di merge e registra esplicitamente il caso incompatibile. La seconda forza il
+  merge come se la coppia fosse compatibile, ed è quindi usata come controllo
+  negativo sperimentale.
 
-La figura mette in evidenza il contrasto tra il controllo omogeneo e il merge
-forzato nei casi \texttt{invalid}; la tabella seguente ne riassume i valori
-numerici principali. Le quantità \(\overline{\varepsilon}_{merge}\) e
-\(\overline{\varepsilon}_{serial}\) indicano rispettivamente l'errore relativo
-medio del merge e del riferimento seriale. La colonna finale riporta invece il
-degrado medio, cioè la media del rapporto punto per punto tra errore del merge
-ed errore del riferimento seriale.
+   Questo controllo serve quindi a distinguere i casi in cui il merge è trattato
+  come semanticamente valido dai casi in cui viene forzato esplicitamente come
+  controllo negativo.
 
-Le etichette \texttt{seed\_xx} e \texttt{seed\_murmur} indicano un
-disallineamento di seed all'interno della stessa famiglia di hash. Le etichette
-\texttt{family} e \texttt{family\_rev} indicano invece il confronto tra
-famiglie diverse nelle due direzioni. Nella matrice minima, il disallineamento
-del seed è stato testato sulle sole famiglie \texttt{xxhash64} e
-\texttt{murmurhash3}.
+  L'esperimento copre 1800 righe complessive, distribuite su 72 file in formato
+  CSV:
+  \begin{itemize}
+      \item 300 coppie nel controllo omogeneo;
+      \item 750 coppie \texttt{invalid} con \texttt{reject};
+      \item 750 coppie \texttt{invalid} con \texttt{unsafe\_naive\_merge}.
+  \end{itemize}
 
-\begin{table}[htbp]
-    \centering
-    \small
-    \setlength{\tabcolsep}{5pt}
-    \renewcommand{\arraystretch}{1.1}
-    \begin{tabular}{|l|r|r|r|r|r|}
-        \hline
-        Scenario & Coppie & \(\overline{\varepsilon}_{merge}\) & \(\overline{\varepsilon}_{serial}\) & \(\max \varepsilon_{merge}\) & Degrado medio \\
-        \hline
-        \texttt{ctrl} & 300 & 0.006233 & 0.006233 & 0.025913 & 1.00 \\
-        \hline
-        \texttt{seed\_xx} & 75 & 0.342374 & 0.007436 & 0.969548 & 49.45 \\
-        \hline
-        \texttt{seed\_xx\_rev} & 75 & 0.343830 & 0.010076 & 0.969548 & 28.82 \\
-        \hline
-        \texttt{seed\_murmur} & 75 & 0.347522 & 0.004836 & 0.984223 & 206.46 \\
-        \hline
-        \texttt{seed\_murmur\_rev} & 75 & 0.348319 & 0.004606 & 0.984223 & 307.18 \\
-        \hline
-        \texttt{family} & 225 & 0.352037 & 0.007436 & 1.009634 & 50.36 \\
-        \hline
-        \texttt{family\_rev} & 225 & 0.352802 & 0.005832 & 1.009634 & 130.76 \\
-        \hline
-    \end{tabular}
-    \caption{Sintesi globale del merge eterogeneo con disallineamento della funzione di hash}
-    \label{tab:ch5-hash-mismatch-summary}
-\end{table}
+  La Figura~\ref{fig:ch5-hash-mismatch} mostra, per i diversi valori di \(\rho\),
+  il contrasto tra il merge omogeneo locale e il merge forzato nei casi
+  \texttt{invalid}. La Tabella~\ref{tab:ch5-hash-mismatch-summary} ne riassume i
+  principali valori numerici. Le quantità \(\overline{\varepsilon}_{merge}\) e
+  \(\overline{\varepsilon}_{serial}\) indicano rispettivamente l'errore relativo
+  medio del merge e del riferimento seriale. La colonna finale riporta invece il
+  degrado medio, cioè la media del rapporto punto per punto tra errore del merge
+  ed errore del riferimento seriale.
 
-Nei casi \texttt{invalid}, il merge forzato mostra un degrado molto marcato e
-sistematico rispetto al riferimento seriale.
-Per \(\rho=1\) l'errore relativo medio raggiunge valori prossimi o superiori a
-1, con massimo 1.009634.
-La strategia \texttt{reject} non produce una stima di merge per le coppie
-incompatibili, ma consente di registrare esplicitamente il caso nel protocollo
-sperimentale, mantenendo disponibili il riferimento seriale e l'unione esatta.
+  \begin{table}[htbp]
+      \centering
+      \small
+      \setlength{\tabcolsep}{5pt}
+      \renewcommand{\arraystretch}{1.1}
+      \begin{tabular}{|l|r|r|r|r|r|}
+          \hline
+          Scenario & Coppie & \(\overline{\varepsilon}_{merge}\) & \(\overline{\varepsilon}_{serial}\) &
+  \(\max \varepsilon_{merge}\) & Degrado medio \\
+          \hline
+          \texttt{ctrl} & 300 & 0.006233 & 0.006233 & 0.025913 & 1.00 \\
+          \hline
+          \texttt{seed\_xx} & 75 & 0.342374 & 0.007436 & 0.969548 & 49.45 \\
+          \hline
+          \texttt{seed\_xx\_rev} & 75 & 0.343830 & 0.010076 & 0.969548 & 28.82 \\
+          \hline
+          \texttt{seed\_murmur} & 75 & 0.347522 & 0.004836 & 0.984223 & 206.46 \\
+          \hline
+          \texttt{seed\_murmur\_rev} & 75 & 0.348319 & 0.004606 & 0.984223 & 307.18 \\
+          \hline
+          \texttt{family} & 225 & 0.352037 & 0.007436 & 1.009634 & 50.36 \\
+          \hline
+          \texttt{family\_rev} & 225 & 0.352802 & 0.005832 & 1.009634 & 130.76 \\
+          \hline
+      \end{tabular}
+      \caption{Sintesi globale del merge eterogeneo con disallineamento della funzione di hash}
+      \label{tab:ch5-hash-mismatch-summary}
+  \end{table}
+
+    \begin{figure}[htbp]
+      \centering
+      \begin{subfigure}[t]{0.98\textwidth}
+          \centering
+          \includegraphics[width=\linewidth]{figures/results/merge_hpp_hash_mismatch_overview.png}
+          \caption{Controllo omogeneo e andamento medio del merge forzato nei casi \texttt{invalid}}
+          \label{fig:ch5-hash-mismatch-overview}
+      \end{subfigure}
+      \caption{Esperimento di merge eterogeneo con disallineamento della funzione di hash}
+      \label{fig:ch5-hash-mismatch}
+  \end{figure}
+
+  Dai risultati emerge che, nei casi \texttt{invalid}, il merge forzato produce un
+  degrado netto rispetto al riferimento seriale e conferma che l'eterogeneità
+  dell'hash rompe la semantica comune necessaria al merge. Nel regime più
+  critico, \(\rho=1\), l'errore relativo medio raggiunge valori prossimi o
+  superiori a 1, con massimo pari a 1.009634. La strategia \texttt{reject}, al
+  contrario, evita di trattare queste coppie come merge validi e mantiene nel
+  protocollo sperimentale soltanto la stima seriale e l'unione esatta.
 
 \subsubsection{Precision mismatch}
 
