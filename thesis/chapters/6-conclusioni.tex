@@ -1,107 +1,117 @@
 \chapter{Conclusioni}
 \label{chp:conclusioni}
 
-\section{Richiamo del problema}
-Il conteggio approssimato degli elementi distinti nei flussi di dati è diventato
-un servizio critico per osservabilità, telemetria e analisi rapida in ambienti
-distribuiti. Le strutture riassuntive a registri, indicate nel seguito come
-sketch, in particolare quelle della famiglia HyperLogLog
-(con HyperLogLog++ come riferimento principale), permettono di mantenere stime
-compatte, ma quando i dati vengono prodotti da nodi eterogenei la fusione delle
-stime locali perde immediatamente la semplicità semantica della fusione per
-massimo registro per registro. La tesi ha quindi chiesto quando la fusione resta
-valida e quando invece
-è necessario rifiutarla o introdurre trasformazioni esplicite.
+Il conteggio approssimato degli elementi distinti è un problema centrale nei
+flussi di dati, perché compare in contesti come telemetria, osservabilità,
+monitoraggio e analisi distribuita, dove il costo del conteggio esatto cresce
+rapidamente al crescere dei dati osservati. In questi contesti gli sketch
+permettono di mantenere stime compatte e aggiornabili in tempo
+ridotto, ma il punto critico non è soltanto la qualità della stima locale. Nei
+sistemi distribuiti conta altrettanto la possibilità di effettuare il merge di
+sketch prodotti su nodi diversi, mantenendo una semantica coerente.
 
-\section{Sintesi dei risultati principali}
-I risultati del Capitolo~\ref{chp:risultati_nuovo} si sviluppano su tre livelli.
-La modalità di flusso mostra che, con un insieme di dati a prefisso costante, HyperLogLog++
-mantiene la stima più regolare e l'errore finale più basso sia rispetto alla
-cardinalità reale sia rispetto al rapporto osservato tra elementi processati e
-distinti descritto da \(\rho_t=t/F_0(t)\). HyperLogLog si
-comporta in modo analogo ma con saturazioni in alcuni regimi e LogLog ha variazioni
-più marcate; Probabilistic Counting resta lontano dal fronte per la sensibilità
-del parametro \(L\) nei casi osservati. Il controllo omogeneo della fusione conferma che lo spazio delle
-configurazioni di riferimento è privo di errori e offre un punto stabile di confronto.
-L'analisi eterogenea mostra che i disallineamenti della funzione di hash
-appartengono alla classe \texttt{invalid}: la fusione forzata vale solo come
-esperimento negativo e produce errori consistenti, mentre il disallineamento di
-precisione appartiene alla classe \texttt{recoverable} grazie al
-reduce\_then\_merge che normalizza entrambi gli sketch alla precisione più bassa.
-Le mappe di calore del parametro, insieme alla sintesi basata su \(\Delta_{abs}\) e
-\(\Delta_{rel}\) rendono evidente quanto la funzione di hash e la dimensione dei
-registri guidino il degrado.
+Il lavoro sviluppato ha affrontato questo problema su due livelli. Il primo è
+il confronto tra algoritmi per il calcolo della stima degli elementi distinti in
+una stream, con una stessa infrastruttura di esecuzione, una stessa
+interfaccia comune e un dataset sintetico con proprietà controllate. 
+Il secondo
+è lo studio del merge distribuito, prima nel caso omogeneo e poi in due casi
+eterogenei mirati, cioè come la funzione di hash e il
+cambio dei parametri all'interno degli algoritmi cambino la stima. 
+Questa doppia prospettiva ha permesso di
+mettere in relazione il comportamento della stima con il problema, più delicato,
+della compatibilità semantica tra sketch.
 
-\section{Risposte alle domande di ricerca}
-\begin{enumerate}
-    \item Gli algoritmi di conteggio si comportano in modo prevedibile sull'insieme di dati
-    a prefisso controllato: HyperLogLog++ emerge come riferimento stabile, mentre
-    HyperLogLog e LogLog mostrano oscillazioni maggiori ma ancora comprensibili in
-    funzione dei parametri \(k\) e \(\rho\) nei diversi regimi osservati. I grafici di tipo A e B delineano chiaramente i
-    regimi di accuratezza.
-    \item La fusione è classificata come \texttt{valid} quando funzione di hash,
-    precisione e seed coincidono tra
-    gli sketch; è \texttt{recoverable} quando basta una riduzione esplicita della
-    precisione per tornare in linea; è \texttt{invalid} quando le funzioni di hash differiscono
-    e le registrazioni non rappresentano più lo stesso spazio semantico, causando
-    errori strutturali.
-    \item La scelta della funzione di hash e del parametro di precisione determina
-    l'errore relativo finale e la correttezza della fusione: le mappe di calore e
-    la variazione sistematica del parametro mostrano che valori troppo piccoli di
-    \(k\) o di \(L\) fanno degradare la stima, mentre la non omogeneità della
-    funzione di hash compromette direttamente la correttezza della fusione.
-\end{enumerate}
+I risultati sperimentali mostrano che, nel dominio osservato, HyperLogLog++
+mantiene il comportamento più regolare in una stream di dati, sia quando la
+stima è letta rispetto alla cardinalità reale del prefisso, sia quando viene
+analizzata rispetto al rapporto tra elementi processati e distinti. L'analisi
+del parametro di precisione conferma la stessa tendenza: l'aumento di \(k\)
+produce in HyperLogLog++ un miglioramento più stabile e prevedibile di quanto si
+osservi negli altri algoritmi implementati. HyperLogLog resta il metodo più
+vicino per comportamento, LogLog mostra maggiore sensibilità alla scelta del
+parametro e Probabilistic Counting rimane nettamente più instabile nel dominio
+testato.
 
-\section{Contributi della tesi}
-\begin{itemize}
-    \item Una trattazione completa dello spazio delle strutture riassuntive di tipo
-    HyperLogLog con interfaccia comune e test di regressione che permettono di confrontare implementazioni
-    differenti in modo uniforme.
-    \item Un modulo dedicato alle funzioni di hash che rende semplice alternare splitmix64, xxHash,
-    Murmur e SipHash, mantenendo gli stessi seed e parametri per ogni esperimento.
-    \item Un'infrastruttura sperimentale modulare che gestisce insiemi di dati compressi,
-    produce risultati strutturati per la modalità di flusso e per la fusione e
-    traccia strategie, validità e parametri.
-    \item La caratterizzazione sperimentale del comportamento di flusso, comprensiva
-    delle sintesi di tipo A e di tipo B e della variazione sistematica dei parametri di precisione.
-    \item La distinzione operativa tra casi \texttt{valid}, \texttt{recoverable} e
-    \texttt{invalid} nella fusione e la valutazione quantitativa del degrado nei casi
-    non validi.
-\end{itemize}
+Il controllo sul merge omogeneo conferma che, quando i due lati condividono la
+stessa funzione di hash, lo stesso seed e gli stessi parametri, il merge
+coincide con il riferimento seriale nel dominio osservato. Questa verifica era
+necessaria per distinguere gli effetti dovuti all'eterogeneità da eventuali
+problemi dell'infrastruttura sperimentale. A partire da questo controllo, gli
+esperimenti eterogenei hanno mostrato due comportamenti distinti. Nel caso di
+\texttt{hash mismatch}, il merge forzato produce un degrado netto e conferma
+che l'eterogeneità dell'hash rompe la semantica comune necessaria al merge. Nel
+caso di \texttt{precision mismatch}, invece, la differenza nei parametri non rende il
+caso direttamente corretto, ma resta recuperabile tramite una normalizzazione
+esplicita alla precisione minima, che riporta il comportamento sul riferimento
+seriale e sul corrispondente riferimento omogeneo.
 
-\section{Limiti del lavoro}
-Il lavoro resta ancorato a un insieme di dati sintetico e non include ancora una
-sorgente di dati reale. Ciò significa che non tutti i regimi di skew o di burst
-sono stati esplorati. La fusione è stata studiata soprattutto nel caso a coppie,
-che è sufficiente per caratterizzare il problema semantico di base ma non esaurisce
-le topologie dinamiche tipiche dei sistemi di elaborazione in flusso completi.
-Inoltre lo studio delle funzioni di hash si è concentrato su un insieme specifico
-di scelte pratiche e non copre famiglie più ampie o ipotesi adattive.
+Da questi risultati emergono anche i contributi principali del lavoro. Il primo
+è l'implementazione uniforme di più algoritmi di sketching per il calcolo degli elementi
+distinti, con particolare attenzione alla linea evolutiva che arriva a
+HyperLogLog++. Il secondo è l'integrazione delle funzioni di hash sotto una
+stessa interfaccia, in modo da poterle confrontare a parità di contesto
+sperimentale. Il terzo è l'infrastruttura di valutazione, che separa dataset,
+algoritmi, hash, metriche e serializzazione dei risultati e permette di
+condurre esperimenti sia in modalità di flusso sia nel merge distribuito. Il
+quarto è la distinzione operativa tra casi \texttt{valid},
+\texttt{recoverable} e \texttt{invalid}, che rende osservabile in modo
+esplicito quando il merge sia semanticamente corretto, quando vada rifiutato e
+quando possa essere recuperato con una trasformazione definita.
+
+Il sistema sviluppato ha però anche delle limitazioni. Gli esperimenti sono
+basati soprattutto su un dataset sintetico controllato, utile per isolare i
+fenomeni che interessano ma non sufficiente da solo a rappresentare tutta la
+varietà dei flussi reali. Lo studio del merge è stato condotto principalmente
+su casi pairwise, che bastano a chiarire il problema semantico di base ma non
+esauriscono la complessità delle topologie distribuite più ampie. Inoltre i
+casi eterogenei analizzati si concentrano su due assi ben definiti, cioè
+\texttt{hash mismatch} e \texttt{precision mismatch}, e la parte sperimentale
+sul merge è stata sviluppata soprattutto su HyperLogLog++ come riferimento
+principale. Infine il framework non è ancora collegato direttamente a una
+sorgente reale di flusso continuo.
 
 \section{Sviluppi futuri}
-Gli sviluppi che emergono naturalmente dai risultati sono:
-\begin{itemize}
-    \item estendere l'insieme di dati con flussi reali o con generatori che riproducano
-    burst, skew e tracce di rete, per validare la metodologia in condizioni meno
-    controllate;
-    \item integrare la piattaforma con un broker come Apache Kafka per pilotare
-    flussi continui controllati e sperimentare filtri e trasformazioni in tempo reale mantenendo
-    la riproducibilità;
-    \item elaborare topologie di fusione più ampie, come catene o gerarchie
-    dal margine al nodo regionale fino al centro,
-    e misurare come l'errore si accumuli lungo alberi sbilanciati;
-    \item sperimentare funzioni di hash basate sul contenuto o parametrizzate
-    per verificare se si possano recuperare fusioni classificate come \texttt{invalid}
-    senza ridurre la precisione;
-    \item automatizzare la generazione di resoconti comparativi per ogni esecuzione e
-    integrare strumenti di visualizzazione.
-\end{itemize}
 
-\section{Chiusura finale}
-Questa tesi conferma che la fusione rimane la leva centrale nei sistemi distribuiti
-che traggono valore da strutture riassuntive di cardinalità: identificare quando
-la fusione appartiene alla classe \texttt{valid}, quando è recuperabile e quando
-appartiene alla classe \texttt{invalid} permette di costruire catene di analisi
-osservabili e affidabili. L'infrastruttura sperimentale proposta offre una base
-riproducibile per estendere questo studio ad altre famiglie di strutture
-riassuntive, topologie e ambienti di produzione.
+Le direzioni più naturali che emergono da questo lavoro sono diverse. Una prima
+direzione consiste nel portare il framework fuori dal solo contesto sintetico,
+usando dataset reali oppure integrando una sorgente di flusso come Apache Kafka,
+così da osservare il comportamento degli algoritmi e del merge anche su dati
+prodotti da pipeline operative.
+
+Una seconda direzione riguarda le topologie distribuite del merge. I risultati
+ottenuti sul \texttt{precision mismatch} indicano che, quando il disallineamento
+è recuperabile, il merge tende a ridursi alla precisione minima coinvolta nella
+catena. Per questo motivo non avrebbe senso studiare topologie arbitrarie senza
+tenere conto di questo vincolo. Ha invece senso analizzare in quali punti di
+una topologia distribuita convenga effettuare la riduzione alla precisione più
+bassa, in modo da minimizzare il numero di conversioni e controllare il costo
+complessivo del merge.
+
+Una terza direzione consiste nell'estendere l'analisi eterogenea ad assi
+diversi da quelli già studiati, mantenendo però lo stesso principio: osservare
+solo casi la cui interpretazione semantica sia chiara. Questo include, per
+esempio, ulteriori configurazioni di hash o di rappresentazione interna da
+valutare con lo stesso metodo usato nei casi \texttt{invalid} e
+\texttt{recoverable} già discussi.
+
+Una quarta direzione riguarda l'estensione della famiglia di algoritmi
+implementati. In particolare avrebbe senso integrare algoritmi più recenti
+della linea LogLog, come UltraLogLog e metodi affini, per verificare se lo
+stesso impianto sperimentale permetta di confrontarli in modo diretto con
+HyperLogLog++ sia nella stima in flusso sia nel merge.
+
+Una quinta direzione consiste nell'allargare il framework anche ad altre
+famiglie di sketch. Bloom filter e Count-Min Sketch mostrano già nel capitolo
+sullo stato dell'arte che il paradigma dello sketching non si esaurisce nel
+solo numero di distinti. Integrare nel framework algoritmi per appartenenza
+approssimata, stima di frequenze o altri problemi permetterebbe di verificare
+quanto le stesse idee di compatibilità e di merge possano essere riutilizzate
+anche oltre il caso di HyperLogLog.
+
+Infine, una direzione ulteriore riguarda la misura del costo del merge
+eterogeneo non solo in termini di errore finale, ma anche in termini di costo
+di normalizzazione, costo computazionale e costo cumulativo lungo una topologia
+di elaborazione. Questo renderebbe il quadro non soltanto più completo dal
+punto di vista sperimentale, ma anche più utile dal punto di vista
+ingegneristico.
