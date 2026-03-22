@@ -9,7 +9,8 @@ In questa sezione si raccolgono le notazioni utilizzate nel resto della tesi.
     \item $\mathcal{U}$: universo degli elementi.
     \item $S = \langle x_1, \dots, x_s \rangle$: flusso di dati.
     \item $S_1 \cdot S_2$: concatenazione di due flussi.
-    \item $n = |\mathcal{U}|$: dimensione dell'universo.
+    \item $n$: numero totale di elementi osservati; nei capitoli sperimentali coincide con la lunghezza della partizione o del dataset considerato. Nella discussione teorica, quando si riportano risultati della letteratura, il ruolo di parametro di scala del dominio è esplicitato localmente.
+    \item $|\mathcal{U}|$: cardinalità dell'universo.
     \item $f(a)$: frequenza di $a \in \mathcal{U}$.
     \item $(a_t,\Delta_t)$: aggiornamento al tempo $t$, con chiave $a_t$ e incremento $\Delta_t$.
     \item $A_t[j]$: frequenza dell'elemento $j$ dopo i primi $t$ aggiornamenti.
@@ -25,6 +26,7 @@ In questa sezione si raccolgono le notazioni utilizzate nel resto della tesi.
     \item $F_0^{\ast}$: valore obiettivo della cardinalità distinta usato per interpolare i grafici della modalità di flusso.
     \item $\bar{F}_0$: media dei valori veri su $R$ repliche.
     \item $\bar{\hat{F}}_0$: media delle stime su $R$ repliche.
+    \item $\mu$: media della quantità osservata, usata localmente nei grafici con bande di dispersione.
     \item $(\varepsilon,\delta)$: parametri di accuratezza; $\varepsilon$ è l'errore relativo ammesso e $1-\delta$ è la probabilità di successo.
     \item $m$: memoria della struttura riassuntiva (tipicamente espressa in bit); nelle sezioni su LogLog/HLL/HLL++ il numero di registri è indicato anch'esso con $m=2^p$, quindi lo spazio complessivo dipende anche dalla larghezza di ciascun registro.
     \item $M$: stato interno dell'algoritmo per flussi di dati.
@@ -34,9 +36,11 @@ In questa sezione si raccolgono le notazioni utilizzate nel resto della tesi.
     \item $\mathcal{H}$: famiglia di funzioni di hash.
     \item $L$: lunghezza in bit del valore hash (nel Capitolo 3 si assume $L=w$).
     \item $w$: numero di bit del valore hash (se $V=\{0,1\}^w$).
-    \item $p$: parametro di precisione; tipicamente $m=2^p$.
+    \item $p$: numero di partizioni nei dataset sperimentali; nelle sezioni sugli sketch a registri lo stesso simbolo è usato localmente anche come parametro di precisione, con $m=2^p$.
     \item $p'$: precisione usata nella rappresentazione sparsa di HLL++.
     \item $k_{\text{sp}}$: numero di voci non nulle nella rappresentazione sparsa di HLL++.
+    \item $d$: numero di elementi distinti nel dataset o nella partizione considerata; nel Count-Min Sketch lo stesso simbolo è usato localmente per indicare il numero di righe.
+    \item $\rho=\frac{n}{d}$: rapporto tra elementi totali e distinti nel dataset a prefisso costante.
     \item $\rho_t=t/F_0(t)$: rapporto tra elementi processati e distinti al tempo $t$.
     \item $\rho(\cdot)$: posizione del primo bit a 1; nel Capitolo 3 il significato preciso dipende dalla struttura considerata ed è ridefinito localmente dove necessario.
     \item $j(x)$: indice del registro selezionato dai $\log_2 m$ bit più significativi di $h(x)$.
@@ -46,7 +50,6 @@ In questa sezione si raccolgono le notazioni utilizzate nel resto della tesi.
     \item $\beta(E,p)$: correzione empirica del bias usata in HyperLogLog++ per la precisione $p$.
     \item $V_0$: numero di registri a zero (in HLL/HLL++).
     \item $w_{\text{cm}}$: numero di colonne nel Count-Min Sketch.
-    \item $d$: numero di righe/funzioni hash nel Count-Min Sketch.
     \item $m_{\text{bf}}$: numero di bit del Bloom filter.
     \item $k_{\text{bf}}$: numero di funzioni hash del Bloom filter.
     \item $n_{\text{ins}}$: numero di elementi inseriti in un Bloom filter.
@@ -65,10 +68,12 @@ In questa sezione si raccolgono le notazioni utilizzate nel resto della tesi.
     \item $D$: rapporto di degrado tra errore del merge ed errore del riferimento seriale, valutato punto per punto e poi mediato sui casi osservati.
     \item $\mathrm{Bias}(\hat{\theta})$: bias di uno stimatore.
     \item $\mathrm{Var}(\hat{\theta})$: varianza di uno stimatore.
+    \item $\mathrm{SE}$: errore standard.
     \item $\widehat{\mathrm{Bias}}(\hat{F}_0)$: stima empirica del bias su $R$ repliche.
     \item $\mathrm{AB}$: valore assoluto del bias empirico.
     \item $\mathrm{RB}$: bias relativo.
     \item $\mathrm{MRE}$: errore relativo medio.
     \item $\mathrm{MAE}$: errore assoluto medio.
+    \item $\mathrm{MSE}$: errore quadratico medio.
     \item $\mathrm{RMSE}$: radice dell'errore quadratico medio.
 \end{itemize}
