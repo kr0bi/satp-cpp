@@ -425,25 +425,26 @@ Le Figure~\ref{fig:ch5-stream-precision-heatmaps} e
   dalla scelta del parametro.
 
 \section{Esperimenti sul merge distribuito}
-
-\subsection{Casi confrontati}
-
-Negli esperimenti di merge il criterio interpretativo è separato in tre classi:
+Tutti gli esperimenti sul merge sono stati fatti sull'algoritmo HyperLogLog++. 
+Essi sono poi suddivisi secondo tre casi distinti:
 \begin{itemize}
-    \item \texttt{valid}: merge semanticamente corretta in modo diretto;
-    \item \texttt{invalid}: merge non semanticamente corretta;
-    \item \texttt{recoverable}: merge non corretta in modo diretto ma
+    \item \texttt{valid}: merge semanticamente corretto in modo diretto;
+    \item \texttt{invalid}: merge non semanticamente corretto;
+    \item \texttt{recoverable}: merge non direttamente corretto, ma
     recuperabile con normalizzazione esplicita.
 \end{itemize}
 
-Questa classificazione è usata come riferimento comune per leggere prima il
-controllo omogeneo e poi i casi eterogenei.
+La sperimentazione del merge omogeneo implementa il caso \texttt{valid}, 
+mentre i due esperimenti
+eterogenei permettono di osservare separatamente un caso \texttt{invalid} e un
+caso \texttt{recoverable}.
 
-\subsection{Controllo nel caso omogeneo}
+\subsection{Caso omogeneo}
+Affinch\'e si possa fare degli esperimenti nel caso di merge omogeneo, \`e
+necessario effettuare il merge mantenendo identici la stessa funzione di hash, lo stesso seed
+e gli stessi parametri dell'algoritmo.
 
-Il controllo omogeneo fissa algoritmo, hash, seed e precisione identici nei due
-lati della coppia.
-Nella matrice minima:
+La configurazione minima scelta prevede:
 \[
 \rho \in \{1,10,100\},\qquad
 k \in \{10,14,18\}
@@ -451,11 +452,12 @@ k \in \{10,14,18\}
 sono state analizzate 36 configurazioni e 900 coppie, combinando i tre valori
 di \(k\), i tre regimi di \(\rho\) e le quattro funzioni di hash disponibili.
 
-Il risultato è:
+In tutte le 900 coppie analizzate si osserva:
 \[
 \Delta_{abs}=0,\qquad \Delta_{rel}=0
 \]
-in tutte le coppie.
+La tabella seguente riassume lo stesso risultato nei tre regimi di \(\rho\)
+considerati.
 
 \begin{table}[htbp]
     \centering
@@ -477,25 +479,49 @@ in tutte le coppie.
     \label{tab:ch5-merge-homo-summary}
 \end{table}
 
-Il controllo omogeneo chiude il caso \texttt{valid} e fornisce la base per
-attribuire gli scostamenti successivi ai soli fattori di eterogeneità.
+Il controllo omogeneo costituisce il riferimento del caso \texttt{valid} e
+mostra che, nel dominio osservato, merge e l'unione seriale coincidono in
+modo sistematico. Questo esperimento fornisce quindi la base rispetto alla quale
+leggere gli scostamenti osservati nei casi eterogenei.
 
-\section{Merge eterogeneo: casi \texttt{invalid}}
+\subsection{Caso eterogeneo}
 
-\subsection{Esperimento su disallineamento della funzione di hash}
+Nel caso di merge eterogeneo \`e stato deciso
+di analizzare due precisi casi distinti. 
+Lo scopo di questi esperimenti era cercare di analizzare quanto potesse degradare
+il merge in condizioni non ottimali, come ad esempio in un contesto di nodi distribuiti,
+in cui ogni nodo aveva a disposizione poca memoria e che fosse necessario utilizzare
+precisioni o parametri differenti.
 
-Il primo esperimento eterogeneo riguarda il disallineamento della funzione di
-hash in HyperLogLog++.
-La configurazione usa:
+Il primo esperimento consiste nell'analisi sull'utilizzo di funzioni di hash differenti,
+che rappresenta un caso \texttt{invalid}, mentre il
+merge in caso di precisioni differenti appartiene ai casi \texttt{recoverable} e
+richiede quindi una lettura diversa dei risultati.
+
+\subsubsection{Hash mismatch}
+
+La prima analisi eterogenea riguarda il confronto tra due sketch che utilizzano
+funzioni di hash differenti.
+La configurazione considerata \`e stata:
 \[
 n=10^7,\qquad p=50,\qquad seed=21041998,\qquad
-d\in\{10^5,10^6,10^7\},\qquad \rho\in\{100,10,1\}
+d\in\{10^5,10^6,10^7\}
 \]
-con precisione fissata a \(k=14\) e strategie
-\texttt{direct}, \texttt{reject}, \texttt{unsafe\_naive\_merge}.
+con precisione fissata a \(k=14\), da $n$ e $d$, si ricava $\rho\in\{100,10,1\}$. 
 
-Sono stati prodotti 72 file in formato valori separati da virgola (CSV), per
-un totale di 1800 righe:
+La configurazione \texttt{hash mismatch} include anche uno scenario \texttt{ctrl}
+  omogeneo, usato come riferimento locale nella stessa figura e nella stessa
+  tabella. Questo controllo non costituisce un esperimento autonomo distinto dal
+  caso omogeneo discusso in precedenza, ma ne rappresenta un sottoinsieme con
+  HyperLogLog++ e \(k=14\), utile per confrontare direttamente i casi
+  \texttt{invalid} con la baseline corretta.
+
+Il controllo omogeneo è eseguito con
+strategia \texttt{direct}, mentre i casi \texttt{invalid} sono analizzati con
+\texttt{reject} e \texttt{unsafe\_naive\_merge}.
+
+L'esperimento copre 1800 righe complessive, distribuite su 72 file in formato
+CSV:
 \begin{itemize}
     \item 300 coppie nel controllo omogeneo;
     \item 750 coppie \texttt{invalid} con \texttt{reject};
@@ -523,15 +549,20 @@ un totale di 1800 righe:
     \label{fig:ch5-hash-mismatch}
 \end{figure}
 
-Nella tabella seguente, \(\overline{\varepsilon}_{merge}\) e
+La figura mette in evidenza il contrasto tra il controllo omogeneo e il merge
+forzato nei casi \texttt{invalid}; la tabella seguente ne riassume i valori
+numerici principali. Le quantità \(\overline{\varepsilon}_{merge}\) e
 \(\overline{\varepsilon}_{serial}\) indicano rispettivamente l'errore relativo
-medio del merge e del riferimento seriale.
-La colonna finale riporta invece il degrado medio, cioè la media del rapporto
-punto per punto tra errore del merge ed errore del riferimento seriale.
+medio del merge e del riferimento seriale. La colonna finale riporta invece il
+degrado medio, cioè la media del rapporto punto per punto tra errore del merge
+ed errore del riferimento seriale.
+
 Le etichette \texttt{seed\_xx} e \texttt{seed\_murmur} indicano un
-disallineamento di seed all'interno della stessa famiglia di hash, mentre
-\texttt{family} e \texttt{family\_rev} indicano il confronto tra famiglie
-diverse nelle due direzioni.
+disallineamento di seed all'interno della stessa famiglia di hash. Le etichette
+\texttt{family} e \texttt{family\_rev} indicano invece il confronto tra
+famiglie diverse nelle due direzioni. Nella matrice minima, il disallineamento
+del seed è stato testato sulle sole famiglie \texttt{xxhash64} e
+\texttt{murmurhash3}.
 
 \begin{table}[htbp]
     \centering
@@ -561,19 +592,19 @@ diverse nelle due direzioni.
     \label{tab:ch5-hash-mismatch-summary}
 \end{table}
 
-Nei casi \texttt{invalid}, il merge forzato non produce una semplice perdita
-graduale ma un degrado strutturale.
+Nei casi \texttt{invalid}, il merge forzato mostra un degrado molto marcato e
+sistematico rispetto al riferimento seriale.
 Per \(\rho=1\) l'errore relativo medio raggiunge valori prossimi o superiori a
 1, con massimo 1.009634.
-La strategia \texttt{reject} mantiene invece tracciabile il caso incompatibile
-senza introdurre un merge semanticamente scorretta.
+La strategia \texttt{reject} non produce una stima di merge per le coppie
+incompatibili, ma consente di registrare esplicitamente il caso nel protocollo
+sperimentale, mantenendo disponibili il riferimento seriale e l'unione esatta.
 
-\section{Merge eterogeneo: casi \texttt{recoverable}}
+\subsubsection{Precision mismatch}
 
-\subsection{Esperimento su disallineamento di precisione}
-
-Il secondo esperimento eterogeneo usa HyperLogLog++ con semantica di hash
-costante e precisioni differenti tra lato sinistro e lato destro.
+La seconda analisi eterogenea riguarda il disallineamento della precisione.
+In questo caso la semantica di hash resta costante, mentre cambiano i parametri
+locali dei due sketch.
 Le coppie di precisione sono:
 \[
 (k_{left},k_{right}) \in
@@ -582,20 +613,23 @@ Le coppie di precisione sono:
 con strategie \texttt{reject}, \texttt{unsafe\_naive\_merge},
 \texttt{reduce\_then\_merge}.
 
-Sono stati prodotti 54 file in formato valori separati da virgola (CSV), per
-un totale di 1350 righe:
+L'esperimento copre 1350 righe complessive, distribuite su 54 file in formato
+CSV:
 \begin{itemize}
     \item 450 coppie \texttt{recoverable} con \texttt{reject};
     \item 450 coppie \texttt{recoverable} con \texttt{unsafe\_naive\_merge};
     \item 450 coppie \texttt{recoverable} con \texttt{reduce\_then\_merge}.
 \end{itemize}
 
-\subsection{Correttezza della normalizzazione \texttt{reduce\_then\_merge}}
+Questo asse sperimentale può essere letto in due modi: da un lato la strategia di
+normalizzazione corretta, dall'altro il merge forzato senza normalizzazione.
 
-Nei casi \texttt{recoverable} la normalizzazione alla precisione minima produce
-coincidenza tra stima da merge e riferimento seriale.
-La stessa coincidenza è osservata anche rispetto al riferimento omogeneo alla
-precisione più bassa.
+\paragraph{Correttezza della normalizzazione \texttt{reduce\_then\_merge}}
+
+Nei casi \texttt{recoverable}, la normalizzazione alla precisione minima
+elimina lo scostamento introdotto dal disallineamento dei parametri.
+La coincidenza è osservata sia rispetto alla stima seriale sia rispetto al
+riferimento omogeneo alla precisione più bassa.
 
 \begin{figure}[htbp]
     \centering
@@ -618,9 +652,11 @@ precisione più bassa.
     \label{fig:ch5-precision-mismatch}
 \end{figure}
 
-Anche nella tabella seguente, l'ultima colonna riporta il degrado medio, cioè
-la media del rapporto punto per punto tra errore del merge ed errore del
-riferimento seriale.
+Anche in questo caso l'ultima colonna riporta il degrado medio, cioè la media
+del rapporto punto per punto tra errore del merge ed errore del riferimento
+seriale. La riga \texttt{reject} non corrisponde a una stima da merge, ma a una
+strategia di rifiuto; per questo le colonne relative al merge restano non
+valorizzate.
 
 \begin{table}[htbp]
     \centering
@@ -642,18 +678,19 @@ riferimento seriale.
     \label{tab:ch5-precision-mismatch-summary}
 \end{table}
 
-\subsection{Degrado del merge forzato nel caso \texttt{recoverable}}
+\paragraph{Degrado del merge forzato nel caso \texttt{recoverable}}
 
-Senza normalizzazione, il merge forzato mostra un degrado marcato:
+Quando la normalizzazione non viene applicata, il merge forzato torna invece a
+mostrare un degrado marcato:
 \begin{itemize}
     \item per \(\rho=100\) errore medio tra 0.0081 e 0.0290;
     \item per \(\rho=10\) errore medio tra 0.0498 e 0.0563;
     \item per \(\rho=1\) errore medio tra 0.9471 e 1.0614.
 \end{itemize}
 
-Il caso peggiore è nel gruppo \texttt{10 vs 14} con \(\rho=1\) dove
-l'errore medio raggiunge 1.061378.
-Con \texttt{reduce\_then\_merge}, invece, il comportamento torna coerente con il
+Il caso peggiore è nel gruppo \texttt{10 vs 14} con \(\rho=1\), dove l'errore
+medio raggiunge 1.061378. Con \texttt{reduce\_then\_merge}, invece, il
+comportamento torna coerente sia con il riferimento seriale sia con il
 riferimento omogeneo alla precisione comune più bassa.
 
 \section{Discussione complessiva}
