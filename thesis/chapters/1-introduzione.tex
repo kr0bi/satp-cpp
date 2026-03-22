@@ -3,91 +3,73 @@
 \chapter{Introduzione}
 \label{chp:introduzione}
 
-\section{Contesto e motivazione}
-Nel mondo dei flussi di dati la stima del numero di elementi distinti è un
-servizio fondamentale per telemetria, osservabilità e sistemi di monitoraggio.
-Il conteggio esatto richiede memoria e tempo proporzionali al dominio, mentre
-le strutture riassuntive, indicate nel seguito come sketch, consentono aggiornamenti in tempo
-reale con occupazione di memoria compatta.
-Quando il flusso viene suddiviso su nodi distribuiti la fusione dei risultati
-diventa il solo modo praticabile per abbattere la latenza aggregando le
-stime locali, ma in questi scenari la fusione non è più un'operazione
-banale: dipende dalla semantica degli sketch, della funzione di hash e dei
-parametri di precisione impiegati su ciascun lato.
+Il conteggio degli elementi distinti è un problema classico nell'analisi di
+grandi moli di dati e nei sistemi che ricevono aggiornamenti in modo continuo.
+Applicazioni come monitoraggio di rete, telemetria, osservabilità, analisi di
+log, ottimizzazione di interrogazioni e sistemi distribuiti richiedono spesso
+di stimare quanti identificatori diversi siano comparsi in un flusso senza
+poter conservare l'intero input in memoria
+\cite{Leskovec_Rajaraman_Ullman_2014,Muthukrishnan_2005,Cormode_2017}. Quando
+il volume dei dati cresce, il conteggio esatto diventa costoso sia in memoria
+sia in tempo, mentre il valore cercato deve spesso essere aggiornato con
+latenza molto bassa.
 
-\section{Problema affrontato}
-Questa tesi prende in esame il problema del conteggio approssimato degli
-elementi distinti attraverso più strutture riassuntive, con particolare
-attenzione alla famiglia derivata da HyperLogLog e con HyperLogLog++ come
-riferimento principale per la fusione. La domanda centrale è quando e come
-abbia senso fondere due strutture in presenza di eterogeneità, distinguendo
-tra casi \texttt{valid}, \texttt{recoverable} e \texttt{invalid}.
-Il problema non è inventare nuovi stimatori, ma comprendere il comportamento
-reale nel confronto tra algoritmi, tra funzioni di hash e tra parametri di
-precisione diversi, mettendo alla prova la fusione quando qualcosa si discosta
-dalla condizione ideale di omogeneità.
+Da questa esigenza nasce l'uso di strutture riassuntive probabilistiche,
+indicate nel seguito come sketch, che comprimono il flusso in uno stato
+compatto e consentono di ottenere una stima approssimata del numero di
+distinti. La letteratura sul problema si è sviluppata lungo una linea piuttosto
+chiara, che parte dal conteggio probabilistico di Flajolet e Martin e arriva a
+HyperLogLog++, passando per PCSA, LogLog e HyperLogLog
+\cite{Flajolet_Martin_1985,Durand_Flajolet_2003,Flajolet_Fusy_Gandouet_Meunier_2007,Heule_Nunkesser_Hall_2013}.
+Questa evoluzione migliora progressivamente il compromesso tra occupazione di
+memoria, accuratezza e costo di aggiornamento, ma lascia aperto un aspetto che
+nei sistemi distribuiti è centrale quanto la stima stessa: l'unione di pi\`u sketch.
 
-\section{Obiettivi della tesi}
-Gli obiettivi concreti sono:
-\begin{itemize}
-    \item confrontare più algoritmi di conteggio distinti sotto una stessa
-    interfaccia, usando insiemi di dati con proprietà controllate e misure rigorose;
-    \item introdurre un'infrastruttura sperimentale che separi algoritmi,
-    funzioni di hash e catena di esecuzione;
-    \item caratterizzare il comportamento della fusione nei casi
-    omogenei e nelle varianti eterogenee;
-    \item individuare strategie pratiche per recuperare fusioni che nascono da
-    parametri diversi;
-    \item mantenere il codice e i risultati riproducibili per studi futuri.
-\end{itemize}
+Quando un flusso è suddiviso tra più nodi o tra più partizioni temporali, la
+stima globale non può essere ottenuta ricostruendo ogni volta l'insieme esatto
+dei distinti. Diventa quindi necessario combinare sketch costruiti localmente.
+Nel caso ideale, cioè quando i due lati condividono la stessa struttura, la
+stessa semantica di hash e gli stessi parametri, il merge è una proprietà
+naturale della struttura riassuntiva. Nei casi reali, però, possono comparire
+eterogeneità dovute a funzioni di hash diverse, seed diversi oppure precisioni
+diverse. In queste situazioni il merge non è più un'operazione banale: occorre
+capire quando sia semanticamente corretto, quando sia recuperabile tramite una
+normalizzazione esplicita e quando invece produca risultati privi di significato.
 
-\section{Domande di ricerca}
-La tesi cerca risposte a tre domande chiave:
-\begin{enumerate}
-    \item Come si comportano gli algoritmi di conteggio approssimato in un
-    insieme di dati a prefisso controllato quando si confrontano le stime dei
-    singoli sketch?
-    \item Quando la fusione di strutture riassuntive mantiene una semantica valida, quando
-    si può recuperare con una normalizzazione e quando invece resta invalida?
-    \item Quanto la scelta della funzione di hash e il parametro di precisione
-    influiscono sull'errore finale delle stime e sulla correttezza della fusione?
-\end{enumerate}
+Il lavoro sviluppato si concentra proprio su questo punto. Da un lato vengono
+ricostruite e implementate in modo uniforme alcune delle principali famiglie di
+algoritmi per il conteggio approssimato dei distinti. Dall'altro viene
+realizzata un'infrastruttura sperimentale che separa algoritmi, funzioni di
+hash, dataset e raccolta delle metriche, in modo da poter confrontare i metodi
+in modalità di flusso e studiare il merge in scenari distribuiti controllati.
+La parte sperimentale è organizzata in modo da osservare sia il comportamento
+della stima lungo il flusso sia quello dell'unione di sketch in caso omogeneo e
+nei principali casi eterogenei, con particolare attenzione a HyperLogLog++ come
+riferimento pratico per lo studio del merge.
 
-\section{Approccio metodologico}
-Per rispondere a queste domande si è adottata una metodologia strutturata:
-si è generato un insieme di dati con prefisso costante in modo che il numero reale di
-elementi distinti cresca in modo prevedibile; si sono implementati gli
-algoritmi con un contratto comune che separa il loro stato interno dalle funzioni di hash;
-si è costruita un'infrastruttura di esperimenti che comprende la modalità di
-flusso e la fusione a coppie nel caso omogeneo, oltre a un ramo eterogeneo che registra
-strategie, validità e parametri dei due sketch coinvolti; si sono condotti
-esperimenti mirati a isolare il ruolo della funzione di hash, del parametro di precisione
-e delle condizioni di omogeneità o eterogeneità della fusione.
-
-\section{Contributi principali}
-I contributi che emergono da questa impostazione sono:
-\begin{itemize}
-    \item un insieme coeso di implementazioni per il conteggio approssimato dei distinti,
-    con particolare attenzione alla famiglia HyperLogLog, dotato di interfaccia comune e test dedicati;
-    \item un modulo dedicato alle funzioni di hash che rende semplice alternare splitmix64,
-    xxHash, Murmur e SipHash con gli stessi seed e parametri;
-    \item un'infrastruttura sperimentale che gestisce insiemi di dati compressi, configurazioni
-    multiple e produce risultati coerenti per flusso e fusione eterogenea;
-    \item una caratterizzazione sperimentale del comportamento dei singoli
-    algoritmi in modalità di flusso, con le due viste principali del comportamento della stima e con l'analisi del parametro di precisione;
-    \item la distinzione operativa tra casi \texttt{valid}, \texttt{recoverable} e \texttt{invalid}
-    nella fusione, con valutazione degli errori assoluti e relativi.
-\end{itemize}
+L'obiettivo non è introdurre un nuovo stimatore teorico, ma comprendere in modo
+sistematico il comportamento reale degli algoritmi implementati e delle
+condizioni di merge. Per fare questo vengono considerati sia il bias sia la
+robustezza della stima, viene costruito un dataset sintetico con proprietà
+controllate, e vengono osservati separatamente il ruolo della funzione di hash,
+del parametro di precisione e della compatibilità semantica tra sketch. In
+questo senso il contributo del lavoro è duplice: da un lato conferma in modo
+sperimentale proprietà attese della letteratura, dall'altro mette a
+disposizione un framework software riutilizzabile per lo studio di nuovi scenari di
+merge.
 
 \section{Struttura della tesi}
-Il resto del documento è organizzato come segue.
-Il Capitolo~\ref{chp:background} presenta i fondamenti del conteggio approssimato,
-le famiglie di sketch e le metriche di errore.
-Il Capitolo~\ref{chp:stato-arte} riassume lo stato dell'arte con particolare
-attenzione alle proprietà di fusione e alle assunzioni sistemistiche.
-Il Capitolo~\ref{chp:implementazione_nuovo} descrive l'architettura software che
-implementa gli algoritmi, le funzioni di hash e i flussi di esperimenti.
-Il Capitolo~\ref{chp:risultati_nuovo} illustra i risultati in modalità di flusso e
-le analisi sulle fusioni omogenee ed eterogenee.
-Il Capitolo~\ref{chp:conclusioni} chiude con osservazioni finali e possibili
-sviluppi futuri per la piattaforma sperimentale.
+
+Il Capitolo~\ref{chp:background} introduce il modello dei flussi di dati, le
+funzioni di hash, le strutture riassuntive e le metriche statistiche usate nel
+seguito. Il Capitolo~\ref{chp:stato-arte} ricostruisce lo sviluppo storico
+degli algoritmi per il conteggio approssimato dei distinti e richiama anche
+altre strutture riassuntive impiegate per problemi diversi. Il
+Capitolo~\ref{chp:implementazione_nuovo} descrive l'architettura del sistema
+sperimentale, le scelte progettuali, gli algoritmi implementati, le funzioni di
+hash e il protocollo di generazione dei dati. Il
+Capitolo~\ref{chp:risultati_nuovo} presenta i risultati sperimentali, prima in
+modalità di flusso e poi negli esperimenti sul merge distribuito in caso
+omogeneo ed eterogeneo. Il Capitolo~\ref{chp:conclusioni} raccoglie infine le
+considerazioni conclusive, i limiti del lavoro e le principali direzioni di
+sviluppo futuro.
