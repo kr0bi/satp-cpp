@@ -40,7 +40,7 @@ di corso; oggi, invece, ne ho ventotto.
 
     A posteriori, cambierei alcune scelte fatte, ma il passato ormai è passato.
     Restano però le conseguenze delle proprie azioni.
-    Fortunatamente per\`o', tra queste, ci sono i legami che ho scelto di coltivare nel tempo: le amicizie, la mia relazione con Cristina e il rapporto con la mia famiglia.
+    Fortunatamente per\`o, tra queste, ci sono i legami che ho scelto di coltivare nel tempo: le amicizie, la mia relazione con Cristina e il rapporto con la mia famiglia.
 
     Dedico questa tesi a chi mi ha sostenuto e a chi continua a sopportarmi ogni giorno.
     La dedico anche alle persone che non ci sono più, ma che mi hanno cresciuto, accompagnato nella vita e fatto conoscere il mondo.
@@ -53,7 +53,17 @@ di corso; oggi, invece, ne ho ventotto.
 
     % the front matter
     \input{frontmatter/personalize}
-    \frontmatter
+    \pagenumbering{roman}
+    \maketitle
+    \frontispiece
+    \dedicationpage
+    \phantomsection
+    \addcontentsline{toc}{chapter}{Ringraziamenti}
+    \acknowledgments
+    \tableofcontents
+    \cleardoublepage
+    \setcounter{page}{1}
+    \pagenumbering{arabic}
     \sloppy
     \setstretch{\dnormalspacing}
     
@@ -72,10 +82,5 @@ di corso; oggi, invece, ne ho ventotto.
     \phantomsection
     \addcontentsline{toc}{chapter}{Bibliografia}
     \bibliography{references.bib}
-    
-    \cleardoublepage
-    \phantomsection
-    \addcontentsline{toc}{chapter}{Ringraziamenti}
-    \acknowledgments
 
 \end{document}
