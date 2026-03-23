@@ -111,6 +111,11 @@ grafici o la struttura dei notebook.
 
 \section{Algoritmi di sketching}
 
+Questa sezione raccoglie le scelte adottate per tradurre in codice gli algoritmi
+considerati nei capitoli precedenti. L'obiettivo è mostrare come siano stati
+resi confrontabili all'interno di un'unica infrastruttura, pur mantenendo le
+specificità delle singole implementazioni.
+
 \subsection{Criteri di scelta}
 
 Il nucleo algoritmico del progetto è dedicato al problema della stima del numero
@@ -305,6 +310,12 @@ modo coerente per entrambi i confronti.
 
 \section{Funzioni di hash}
 
+Le funzioni di hash costituiscono un livello trasversale dell'intera
+implementazione, perché incidono sia sul funzionamento degli sketch sia sulla
+correttezza dei confronti sperimentali. Per questo motivo vengono discusse a
+parte, mettendo in evidenza il loro ruolo, l'interfaccia comune e i criteri di
+selezione adottati.
+
 \subsection{Ruolo dell'hash negli sketch}
 
 Negli algoritmi implementati l'hash non serve solo a ottenere un valore di hash uniforme. 
@@ -401,6 +412,11 @@ valorizzati, mentre in assenza di override resta attivo il fallback al seed del
 dataset.
 
 \section{Framework sperimentale}
+
+Dopo avere definito algoritmi e hashing, resta da descrivere il livello che
+coordina l'esecuzione degli esperimenti. In questa sezione vengono quindi
+presentati i requisiti del framework, la sua organizzazione interna e i flussi
+con cui vengono prodotti i risultati.
 
 \subsection{Requisiti del framework}
 
