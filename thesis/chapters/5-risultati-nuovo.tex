@@ -68,14 +68,14 @@ Dalle figure si osserva che il comportamento atteso è rispettato. All'interno
 \begin{figure}[htbp]
     \centering
     \includegraphics[width=0.96\textwidth]{figures/results/ratio_processed_vs_distinct_streaming_linear.png}
-    \caption{Rapporto \(\rho_t=t/F_0(t)\) osservato sui punti di controllo del dataset \texttt{prefix\_constant\_rho}}
+    \caption{Rapporto \(\rho_t=t/F_0(t)\) osservato ai checkpoint del dataset}
     \label{fig:ch5-dataset-rho-ratio-linear}
 \end{figure}
 
 \begin{figure}[htbp]
     \centering
     \includegraphics[width=0.96\textwidth]{figures/results/ratio_processed_vs_distinct_streaming_boundary_linear.png}
-    \caption{Rapporto \(\rho_t\) osservato ai bordi di blocco del dataset \texttt{prefix\_constant\_rho}}
+    \caption{Rapporto \(\rho_t\) osservato ai bordi di blocco}
     \label{fig:ch5-dataset-rho-ratio-boundary}
 \end{figure}
 
@@ -304,7 +304,7 @@ viste complementari del problema.
 \begin{figure}[htbp]
     \centering
     \includegraphics[width=0.98\textwidth]{figures/results/streaming_endpoint_mre_summary.png}
-    \caption{Sintesi degli errori relativi medi ai punti finali osservati nella modalità di flusso. Il pannello sinistro confronta tutti gli algoritmi, mentre quello destro isola HyperLogLog++, HyperLogLog e LogLog}
+    \caption{Errore relativo medio alla fine della stream. Il pannello sinistro confronta tutti gli algoritmi, mentre quello destro isola HyperLogLog++, HyperLogLog e LogLog}
     \label{fig:ch5-stream-endpoint-summary}
 \end{figure}
 
@@ -352,7 +352,7 @@ e la stima, dove ogni retta \`e una diversa precisione dell'algoritmo.
 \begin{figure}[htbp]
     \centering
     \includegraphics[width=0.98\textwidth]{figures/results/streaming_precision_sweep_endpoint_heatmaps.png}
-    \caption{Analisi del parametro di precisione nella modalità di flusso. Ogni pannello mostra, per un algoritmo, l'errore relativo medio al punto finale al variare del parametro e di \(\rho\)}
+    \caption{Errore relativo medio alla fine della stream al variare del parametro di precisione e di \(\rho\), per ciascun algoritmo}
     \label{fig:ch5-stream-precision-heatmaps}
 \end{figure}
 
@@ -395,7 +395,7 @@ e la stima, dove ogni retta \`e una diversa precisione dell'algoritmo.
         Probabilistic Counting & \(L=20\) & \(L=20\) & \(L=20\) & \(L=16\) \\
         \hline
     \end{tabular}
-    \caption{Miglior parametro osservato per algoritmo nell'analisi del parametro di precisione in modalità di flusso}
+    \caption{Miglior parametro osservato per algoritmo nell'analisi del parametro di precisione}
     \label{tab:ch5-stream-precision-best}
 \end{table}
 
@@ -504,7 +504,7 @@ considerati.
         100 & \(10^5\) & 12 & 300 & 0 & 0 & 0 \\
         \hline
     \end{tabular}
-    \caption{Sintesi del controllo omogeneo di HyperLogLog++}
+    \caption{Risultati del controllo omogeneo di HyperLogLog++}
     \label{tab:ch5-merge-homo-summary}
 \end{table}
 
@@ -632,7 +632,7 @@ richiede quindi una lettura diversa dei risultati.
           \texttt{family\_rev} & 225 & 0.352802 & 0.005832 & 1.009634 & 130.76 \\
           \hline
       \end{tabular}
-      \caption{Sintesi globale del merge eterogeneo con disallineamento della funzione di hash}
+      \caption{Risultati del merge eterogeneo con funzioni di hash differenti}
       \label{tab:ch5-hash-mismatch-summary}
   \end{table}
 
@@ -644,7 +644,7 @@ richiede quindi una lettura diversa dei risultati.
           \caption{Controllo omogeneo e andamento medio del merge forzato nei casi \texttt{invalid}}
           \label{fig:ch5-hash-mismatch-overview}
       \end{subfigure}
-      \caption{Esperimento di merge eterogeneo con disallineamento della funzione di hash}
+      \caption{Esperimento di merge eterogeneo con funzioni di hash differenti}
       \label{fig:ch5-hash-mismatch}
   \end{figure}
 
@@ -734,7 +734,7 @@ e che venga trattato come merge recuperabile dai casi in cui il
           \texttt{reduce\_then\_merge} & 450 & 0.016651 & 0.016651 & 0.057418 & 1.00 \\
           \hline
       \end{tabular}
-      \caption{Sintesi globale del merge eterogeneo con disallineamento di precisione}
+      \caption{Risultati del merge eterogeneo nel caso in cui i parametri degli algoritmi non coincidono}
       \label{tab:ch5-precision-mismatch-summary}
   \end{table}
 
@@ -743,7 +743,7 @@ e che venga trattato come merge recuperabile dai casi in cui il
       \begin{subfigure}[t]{0.98\textwidth}
           \centering
           \includegraphics[width=\linewidth]{figures/results/merge_hpp_precision_mismatch_overview.png}
-          \caption{Confronto tra \texttt{reduce\_then\_merge} e \texttt{unsafe\_naive\_merge}}
+          \caption{Confronto tra \texttt{reduce\_then\_merge} e \texttt{unsafe\_naive\_merge} nel caso in cui i parametri degli algoritmi non coincidono}
           \label{fig:ch5-precision-mismatch-overview}
       \end{subfigure}
   \end{figure}
