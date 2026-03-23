@@ -278,7 +278,7 @@ e la cui ordinata è la stima corrispondente.
     \label{fig:ch5-stream-rho-hll}
 \end{figure}
 
-\subsubsection{Risultati sulla robustezza e unbiasedness}
+\subsubsection{Risultati sulla robustezza e sul bias}
 Le osservazioni principali emerse dai riassunti ai punti finali osservati sono:
 \begin{itemize}
     \item nella vista rispetto alla cardinalità reale del prefisso,
@@ -311,7 +311,14 @@ viste complementari del problema.
 La Figura~\ref{fig:ch5-stream-endpoint-summary} riassume in forma compatta la
 stessa evidenza: Probabilistic Counting resta nettamente separato dagli altri
 algoritmi, mentre HyperLogLog++ mantiene il comportamento più regolare e
-accurato nel confronto complessivo.
+accurato nel confronto complessivo. Questo risultato è coerente con la
+letteratura su HLL++, in cui la riduzione empirica del bias e la gestione
+separata dei regimi di cardinalità piccola e intermedia spiegano il vantaggio
+rispetto a HLL classico \cite{Heule_Nunkesser_Hall_2013}. Più in generale, i
+grafici osservati restano compatibili con la linea evolutiva che porta da
+LogLog a HyperLogLog e poi a HyperLogLog++, cioè a una progressiva riduzione
+della varianza e del bias pratico
+\cite{Durand_Flajolet_2003,Flajolet_Fusy_Gandouet_Meunier_2007,Heule_Nunkesser_Hall_2013}.
 
 \subsection{Analisi sulla variazione dei parametro degli algoritmi}
 Per analizzare il comportamento degli algoritmi al variare della precisione, 
@@ -422,13 +429,16 @@ Le Figure~\ref{fig:ch5-stream-precision-heatmaps} e
   portare l'algoritmo su livelli comparabili con quelli delle famiglie a
   registri.
 
-  Questo esperimento aggiunge quindi un'informazione che i confronti precedenti
-  non mostravano direttamente. Non basta osservare quale algoritmo sia pi\`u
-  accurato nel complesso: \`e altrettanto importante capire se la qualit\`a della
-  stima migliori in modo regolare al variare del parametro. Sotto questo aspetto,
-  HyperLogLog++ risulta l'algoritmo pi\`u stabile e pi\`u robusto, mentre LogLog e
-  soprattutto Probabilistic Counting mostrano una dipendenza molto pi\`u marcata
-  dalla scelta del parametro.
+Questo esperimento aggiunge quindi un'informazione che i confronti precedenti
+non mostravano direttamente. Non basta osservare quale algoritmo sia pi\`u
+accurato nel complesso: \`e altrettanto importante capire se la qualit\`a della
+stima migliori in modo regolare al variare del parametro. Sotto questo aspetto,
+HyperLogLog++ risulta l'algoritmo pi\`u stabile e pi\`u robusto, mentre LogLog e
+soprattutto Probabilistic Counting mostrano una dipendenza molto pi\`u marcata
+dalla scelta del parametro. Anche questa evidenza è in linea con la dipendenza
+classica dell'errore dal numero di registri, che nelle famiglie LogLog e
+HyperLogLog segue un andamento dell'ordine di \(1/\sqrt{m}\)
+\cite{Durand_Flajolet_2003,Flajolet_Fusy_Gandouet_Meunier_2007}.
 
 \section{Esperimenti sul merge distribuito}
 Tutti gli esperimenti sul merge sono stati fatti sull'algoritmo HyperLogLog++. 
@@ -439,6 +449,11 @@ Essi sono poi suddivisi secondo tre casi distinti:
     \item \texttt{recoverable}: merge non direttamente corretto, ma
     recuperabile con normalizzazione esplicita.
 \end{itemize}
+
+La possibilità di costruire sketch locali e combinarli senza rivedere i dati
+originari è uno dei motivi principali per cui queste strutture vengono usate in
+contesti distribuiti e in sistemi che aggregano grandi collezioni di dataset
+\cite{Agarwal_Cormode_Huang_Phillips_Wei_Yi_2012,Ting_2019_BillionsDatasets}.
 
 La sperimentazione del merge omogeneo implementa il caso \texttt{valid}, 
 mentre i due esperimenti
@@ -496,7 +511,10 @@ considerati.
 Il controllo omogeneo costituisce il riferimento del caso \texttt{valid} e
 mostra che, nel dominio osservato, merge e l'unione seriale coincidono in
 modo sistematico. Questo esperimento fornisce quindi la base rispetto alla quale
-leggere gli scostamenti osservati nei casi eterogenei.
+leggere gli scostamenti osservati nei casi eterogenei. Il risultato è coerente
+con la semantica classica del merge per gli sketch HLL-like, che in condizioni
+omogenee coincide con lo stato ottenuto processando direttamente l'unione dei
+flussi \cite{Ertl_2017_HLLAlgorithms}.
 
 \subsection{Caso eterogeneo}
 
@@ -736,7 +754,11 @@ e che venga trattato come merge recuperabile dai casi in cui il
   precisione minima elimina lo scostamento introdotto dall'utilizzo di parametri differenti. 
   Con l'utilizzo della strategia \texttt{reduce\_then\_merge}, il comportamento coincide infatti
   sia con il riferimento seriale sia con il riferimento omogeneo alla precisione
-  più bassa, con degrado medio pari a \(1.00\).
+  più bassa, con degrado medio pari a \(1.00\). Questo comportamento è coerente
+  con la letteratura più recente sugli sketch HyperLogLog, che tratta la
+  riduzione alla precisione minima come passaggio corretto per rendere
+  confrontabili sketch costruiti con parametri diversi
+  \cite{Ertl_2017_HLLAlgorithms}.
 
   \paragraph{Degrado del merge forzato nel caso \texttt{recoverable}}
 

@@ -261,6 +261,10 @@ LogLog sostituisce la bitmap con un array di registri e applica la mediazione
 stocastica in modo più efficiente \cite{Durand_Flajolet_2003}. Il prefisso
 dell'hash seleziona il registro da aggiornare, mentre il suffisso determina il
 rango $\rho$ da propagare come massimo. La stima finale usa una media geometrica normalizzata.
+Nel lavoro originale, inoltre, compare anche SuperLogLog, una variante che
+riduce ulteriormente la dispersione scartando i registri più estremi e che
+costituisce il passaggio storico immediatamente precedente a HyperLogLog
+\cite{Durand_Flajolet_2003}.
 
 \begin{definition}[LogLog]
 Sia $m=2^p$ il numero di registri. Per ogni elemento $x$ si calcola un valore
@@ -580,11 +584,22 @@ tabelle di correzione e doppia rappresentazione dello stato. Per questa
 ragione, nel seguito della tesi sarà importante distinguere sempre la specifica
 algoritmica dai dettagli implementativi.
 
+La letteratura successiva non si è però fermata a HLL++. Ertl propone nuovi
+stimatori per sketch HyperLogLog e una trattazione più fine di unione,
+intersezione e riduzione di precisione \cite{Ertl_2017_HLLAlgorithms}; Lang
+introduce CPC/FM85 come alternativa pratica alla stessa classe di problemi
+\cite{Lang_2017_CPC}; lavori più recenti esplorano ulteriori evoluzioni come
+SetSketch, HyperLogLogLog e UltraLogLog
+\cite{Ertl_2021_SetSketch,Karppa_Pagh_2022_HyperLogLogLog,Ertl_2024_UltraLogLog}.
+Questo mostra che, anche dopo HLL++, la ricerca continua a muoversi lungo due
+direttrici complementari: migliorare la qualità dello stimatore e ridurre
+ulteriormente il costo in spazio.
+
 \section{Merge di sketch e scenari distribuiti}
 Una proprietà fondamentale degli sketch di cardinalità moderni è la
 mergeabilità, cioè la possibilità di costruire sketch locali su partizioni del
 flusso e combinarli in uno sketch globale senza rivedere i dati originali
-\cite{Agarwal_Cormode_Huang_Phillips_Wei_Yi_2012}
+\cite{Gibbons_Tirthapura_2001,Beyer_Haas_Reinwald_Sismanis_Gemulla_2007,Agarwal_Cormode_Huang_Phillips_Wei_Yi_2012}
 
 Per Probabilistic Counting e PCSA, dove lo stato è basato su bitmap, la
 combinazione naturale è una OR componente per componente. Per LogLog, HLL e
@@ -597,7 +612,9 @@ merge naturale è
 
 Ne segue che, a parità di parametrizzazione e semantica di hashing, il merge
 registro per registro coincide con lo stato ottenuto processando l'unione dei
-flussi.
+flussi, che è precisamente la proprietà sfruttata nella letteratura per usare
+questi sketch in scenari distribuiti e per stimare quantità legate a unioni e
+intersezioni \cite{Ting_2016_UnionsIntersections,Ertl_2017_HLLAlgorithms}.
 
 Questa operazione è commutativa, associativa e idempotente, quindi è adatta agli ambiti distribuiti in cui la topologia, spesso,
 non è nota a priori.
@@ -611,7 +628,8 @@ Il merge di sketch, però, non si esaurisce nel caso omogeneo. Nella tesi il
 punto più importante è che HyperLogLog++ permette di studiare anche casi
 eterogenei. Se cambia la precisione ma non cambia la semantica dell'hash, si
 ha un caso semanticamente \texttt{recoverable}, in cui la riduzione alla
-precisione più bassa rende confrontabili gli sketch. Se invece cambia la
+precisione più bassa rende confrontabili gli sketch
+\cite{Ertl_2017_HLLAlgorithms}. Se invece cambia la
 semantica di hashing, il caso è \texttt{invalid}. Questo è il collegamento
 diretto con il Capitolo~\ref{chp:implementazione_nuovo}, in cui queste
 situazioni vengono rese operative nell'infrastruttura sperimentale.
@@ -845,3 +863,39 @@ se si usano contatori interi standard. La complessità per aggiornare la struttu
 
 La combinazione di due strutture compatibili avviene per somma componente per
 componente.
+
+\section{Related works}
+I lavori richiamati nel capitolo si distribuiscono lungo tre linee principali.
+La prima è quella del calcolo approssimato degli elementi distinti, che parte da
+Probabilistic Counting \cite{Flajolet_Martin_1985}, passa per LogLog
+\cite{Durand_Flajolet_2003}, arriva a HyperLogLog
+\cite{Flajolet_Fusy_Gandouet_Meunier_2007} e trova in HyperLogLog++ una forma
+più adatta all'uso pratico su larga scala \cite{Heule_Nunkesser_Hall_2013}. A
+questa linea si collegano anche lavori successivi che non cambiano il problema
+di riferimento, ma migliorano stimatori, costo in spazio o versatilità dello
+sketch, come CPC/FM85, SetSketch, HyperLogLogLog e UltraLogLog
+\cite{Lang_2017_CPC,Ertl_2021_SetSketch,Karppa_Pagh_2022_HyperLogLogLog,Ertl_2024_UltraLogLog}.
+
+La seconda linea riguarda l'uso distribuito degli sketch e la possibilità di
+combinare riassunti costruiti su partizioni diverse del flusso. In questa
+direzione rientrano i lavori su unioni di stream e sinossi mergeabili
+\cite{Gibbons_Tirthapura_2001,Beyer_Haas_Reinwald_Sismanis_Gemulla_2007,Agarwal_Cormode_Huang_Phillips_Wei_Yi_2012},
+insieme ai contributi che studiano in modo più specifico stime di unioni e
+intersezioni nella famiglia HLL \cite{Ting_2016_UnionsIntersections,Ertl_2017_HLLAlgorithms}.
+È soprattutto in questo secondo asse che si colloca il nucleo sperimentale della
+tesi: non tanto proporre un nuovo sketch, quanto osservare in quali condizioni
+l'unione di sketch resti semanticamente corretta, quando degradi e quando possa
+essere recuperata tramite normalizzazione.
+
+La terza linea è quella delle strutture per problemi diversi dal solo
+count-distinct, come Bloom filter e Count-Min Sketch
+\cite{Bloom_1970,Cormode_CountMinSketch_Encyclopedia}. Questi lavori non sono
+centrali rispetto agli esperimenti successivi, ma servono a mostrare che lo
+sketching non è limitato alla sola stima di \(F_0\) e che il framework
+realizzato potrebbe essere esteso anche ad altre famiglie di algoritmi.
+
+Nel complesso, il posizionamento della tesi è quindi intermedio tra stato
+dell'arte algoritmico e valutazione sperimentale. I capitoli successivi non si
+concentrano sulla progettazione di un nuovo stimatore, ma sull'implementazione
+uniforme di una parte rappresentativa di questa letteratura e sull'analisi del
+merge in casi omogenei ed eterogenei.
