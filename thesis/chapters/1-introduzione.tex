@@ -3,52 +3,52 @@
 \chapter{Introduzione}
 \label{chp:introduzione}
 
-Il calcolo del numero di elementi distinti in un flusso di dati è un problema classico nell'analisi di
+Il calcolo del numero di \textbf{elementi distinti} in un \textbf{flusso di dati} è un problema classico nell'analisi di
 grandi moli di dati e nei sistemi che ricevono aggiornamenti in modo continuo.
 Applicazioni come monitoraggio di rete, telemetria, osservabilità, analisi di
 log, ottimizzazione di interrogazioni e sistemi distribuiti richiedono spesso
-di stimare quanti identificatori diversi siano comparsi in un flusso senza
-poter conservare l'intero input in memoria
+di \textit{stimare quanti identificatori diversi siano comparsi in un flusso} \textbf{senza
+poter conservare l'intero input in memoria}
 \cite{Leskovec_Rajaraman_Ullman_2014,Muthukrishnan_2005,Cormode_2017}. Quando
-il volume dei dati cresce, il conteggio esatto diventa costoso sia in memoria
+il \textit{volume dei dati cresce}, il conteggio esatto \textit{diventa costoso} sia in memoria
 sia in tempo, mentre il valore cercato deve spesso essere aggiornato con
 latenza molto bassa.
 
-Da questa esigenza nasce l'uso di strutture riassuntive probabilistiche,
-indicate nel seguito come sketch, che comprimono il flusso in uno stato
+Da questa esigenza nasce l'uso di \textbf{strutture riassuntive probabilistiche},
+indicate nel seguito come \textbf{sketch}, che comprimono il flusso in uno stato
 compatto e consentono di ottenere una stima approssimata del numero di
 distinti. La letteratura sul problema si è sviluppata lungo una linea piuttosto
 chiara, che parte dal conteggio probabilistico di Flajolet e Martin e arriva a
-HyperLogLog++, passando per PCSA, LogLog e HyperLogLog
+\textit{HyperLogLog++}, passando per \textit{PCSA}, \textit{LogLog} e \textit{HyperLogLog}
 \cite{Flajolet_Martin_1985,Durand_Flajolet_2003,Flajolet_Fusy_Gandouet_Meunier_2007,Heule_Nunkesser_Hall_2013}.
 Questa evoluzione migliora progressivamente il compromesso tra occupazione di
 memoria, accuratezza e costo di aggiornamento, ma lascia aperto un aspetto che
-nei sistemi distribuiti è centrale quanto la stima stessa: l'unione di pi\`u sketch.
+nei sistemi distribuiti è centrale quanto la stima stessa: \textbf{l'unione di pi\`u sketch}.
 
-Quando un flusso è suddiviso tra più nodi o tra più partizioni temporali, la
+Quando un flusso è \textit{suddiviso tra più nodi} o tra più partizioni temporali, la
 stima globale non può essere ottenuta ricostruendo ogni volta l'insieme esatto
-dei distinti. Diventa quindi necessario combinare sketch costruiti localmente.
+degli elementi distinti. Diventa quindi \textit{necessario combinare sketch costruiti localmente}.
 Nel caso ideale, cioè quando i due lati condividono la stessa struttura, la
-stessa semantica di hash e gli stessi parametri, il merge è una proprietà
+stessa semantica di hash e gli stessi parametri, l'operaizone di \textbf{merge} è una proprietà
 naturale della struttura riassuntiva. Nei casi reali, però, possono comparire
-eterogeneità dovute a funzioni di hash diverse, seed diversi oppure precisioni
+\textit{eterogeneità} dovute a funzioni di hash diverse, seed diversi oppure precisioni
 diverse. In queste situazioni il merge non è più un'operazione banale: occorre
 capire quando sia semanticamente corretto, quando sia recuperabile tramite una
 normalizzazione esplicita e quando invece produca risultati privi di significato.
 
-Il lavoro sviluppato si concentra proprio su questo punto. Da un lato vengono
-ricostruite e implementate in modo uniforme alcune delle principali famiglie di
-algoritmi per il conteggio approssimato dei distinti. Dall'altro viene
-realizzata un'infrastruttura sperimentale che separa algoritmi, funzioni di
-hash, dataset e raccolta delle metriche, in modo da poter confrontare i metodi
-in modalità di flusso e studiare il merge in scenari distribuiti controllati.
+Il lavoro sviluppato si concentra proprio su questo punto. Da un lato \textit{vengono
+ricostruite e implementate} in modo uniforme alcune delle principali famiglie di
+algoritmi per il conteggio approssimato degli elementi distinti. Dall'altro viene
+\textit{realizzata un'infrastruttura sperimentale} che separa \textbf{algoritmi}, \textbf{funzioni di
+hash}, dataset e raccolta delle metriche, in modo da poter \textit{confrontare i metodi}
+in un contesto simile ad un flusso e \textit{studiare l'operazione di merge in scenari distribuiti controllati}.
 La parte sperimentale è organizzata in modo da osservare sia il comportamento
 della stima lungo il flusso sia quello dell'unione di sketch in caso omogeneo e
-nei principali casi eterogenei, con particolare attenzione a HyperLogLog++ come
-riferimento pratico per lo studio del merge.
+nei principali casi eterogenei, con particolare attenzione a \textit{HyperLogLog++} come
+riferimento pratico per lo studio dell'operazione di unione.
 
-L'obiettivo non è introdurre un nuovo stimatore teorico, ma comprendere in modo
-sistematico il comportamento reale degli algoritmi implementati e delle
+L'obiettivo non è introdurre un nuovo stimatore teorico, ma \textit{comprendere in modo
+sistematico} il comportamento reale degli algoritmi implementati e delle
 condizioni di merge. Per fare questo vengono considerati sia il bias sia la
 robustezza della stima, viene costruito un dataset sintetico con proprietà
 controllate, e vengono osservati separatamente il ruolo della funzione di hash,
