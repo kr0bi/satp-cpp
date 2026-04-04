@@ -3,16 +3,16 @@
 \chapter{Fondamenti teorici}
 \label{chp:background}
 A seguire vengono introdotte le nozioni teoriche utilizzate.
-Si parte dal modello di streaming di dati, si presentano gli algoritmi per flussi di dati,
-il ruolo delle funzioni di hash e delle strutture probabilistiche, 
-infine si richiamano i concetti statistici necessari per interpretare le metriche sperimentali.
+Si parte dal \textbf{modello di streaming di dati}, si presentano \textbf{gli algoritmi per flussi di dati},
+il ruolo delle \textbf{funzioni di hash} e delle strutture probabilistiche, 
+infine si richiamano \textbf{i concetti statistici} necessari per interpretare le metriche sperimentali.
 
 \section{Modello di streaming}
-Il modello di streaming descrive situazioni in cui gli elementi arrivano in modo continuo
-e devono essere elaborati nell'ordine in cui vengono osservati \cite{Leskovec_Rajaraman_Ullman_2014}.
-A differenza dei contesti tradizionali, non si assume di poter memorizzare interamente l'input
-prima di interrogarlo, di conseguenza lo spazio disponibile è limitato e il numero totale di elementi
-può essere molto grande o non noto a priori.
+Il \textbf{modello di streaming} descrive situazioni in cui gli elementi \textit{arrivano in modo continuo}
+e \textit{devono essere elaborati nell'ordine in cui vengono osservati} \cite{Leskovec_Rajaraman_Ullman_2014}.
+A differenza dei contesti tradizionali, \textbf{non si assume di poter memorizzare interamente l'input}
+prima di interrogarlo, di conseguenza \textit{lo spazio disponibile è limitato} e \textit{il numero totale di elementi
+può essere molto grande} o non noto a priori.
 
 In questa sezione vengono introdotti, nell'ordine, gli oggetti di base del modello,
 il meccanismo di aggiornamento e la quantità principale studiata nella tesi.
@@ -89,9 +89,9 @@ ma il richiamo ai momenti di frequenza è utile per mostrare che il conteggio de
 è parte di una classe più ampia di problemi studiati nel modello dei flussi di dati.
 
 \section{Algoritmi di streaming}
-Il modello appena descritto rende inapplicabili gli approcci classici basati su memorizzazione completa
-e analisi a posteriori. Per questo motivo si introducono algoritmi che elaborano il flusso in un solo passaggio
-e mantengono uno stato compatto da aggiornare dopo ogni nuovo elemento.
+Il modello appena descritto rende \textit{inapplicabili} gli approcci classici basati su memorizzazione completa
+e analisi a posteriori. Per questo motivo si introducono algoritmi che \textit{elaborano il flusso in un solo passaggio}
+e mantengono \textit{uno stato compatto} da aggiornare dopo ogni nuovo elemento.
 
 \begin{definition}[Algoritmo per flussi di dati]
 Un algoritmo per flussi di dati elabora un flusso in un solo passaggio e mantiene uno stato interno $M$
@@ -112,7 +112,7 @@ Nel seguito la quantità d'interesse principale sarà $F_0$, ma la definizione r
 
 Le prestazioni di un algoritmo per flussi di dati vengono tipicamente misurate in termini di numero di passaggi sul flusso,
 memoria impiegata, tempo per aggiornamento e accuratezza della risposta \cite{Prezza_2025}.
-Nel caso di algoritmi approssimati, l'accuratezza è espressa tramite parametri di errore e di confidenza.
+Nel caso di \textit{algoritmi approssimati}, l'accuratezza è espressa tramite \textbf{arametri di errore e di confidenza}.
 
 \begin{definition}[$(\varepsilon,\delta)$-approssimazione]
 Sia $\theta > 0$ una quantità d'interesse. Un algoritmo è detto \emph{$(\varepsilon,\delta)$-approssimante}
@@ -124,7 +124,7 @@ dove la probabilità è valutata rispetto alla randomizzazione interna dell'algo
 \cite{BarYossef_Jayram_Kumar_Sivakumar_Trevisan_2002}
 \end{definition}
 
-Nel caso specifico del numero di distinti, la definizione si applica alla scelta $\theta = F_0$ adottata nella tesi.
+Nel caso specifico del numero di elementi distinti, la definizione si applica alla scelta $\theta = F_0$ adottata nella tesi.
 Se il numero di distinti è nullo, si richiede in modo naturale che la stima sia anch'essa nulla con alta probabilità.
 
 L'altro vincolo fondamentale riguarda la memoria.
@@ -172,8 +172,8 @@ meccanismi di randomizzazione efficienti, tipicamente realizzati tramite funzion
 Per rispettare i vincoli di tempo e spazio appena descritti, gli algoritmi per flussi di dati
 impiegano spesso funzioni di hash che trasformano le chiavi del dominio in valori pseudo-casuali
 appartenenti a un dominio finito \cite{Vadhan_Mitzenmacher_2007,UniformHashing_Pagh_2007}.
-Nel caso degli sketch per il conteggio degli elementi distinti, la qualità della stima dipende in modo diretto
-dalla qualità della funzione di hash utilizzata.
+Nel caso degli sketch per il conteggio degli elementi distinti, \textit{la qualità della stima dipende in modo diretto
+dalla qualità della funzione di hash utilizzata}.
 
 \begin{definition}[Funzione di hash]
 Una funzione di hash è una funzione deterministica
@@ -235,16 +235,16 @@ Le funzioni di hash forniscono quindi il meccanismo con cui gli algoritmi trasfo
 in una rappresentazione compatta. La struttura che conserva questa rappresentazione
 è la struttura riassuntiva probabilistica, comunemente chiamata \emph{sketch}.
 
-\section{Sketches}
+\section{Sketch}
 \label{sec:sketch}
-Una struttura riassuntiva probabilistica, o \emph{sketch}, è una struttura dati che mantiene
-una sintesi compatta del flusso senza conservarne esplicitamente tutti gli elementi \cite{Cormode_2017}.
+Una struttura riassuntiva probabilistica, o \emph{sketch}, è una \textbf{struttura dati che mantiene
+una sintesi compatta del flusso senza conservarne esplicitamente tutti gli elementi} \cite{Cormode_2017}.
 Lo stato della struttura riassuntiva viene aggiornato man mano che arrivano nuovi dati ed è poi interrogato
 per ottenere una stima della quantità d'interesse.
 
 Nel seguito è importante non solo che una struttura riassuntiva possa essere aggiornata in modo efficiente,
-ma anche che possa essere combinata con altre strutture riassuntive costruite su porzioni diverse del flusso.
-Questa proprietà è centrale nei contesti distribuiti, in cui più nodi elaborano partizioni diverse dei dati
+ma anche che possa essere \textbf{combinata con altre strutture riassuntive} costruite su porzioni diverse del flusso.
+Questa proprietà è \textbf{centrale nei contesti distribuiti}, in cui più nodi elaborano partizioni diverse dei dati
 e devono poi produrre una stima globale.
 
 \begin{definition}[Mergeable Sketch]
