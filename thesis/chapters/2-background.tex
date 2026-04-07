@@ -32,14 +32,14 @@ Data una sequenza $S$, la \emph{frequenza} di un elemento $a \in \mathcal{U}$ è
 \[
 f(a) = |\{i \mid x_i = a\}|
 \]
-La collezione delle frequenze può essere vista come un vettore
+La \textbf{collezione delle frequenze} può essere vista come un vettore
 \[
 f \in \mathbb{N}^{|\mathcal{U}|}
 \]
 \end{definition}
 
 Nel modello generale per flussi di dati esistono diverse modalità di aggiornamento
-\cite{Muthukrishnan_2005}. In questo contesto si adotta il caso a soli inserimenti
+\cite{Muthukrishnan_2005}. In questo contesto si adotta il caso \textbf{a soli inserimenti}
 (\emph{insertion-only}), che è anche quello più naturale per il conteggio degli elementi distinti.
 
 \begin{definition}[Modello a soli inserimenti]
@@ -59,8 +59,8 @@ con inizializzazione $A_0[j] = 0$ per ogni $j \in \mathcal{U}$
 Se il flusso è espresso direttamente come sequenza di valori, ogni elemento
 $x_i$ può essere interpretato come l'aggiornamento $(x_i,1)$.
 
-Esistono modelli più generali, come il modello \emph{turnstile}, in cui sono ammessi aggiornamenti negativi 
-e il modello a finestra scorrevole (\emph{sliding window}), in cui si considerano soltanto gli ultimi $W$ aggiornamenti.
+Esistono modelli più generali, come il modello \emph{turnstile}, in cui sono ammessi \textbf{aggiornamenti negativi} 
+e il modello a finestra scorrevole (\emph{sliding window}), in cui si considerano soltanto gli \textbf{ultimi} $W$ aggiornamenti.
 Questi casi non rientrano nel nostro ambito, ma sono richiamati per collocare il problema
 nel contesto più ampio dello studio dei flussi di dati \cite{Muthukrishnan_2005}.
 
@@ -81,12 +81,12 @@ Per ogni $k \ge 0$, il momento di frequenza $F_k$ è definito come
 \[
 F_k = \sum_{a \in \mathcal{U}} f(a)^k
 \]
-In particolare, $F_0$ coincide con il numero di elementi distinti
+In particolare, $F_0$ \textbf{coincide} con il numero di elementi distinti.
 \end{definition}
 
 Nel problema affrontato in questa tesi, l'interesse è concentrato sul numero di distinti $F_0$
 ma il richiamo ai momenti di frequenza è utile per mostrare che il conteggio degli elementi distinti
-è parte di una classe più ampia di problemi studiati nel modello dei flussi di dati.
+è \textbf{parte di una classe più ampia} di problemi studiati nel modello dei flussi di dati.
 
 \section{Algoritmi di streaming}
 Il modello appena descritto rende \textit{inapplicabili} gli approcci classici basati su memorizzazione completa
@@ -112,7 +112,7 @@ Nel seguito la quantità d'interesse principale sarà $F_0$, ma la definizione r
 
 Le prestazioni di un algoritmo per flussi di dati vengono tipicamente misurate in termini di numero di passaggi sul flusso,
 memoria impiegata, tempo per aggiornamento e accuratezza della risposta \cite{Prezza_2025}.
-Nel caso di \textit{algoritmi approssimati}, l'accuratezza è espressa tramite \textbf{arametri di errore e di confidenza}.
+Nel caso di \textit{algoritmi approssimati}, l'accuratezza è espressa tramite \textbf{parametri di errore e di confidenza}.
 
 \begin{definition}[$(\varepsilon,\delta)$-approssimazione]
 Sia $\theta > 0$ una quantità d'interesse. Un algoritmo è detto \emph{$(\varepsilon,\delta)$-approssimante}
@@ -125,12 +125,12 @@ dove la probabilità è valutata rispetto alla randomizzazione interna dell'algo
 \end{definition}
 
 Nel caso specifico del numero di elementi distinti, la definizione si applica alla scelta $\theta = F_0$ adottata nella tesi.
-Se il numero di distinti è nullo, si richiede in modo naturale che la stima sia anch'essa nulla con alta probabilità.
+Se il numero di elementi distinti è nullo, si richiede in modo naturale che la stima sia anch'essa nulla con alta probabilità.
 
 L'altro vincolo fondamentale riguarda la memoria.
 
 \begin{definition}[Spazio sublineare]
-Un algoritmo usa \emph{spazio sublineare} se la memoria $m$ cresce asintoticamente meno di $n = |\mathcal{U}|$
+Un algoritmo usa \emph{spazio sublineare} se la memoria $m$ cresce asintoticamente meno di $n (= |\mathcal{U}|)$:
 \[
 m = o(n)
 \]
@@ -140,12 +140,12 @@ Per il problema del conteggio degli elementi distinti esistono algoritmi che pro
 usando spazio $\tilde{O}\bigl(\varepsilon^{-2}\log(1/\delta) + \log n\bigr)$ bit
 \cite{Alon_Matias_Szegedy_2002,Kane_Nelson_Woodruff_2010}
 
-I corrispondenti limiti inferiori mostrano che questa dipendenza è ottimale a livello di ordine di grandezza
+I corrispondenti \textbf{limiti inferiori} mostrano che questa dipendenza è \textbf{ottimale} a livello di ordine di grandezza
 \cite{Kane_Nelson_Woodruff_2010}
 
 Ne segue un compromesso molto chiaro: ridurre $\varepsilon$ di un fattore due richiede circa quattro volte la memoria,
-mentre ridurre $\delta$ richiede soltanto un fattore logaritmico, ottenibile anche tramite ripetizioni indipendenti
-e combinazione delle risposte \cite{Motwani_Raghavan_1996}
+mentre ridurre $\delta$ richiede soltanto un fattore logaritmico, ottenibile anche tramite \textit{ripetizioni indipendenti}
+e \textit{combinazione delle risposte} \cite{Motwani_Raghavan_1996}.
 
 La Figura~\ref{fig:streaming-pipeline} riassume la sequenza logica del modello:
 gli elementi del flusso aggiornano uno stato compatto, e da questo stato viene poi estratta la stima della quantità d'interesse.
@@ -160,7 +160,7 @@ gli elementi del flusso aggiornano uno stato compatto, e da questo stato viene p
 È utile distinguere gli algoritmi per flussi di dati dagli algoritmi in linea
 (\emph{online}).
 Entrambi operano senza disporre in anticipo dell'intero input, ma il modello dei flussi di dati
-è centrato soprattutto su memoria sublineare e approssimazione, e può anche ammettere
+è centrato soprattutto su \textbf{memoria sublineare} e \textbf{approssimazione}, e può anche ammettere
 l'elaborazione di piccoli blocchi di dati pur mantenendo uno stato molto compatto
 \cite{Muthukrishnan_2005,Prezza_2025}
 
@@ -197,11 +197,11 @@ come un meccanismo di partizionamento delle chiavi in un numero finito di celle 
     \label{fig:hash-uniformity}
 \end{figure}
 
-Le proprietà rilevanti per il seguito sono soprattutto l'uniformità, la bassa probabilità di collisione,
-l'indipendenza tra immagini di chiavi diverse e l'efficienza di calcolo.
+Le \textbf{proprietà} rilevanti per il seguito sono soprattutto \textit{l'uniformità}, \textit{la bassa probabilità di collisione},
+\textit{l'indipendenza} tra immagini di chiavi diverse e \textit{l'efficienza di calcolo}.
 
 \begin{definition}[Modello di hashing uniforme]
-Nel modello ideale, $h$ è scelta uniformemente a caso dall'insieme di tutte le funzioni da $\mathcal{U}$ a $V$.
+Nel modello ideale, $h$ è scelta \textbf{uniformemente} a caso dall'insieme di tutte le funzioni da $\mathcal{U}$ a $V$.
 In questo caso, per ogni chiave $x \in \mathcal{U}$ il valore $h(x)$ è uniforme in $V$
 e le immagini di chiavi distinte sono indipendenti
 \cite{Vadhan_Mitzenmacher_2007,UniformHashing_Pagh_2007}
@@ -222,7 +222,7 @@ $x_1,\dots,x_k$, il vettore
 \[
 \bigl(h(x_1),\dots,h(x_k)\bigr)
 \]
-è distribuito uniformemente in $V^k$ quando $h$ è scelta a caso da $\mathcal{H}$
+è \textit{distribuito uniformemente} in $V^k$ quando $h$ è scelta a caso da $\mathcal{H}$
 \cite{Vadhan_Mitzenmacher_2007}
 \end{definition}
 
@@ -245,7 +245,7 @@ per ottenere una stima della quantità d'interesse.
 Nel seguito è importante non solo che una struttura riassuntiva possa essere aggiornata in modo efficiente,
 ma anche che possa essere \textbf{combinata con altre strutture riassuntive} costruite su porzioni diverse del flusso.
 Questa proprietà è \textbf{centrale nei contesti distribuiti}, in cui più nodi elaborano partizioni diverse dei dati
-e devono poi produrre una stima globale.
+e devono poi produrre una \textit{stima globale}.
 
 \begin{definition}[Mergeable Sketch]
 Sia $\theta(S)$ la quantità d'interesse associata al flusso $S$, sia $\mathcal{K}(\cdot)$
@@ -257,14 +257,14 @@ Una struttura riassuntiva è \emph{mergeabile} se, per due flussi $S_1$ e $S_2$,
 \approx
 \hat{\theta}\bigl(\mathcal{K}(S_1 \cdot S_2)\bigr)
 \]
-cioè se il merge di due strutture riassuntive consente di ottenere la stessa informazione che si otterrebbe
-elaborando serialmente la concatenazione dei due flussi, con le stesse garanzie di errore
+cioè se il merge di due strutture riassuntive consente di \textit{ottenere la stessa informazione} che si otterrebbe
+elaborando \textbf{serialmente} la \textit{concatenazione} dei due flussi, con le \textbf{stesse garanzie di errore}
 oppure con una degradazione esplicitamente caratterizzata
-\cite{Agarwal_Cormode_Huang_Phillips_Wei_Yi_2012}
+\cite{Agarwal_Cormode_Huang_Phillips_Wei_Yi_2012}.
 \end{definition}
 
 Come nei casi precedenti la quantità d'interesse coincide con il numero di distinti $F_0$ considerato nel seguito.
-In questo contesto, la concatenazione dei flussi preserva esattamente l'informazione rilevante
+In questo contesto, \textbf{la concatenazione dei flussi} preserva \textbf{esattamente} l'informazione rilevante
 per il conteggio dei distinti.
 
 \begin{figure}[htbp]
@@ -278,26 +278,27 @@ La Figura~\ref{fig:merge-distributed} illustra lo scenario tipico in cui più no
 e li aggregano gerarchicamente.
 
 \begin{definition}[Operatore chiuso]
-Sia $\mathcal{S}$ lo spazio degli stati di una struttura riassuntiva. Un operatore $\oplus$ è \emph{chiuso} se
+Sia $\mathcal{S}$ lo spazio degli stati di una struttura riassuntiva. Un operatore $\oplus$ è \emph{chiuso} se:
 \[
 \oplus : \mathcal{S} \times \mathcal{S} \to \mathcal{S}
 \]
-cioè se la combinazione di due stati produce ancora uno stato valido dello stesso tipo
+la combinazione di due stati produce ancora uno stato valido dello stesso tipo.
 \end{definition}
 
-Per aggregazioni robuste è inoltre desiderabile che l'operatore di merge sia commutativo e associativo.
-In molti casi è utile anche l'idempotenza, perché permette di tollerare duplicazioni accidentali dei contributi.
+\textbf{Per aggregazioni robuste} è inoltre desiderabile che l'operatore di merge sia \textit{commutativo} e \textit{associativo}.
+In molti casi è utile anche \textit{l'idempotenza}, perché permette di tollerare duplicazioni accidentali dei contributi. 
+Nel contesto dei sistemi distribuiti questo è essenziale, poiché, i nodi di uno sistema sono spesso ``\textit{stateless}'', ergo non hanno memoria di quello che è già stato fatto. Questa proprietà rende molto resilenti i sistemi distribuiti con questa proprietà.
 
 Per gli sketch a registri considerati in questa tesi, come LogLog, HyperLogLog e HyperLogLog++,
-il merge nativo coincide con il massimo componente-per-componente, ma questa operazione è semanticamente corretta
-solo quando gli sketch condividono parametri strutturali compatibili e la stessa semantica di hash.
+il \textbf{merge} che viene utilizzato, implementato seguendo la letteratura, coincide con \textbf{la funzione di massimo} applicata componente-per-componente. Questa operazione \textbf{è semanticamente corretta}
+solo quando gli sketch \textbf{condividono parametri strutturali} compatibili e la \textbf{stessa semantica di hash}.
 
 Una volta definito l'operatore, conviene distinguere due assi concettualmente separati:
 la compatibilità semantica della coppia di sketch e la strategia operativa scelta dal sistema
 una volta nota tale compatibilità.
 
 \begin{definition}[Compatibilità semantica del merge]
-Nel seguito, una coppia di sketch è classificata in una delle tre categorie seguenti.
+Nel seguito di questa tesi, una coppia di sketch è classificata in una tra queste tre categorie.
 \begin{itemize}
     \item \texttt{valid}: il merge è semanticamente corretto così com'è. Nel caso degli sketch della famiglia HLL,
     questo significa che l'operazione di massimo componente-per-componente rappresenta davvero la stessa unione
@@ -333,15 +334,15 @@ e aggiornamenti a costo costante \cite{BarYossef_Jayram_Kumar_Sivakumar_Trevisan
 
 Una linea storica fondamentale parte dal \emph{Probabilistic Counting} di Flajolet e Martin
 \cite{Flajolet_Martin_1985}, che utilizza funzioni di hash per trasformare le chiavi
-in sequenze pseudo-casuali e ricava la cardinalità osservandone i pattern nei bit.
+in sequenze pseudo-casuali e ricava la cardinalità \textit{osservandone i pattern nei bit}.
 
 LogLog \cite{Durand_Flajolet_2003} e HyperLogLog \cite{Flajolet_Fusy_Gandouet_Meunier_2007}
-introducono poi una struttura a registri, ottenuti partizionando il dominio tramite hash,
-in cui ogni aggiornamento memorizza informazioni sulla posizione del primo bit a uno nel suffisso dell'hash.
+introducono poi una \textit{struttura a registri}, ottenuti partizionando il dominio tramite hash,
+in cui ogni aggiornamento memorizza \textit{informazioni sulla posizione del primo bit a uno} nel \textbf{suffisso dell'hash}.
 L'aggregazione dell'informazione su più registri riduce la varianza della stima.
 
 HyperLogLog++ \cite{Heule_Nunkesser_Hall_2013} mantiene la stessa idea di base,
-ma introduce correzioni pratiche per ridurre il bias in regimi diversi di cardinalità,
+ma introduce \textbf{correzioni pratiche} per ridurre il bias in regimi diversi di cardinalità,
 in particolare nel caso di piccola cardinalità, e una doppia rappresentazione,
 sparsa e densa, per migliorare l'efficienza dell'uso della memoria.
 
@@ -358,12 +359,12 @@ e il Bloom filter per la verifica approssimata di appartenenza
 \cite{Cormode_CountMinSketch_Encyclopedia,Bloom_1970,Agarwal_Trachtenberg_2006}
 
 Questi casi verranno richiamati nel capitolo successivo per collocare la famiglia
-FM a HLL++ nel panorama più ampio delle strutture riassuntive probabilistiche.
+di algoritmi trattati nel panorama più ampio delle strutture riassuntive probabilistiche.
 
 \section{Stimatori}
 \label{sec:stimatori}
 Per interpretare correttamente le stime prodotte dalle strutture riassuntive è utile richiamare alcune nozioni elementari
-della teoria della stima. Nel seguito, la stima prodotta da una struttura riassuntiva viene trattata come variabile aleatoria,
+della teoria della stima. Nel seguito, \textbf{la stima prodotta} da una struttura riassuntiva viene \textbf{trattata} come \textbf{variabile aleatoria},
 perché dipende sia dal flusso osservato sia dalla randomizzazione interna dell'algoritmo \cite{VanDeGeer_2015}.
 
 Quando serve esplicitare la dipendenza dalla struttura riassuntiva costruita sul flusso $S$
@@ -388,9 +389,9 @@ Il \emph{bias} di uno stimatore è
 Lo stimatore è \emph{corretto} se il bias è nullo.
 \end{definition}
 
-Un bias positivo indica una tendenza sistematica a sovrastimare il valore vero,
-mentre un bias negativo indica una sottostima. Un bias nullo, tuttavia, non garantisce da solo
-che la stima sia stabile.
+\textit{Un bias positivo indica una tendenza sistematica a sovrastimare il valore vero},
+mentre un bias \textit{negativo} indica una \textit{sottostima}. Un bias \textit{nullo}, tuttavia, \textbf{non garantisce} da solo
+che \textit{la stima sia stabile}.
 
 \begin{definition}[Varianza ed errore standard]
 La \emph{varianza} di uno stimatore è
