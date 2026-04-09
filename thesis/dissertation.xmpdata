@@ -1,0 +1,8 @@
+\Title{Stima della cardinalità nei flussi di dati distribuiti: merge e compatibilità semantica degli algoritmi di sketch}
+\Author{Daniele Ferroli}
+\Language{it-IT}
+\Subject{Tesi magistrale in Informatica sull'estimazione della cardinalità nei flussi di dati distribuiti, con particolare attenzione al merge e alla compatibilità semantica degli algoritmi di sketch.}
+\Keywords{stima della cardinalità; flussi di dati; sketch; merge; HyperLogLog; HyperLogLog++; compatibilità semantica; algoritmi probabilistici}
+\Publisher{Università degli Studi di Udine}
+\Identifier{Tesi magistrale in Informatica, Università degli Studi di Udine, anno accademico 2024-2025}
+\Copyright{Daniele Ferroli}
