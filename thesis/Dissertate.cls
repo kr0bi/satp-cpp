@@ -291,7 +291,7 @@
 	\setstretch{2.5}
 
 	\vspace{10pt}
-	\scshape{\LARGE{\bfseries{\textcolor{SchoolColor}{\thetitle}}}} \normalsize \\
+	\scshape{\large{\bfseries{\textcolor{SchoolColor}{\thetitle}}}} \normalsize \\
 	\vspace{15pt}
 	
 	\setstretch{1.2}
