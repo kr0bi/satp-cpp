@@ -771,3 +771,60 @@ e che venga trattato come merge recuperabile dai casi in cui il
   non si limita a introdurre una perdita moderata di accuratezza, mentre la
   strategia \texttt{reduce\_then\_merge} riporta il comportamento al riferimento
   corretto.
+
+\section{Risultati ottenuti}
+
+I risultati presentati in questo capitolo possono essere riassunti in quattro
+punti principali.
+
+\begin{itemize}
+    \item \textbf{Algoritmo migliore: HyperLogLog++.} Nel dominio sperimentale
+    osservato, HyperLogLog++ risulta il metodo migliore perché combina
+    \textit{accuratezza media più alta}, \textit{minore dispersione della
+    stima} e \textit{comportamento più regolare al variare del parametro di
+    precisione}. Le Figure~\ref{fig:ch5-stream-f0-hll},
+    \ref{fig:ch5-stream-rho-hll} e
+    \ref{fig:ch5-stream-endpoint-summary} mostrano infatti che HyperLogLog++
+    mantiene la stima più stabile sia rispetto alla cardinalità reale del
+    prefisso sia rispetto al rapporto tra elementi processati e distinti. La
+    Tabella~\ref{tab:ch5-stream-precision-best} conferma inoltre che, durante l'esperimento sui possibili parametri,
+    HyperLogLog++ è anche l'algoritmo con la risposta più
+    prevedibile all'aumentare di \(k\), con valore migliore osservato sempre pari
+    a \(k=18\).
+
+    \item \textbf{Coincidenza tra merge omogeneo e riferimento seriale.} Quando
+    due sketch condividono la stessa funzione di hash, lo stesso seed e gli
+    stessi parametri, il merge coincide con il caso seriale nel dominio
+    osservato. La Tabella~\ref{tab:ch5-merge-homo-summary} riporta infatti
+    \(\Delta_{abs}=0\) e \(\Delta_{rel}=0\) in tutte le coppie analizzate.
+    Questo è il risultato di riferimento del caso \texttt{valid} e mostra che,
+    in condizioni omogenee, il merge preserva correttamente la semantica dello
+    sketch.
+
+    \item \textbf{Hash diverse nel merge compromettono la correttezza.} Quando
+    i due sketch sono costruiti con funzioni di hash diverse, oppure con seed
+    diversi della stessa famiglia di hash, il merge produce un degrado
+    netto rispetto al riferimento seriale. La
+    Tabella~\ref{tab:ch5-hash-mismatch-summary} mostra che l'errore relativo
+    medio del merge cresce di oltre un ordine di grandezza e, nel regime più
+    critico \(\rho=1\), può superare il valore \(1\). Questo conferma che il
+    merge richiede non solo lo stesso algoritmo, ma anche una semantica comune
+    dell'hash.
+
+    \item \textbf{La tecnica \texttt{reduce\_then\_merge} recupera il caso di
+    precisioni diverse.} Se i due sketch usano la \textit{stessa funzione di
+    hash} ma \textit{precisioni diverse}, il merge non è direttamente corretto,
+    ma può essere recuperato normalizzando entrambi gli sketch alla precisione
+    minima comune prima dell'unione. La
+    Tabella~\ref{tab:ch5-precision-mismatch-summary} mostra che, con
+    \texttt{reduce\_then\_merge}, l'errore medio del merge coincide con quello
+    del riferimento seriale e del corrispondente caso omogeneo, mentre il merge
+    senza normalizzazione introduce un degrado netto.
+\end{itemize}
+
+Complessivamente, il risultato principale del capitolo è che HyperLogLog++
+emerge come il miglior stimatore tra quelli implementati, mentre sul lato del
+merge la correttezza dipende in modo decisivo dalla compatibilità semantica tra
+gli sketch: il caso omogeneo coincide con il seriale, l'eterogeneità dell'hash
+rompe la correttezza, e quando due sketch hanno precisioni diverse il merge resta recuperabile solo
+attraverso una normalizzazione esplicita.
