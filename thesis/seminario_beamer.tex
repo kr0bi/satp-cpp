@@ -1,0 +1,433 @@
+\documentclass[aspectratio=169,11pt]{beamer}
+
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[italian]{babel}
+\usepackage{amsmath}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{tabularx}
+\usepackage{graphicx}
+\usepackage{ragged2e}
+
+\usetheme{Madrid}
+\usecolortheme{dove}
+\setbeamertemplate{navigation symbols}{}
+\setbeamertemplate{footline}[frame number]
+
+\definecolor{UniudBlue}{RGB}{17,52,86}
+\definecolor{UniudAccent}{RGB}{145,42,42}
+\setbeamercolor{normal text}{fg=black,bg=white}
+\setbeamercolor{structure}{fg=UniudBlue}
+\setbeamercolor{title}{fg=black}
+\setbeamercolor{titlelike}{fg=black,bg=white}
+\setbeamercolor{frametitle}{fg=black,bg=black!4}
+\setbeamercolor{palette primary}{fg=black,bg=black!6}
+\setbeamercolor{palette secondary}{fg=black,bg=black!6}
+\setbeamercolor{palette tertiary}{fg=black,bg=black!6}
+\setbeamercolor{palette quaternary}{fg=black,bg=black!6}
+\setbeamercolor{author in head/foot}{fg=black,bg=black!6}
+\setbeamercolor{title in head/foot}{fg=black,bg=black!6}
+\setbeamercolor{date in head/foot}{fg=black,bg=black!6}
+\setbeamercolor{block title}{fg=white,bg=UniudBlue}
+\setbeamercolor{block body}{fg=black,bg=UniudBlue!6}
+\setbeamercolor{block title alerted}{fg=white,bg=UniudAccent}
+\setbeamercolor{block body alerted}{fg=black,bg=UniudAccent!8}
+\setbeamercolor{alerted text}{fg=UniudAccent}
+
+\graphicspath{{figures/}{figures/results/}{resources/}}
+
+\newcommand{\Fzero}{F_0}
+
+\title[Cardinalità distinta nei data stream distribuiti]{Stima della cardinalità distinta nei data stream distribuiti\\\large Merge e compatibilità semantica degli sketch}
+\subtitle{Seminario magistrale}
+\author{Daniele Ferroli}
+\institute{Università degli Studi di Udine}
+\date{A.A. 2024--2025}
+
+\begin{document}
+
+% Note relatore: Apri chiarendo che il seminario non presenta un nuovo stimatore teorico,
+% ma uno studio sistematico del merge di sketch count-distinct in scenari distribuiti.
+\begin{frame}
+  \titlepage
+\end{frame}
+
+% Note relatore: Dai subito la mappa. Il pubblico deve sapere che la parte centrale
+% non è il funzionamento fine di HLL++, ma il problema del merge semanticamente corretto.
+\begin{frame}{Roadmap del seminario}
+  \begin{enumerate}
+    \item Problema: perché stimare i distinti nei data stream distribuiti
+    \item Modello minimo: \(\Fzero\), sketch, hash, mergeabilità
+    \item Evoluzione storica: da Probabilistic Counting a HyperLogLog++
+    \item Cuore del lavoro: merge, compatibilità semantica, casi \texttt{valid}/\texttt{recoverable}/\texttt{invalid}
+    \item Disegno sperimentale e metodologia
+    \item Risultati principali su streaming e merge eterogeneo
+    \item Conclusioni, limiti e sviluppi futuri
+  \end{enumerate}
+\end{frame}
+
+% Note relatore: Inquadra il problema applicativo. L'idea chiave è che il conteggio
+% esatto non scala e che nei sistemi distribuiti il merge degli sketch è importante quanto la stima locale.
+\begin{frame}{Il problema}
+  \begin{itemize}
+    \item Obiettivo: stimare quanti identificatori distinti compaiono in un flusso continuo senza memorizzare tutto l'input.
+    \item Applicazioni tipiche: monitoraggio di rete, telemetria, osservabilità, analisi di log, ottimizzazione di interrogazioni.
+    \item Nei flussi di grandi dimensioni il conteggio esatto diventa costoso sia in memoria sia in tempo.
+    \item In scenari distribuiti non basta stimare bene in locale: bisogna anche combinare sketch costruiti su nodi o partizioni diverse.
+  \end{itemize}
+
+  \begin{block}{Messaggio guida}
+    In questo lavoro si studia quando il merge di sketch count-distinct è semanticamente corretto, quando è recuperabile e quando va rifiutato.
+  \end{block}
+\end{frame}
+
+% Note relatore: Mantieni solo il minimo teorico necessario. La formula di F0 basta a fissare il problema.
+\begin{frame}{Modello minimo: stream e \(\Fzero\)}
+  \begin{columns}[T,totalwidth=\textwidth]
+    \column{0.55\textwidth}
+      \begin{itemize}
+        \item Il flusso è una sequenza ordinata \(S=\langle x_1,x_2,\dots,x_s\rangle\).
+        \item In questo lavoro si considera il modello \emph{insertion-only}: ogni aggiornamento aggiunge occorrenze, non le rimuove.
+        \item Gli algoritmi devono elaborare il flusso in un solo passaggio, con aggiornamenti rapidi e memoria sublineare.
+        \item La quantità d'interesse è il numero di distinti osservati.
+      \end{itemize}
+    \column{0.45\textwidth}
+      \[
+        \Fzero = \left|\left\{a \in \mathcal{U} \mid f(a) > 0\right\}\right|
+      \]
+      \vspace{0.2cm}
+      \begin{block}{Interpretazione}
+        \(\Fzero\) è la cardinalità del supporto del vettore delle frequenze: coincide con il numero di elementi distinti.
+      \end{block}
+  \end{columns}
+\end{frame}
+
+% Note relatore: Qui inserisci la nozione chiave che l'hash fa parte della semantica,
+% non è un dettaglio di implementazione. Questo prepara le slide sul merge.
+\begin{frame}{Sketch, hash e mergeabilità}
+  \begin{itemize}
+    \item Uno \emph{sketch} mantiene una sintesi compatta del flusso e permette di stimare \(\Fzero\) senza conservare tutti gli elementi.
+    \item Negli sketch count-distinct l'hash non serve solo a randomizzare: determina come il flusso viene codificato nello stato.
+    \item Uno sketch è \emph{mergeabile} se combinare due stati equivale a elaborare serialmente l'unione dei due flussi, a parità di garanzie o con degradazione esplicita.
+  \end{itemize}
+
+  \[
+    \hat{\theta}\bigl(\mathcal{K}(S_1)\oplus\mathcal{K}(S_2)\bigr)
+    \approx
+    \hat{\theta}\bigl(\mathcal{K}(S_1 \cdot S_2)\bigr)
+  \]
+
+  \[
+    \bigl(\mathcal{K}(S_1)\oplus\mathcal{K}(S_2)\bigr)[j]
+    =
+    \max\{\mathcal{K}(S_1)[j],\mathcal{K}(S_2)[j]\}
+  \]
+
+  \begin{alertblock}{Punto critico}
+    Per gli sketch HLL-like il merge a massimi è corretto solo se i due lati condividono parametri strutturali compatibili e la stessa semantica dell'hash.
+  \end{alertblock}
+\end{frame}
+
+% Note relatore: Presenta la traiettoria storica come una progressione di idee,
+% non come una lista di formule. I dettagli dei singoli update non servono.
+\begin{frame}{Evoluzione storica degli algoritmi}
+  \small
+  \begin{tabularx}{\textwidth}{>{\RaggedRight\arraybackslash}p{2.8cm} >{\RaggedRight\arraybackslash}X >{\RaggedRight\arraybackslash}p{4.1cm}}
+    \toprule
+    Metodo & Idea dominante & Limite principale \\
+    \midrule
+    Probabilistic Counting & Una bitmap singola osserva eventi rari nell'hash & Varianza elevata \\
+    PCSA & Più bitmap virtuali e mediazione stocastica & Stato più pesante delle famiglie a registri \\
+    LogLog & Registri + media geometrica dei massimi di rango & Sensibile alla normalizzazione e ai regimi bassi \\
+    HyperLogLog & Registri + media armonica con correzioni di intervallo & Richiede gestione di regimi diversi di cardinalità \\
+    HyperLogLog++ & HLL corretto dal bias + rappresentazione sparsa/densa & Maggiore complessità ingegneristica \\
+    \bottomrule
+  \end{tabularx}
+
+  \vspace{0.2cm}
+  \smallskip
+  \small La linea evolutiva riduce progressivamente varianza e bias pratico mantenendo l'idea di sketch compatti e mergeabili.
+\end{frame}
+
+% Note relatore: Qui vale la pena isolare HLL e HLL++ perché sono il riferimento pratico
+% e il resto del seminario usa HLL++ per gli esperimenti di merge.
+\begin{frame}{Perché HLL e HLL++ sono il riferimento pratico}
+  \small
+  \begin{tabularx}{\textwidth}{>{\RaggedRight\arraybackslash}p{2.6cm} >{\RaggedRight\arraybackslash}p{3.4cm} >{\RaggedRight\arraybackslash}p{3cm} >{\RaggedRight\arraybackslash}X}
+    \toprule
+    Metodo & Stato dello sketch & Errore tipico & Cosa aggiunge \\
+    \midrule
+    LogLog & Array di registri & \(\approx 1.30/\sqrt{m}\) & Passaggio dalle bitmap ai registri \\
+    HyperLogLog & Array di registri & \(\approx 1.04/\sqrt{m}\) & Stima più stabile grazie alla media armonica e alle correzioni di regime \\
+    HyperLogLog++ & Registri sparsi o densi & \(\Theta(1/\sqrt{m})\), con bias pratico ridotto & Correzione empirica del bias e migliore gestione delle cardinalità piccole/intermedie \\
+    \bottomrule
+  \end{tabularx}
+
+  \vspace{0.2cm}
+  \begin{itemize}
+    \item In questo lavoro HyperLogLog++ è il riferimento principale per studiare il merge distribuito.
+    \item L'attenzione non è sull'ordine asintotico dell'errore, ma sulla stabilità empirica e sulla correttezza semantica del merge.
+  \end{itemize}
+\end{frame}
+
+% Note relatore: Usa la figura per mostrare lo scenario distribuito. Sottolinea che il merge
+% evita di rileggere i dati originari e che proprio qui nasce il problema semantico.
+\begin{frame}{Perché il merge conta nei sistemi distribuiti}
+  \begin{columns}[T,totalwidth=\textwidth]
+    \column{0.48\textwidth}
+      \begin{itemize}
+        \item Più nodi o partizioni temporali costruiscono sketch locali sullo stesso problema di cardinalità.
+        \item Ricostruire l'insieme esatto dei distinti annullerebbe il vantaggio dello sketching.
+        \item Serve quindi un merge che preservi il significato dello stato, non solo la sua forma.
+        \item In questo lavoro si analizzano sia il caso omogeneo sia i principali casi eterogenei.
+      \end{itemize}
+    \column{0.52\textwidth}
+      \centering
+      \includegraphics[width=\linewidth]{sketch_merge.png}
+  \end{columns}
+\end{frame}
+
+% Note relatore: Questa è la slide concettualmente più importante.
+% Distingui chiaramente il significato dei tre casi, senza parlare ancora di policy operative.
+\begin{frame}{Compatibilità semantica del merge}
+  \begin{columns}[T,totalwidth=\textwidth]
+    \column{0.33\textwidth}
+      \begin{block}{\texttt{valid}}
+        Il merge è corretto così com'è.
+
+        Caso tipico: HLL++ con stessa precisione, stessa funzione di hash e stesso seed.
+      \end{block}
+    \column{0.33\textwidth}
+      \begin{block}{\texttt{recoverable}}
+        Il merge non è direttamente corretto, ma lo diventa dopo una normalizzazione esplicita.
+
+        Caso tipico: HLL++ con precisioni diverse ma stessa semantica dell'hash.
+      \end{block}
+    \column{0.33\textwidth}
+      \begin{block}{\texttt{invalid}}
+        Nel quadro di questo lavoro non esiste un merge semanticamente corretto.
+
+        Caso tipico: funzioni di hash o seed diversi.
+      \end{block}
+  \end{columns}
+\end{frame}
+
+% Note relatore: Qui separa "che cosa significa la coppia" da "che cosa fa il sistema".
+% L'esistenza di unsafe_naive_merge serve solo come controllo negativo sperimentale.
+\begin{frame}{Compatibilità semantica vs strategia operativa}
+  \begin{columns}[T,totalwidth=\textwidth]
+    \column{0.55\textwidth}
+      \begin{block}{Compatibilità semantica}
+        \small È una proprietà della coppia di sketch.
+
+        Risponde alla domanda: \emph{esiste un merge semanticamente corretto?}
+
+        Le classi restano \texttt{valid}, \texttt{recoverable}, \texttt{invalid}.
+      \end{block}
+      \begin{block}{Strategia operativa}
+        \small È una scelta del sistema.
+
+        Risponde alla domanda: \emph{dato questo caso, che cosa faccio in esecuzione?}
+      \end{block}
+    \column{0.45\textwidth}
+      \begin{alertblock}{Controllo negativo}
+        \small Strategia sperimentale di merge forzato\\
+        (\texttt{unsafe\_naive\_merge}).
+
+        Serve solo a misurare quanto degrada la stima quando si ignora la semantica.
+      \end{alertblock}
+  \end{columns}
+
+  \vspace{0.1cm}
+  \small
+  \begin{itemize}
+    \item Un caso \texttt{valid} ammette tipicamente \texttt{direct}.
+    \item Un caso \texttt{recoverable} pu\`o essere \texttt{reject} oppure \texttt{reduce\_then\_merge}.
+    \item Un caso \texttt{invalid} non diventa corretto se si forza il merge: in questo contesto va rifiutato.
+  \end{itemize}
+\end{frame}
+
+% Note relatore: Tieni il framework al livello necessario per capire perché i risultati sono leggibili.
+% Non entrare nei dettagli di file, classi o CLI.
+\begin{frame}{Disegno sperimentale essenziale}
+  \begin{itemize}
+    \item Dataset sintetico \texttt{prefix\_constant\_rho} con \(n=10^7\), \(p=50\) e valori controllati di
+    \[
+      \rho = \frac{n}{d} \in \{100,50,20,10,5,2,1\}.
+    \]
+    \item Nella seconda vista sperimentale si osserva anche
+    \[
+      \rho_t = \frac{t}{\Fzero(t)},
+    \]
+    cio\`e il rapporto tra elementi processati e distinti nel prefisso.
+    \item Tre modalità di valutazione:
+    \begin{itemize}
+      \item \textbf{streaming}: andamento della stima lungo i prefissi;
+      \item \textbf{merge omogeneo}: confronto tra merge e riferimento seriale;
+      \item \textbf{merge eterogeneo}: casi \texttt{valid}, \texttt{recoverable}, \texttt{invalid}.
+    \end{itemize}
+    \item Metriche principali: stima media, dispersione della stima, errore relativo medio finale.
+    \item Gli esperimenti di merge sono svolti su HyperLogLog++.
+  \end{itemize}
+\end{frame}
+
+% Note relatore: Questa slide deve far passare il quadro generale sui quattro algoritmi.
+% Non commentare ogni curva: vai subito al ranking emerso da questo lavoro.
+\begin{frame}{Risultato 1: comportamento degli algoritmi in streaming}
+  \begin{columns}[T,totalwidth=\textwidth]
+    \column{0.60\textwidth}
+      \centering
+      \includegraphics[width=\linewidth]{streaming_endpoint_mre_summary.png}
+    \column{0.40\textwidth}
+      \small
+      \begin{itemize}
+        \item HyperLogLog++ è il metodo più regolare e accurato nel dominio osservato.
+        \item HyperLogLog è il riferimento più vicino.
+        \item LogLog è più sensibile ai parametri.
+        \item Probabilistic Counting resta fuori scala rispetto agli altri.
+        \item Nella vista su \(\rho_t\), HLL++ scende a circa \(3.95 \cdot 10^{-4}\), contro \(2.08 \cdot 10^{-3}\) di HLL.
+      \end{itemize}
+  \end{columns}
+\end{frame}
+
+% Note relatore: Qui il punto non è "più registri è meglio", ma "non tutti i metodi reagiscono in modo regolare all'aumento della precisione".
+\begin{frame}{Risultato 2: l'aumento di precisione favorisce soprattutto HLL++}
+  \begin{columns}[T,totalwidth=\textwidth]
+    \column{0.63\textwidth}
+      \centering
+      \includegraphics[width=\linewidth]{streaming_precision_sweep_endpoint_heatmaps.png}
+    \column{0.37\textwidth}
+      \small
+      \begin{itemize}
+        \item HyperLogLog++ mostra l'andamento più regolare.
+        \item Il parametro migliore osservato è sempre \(k=18\) per \(\rho=1,10,100\).
+        \item HyperLogLog migliora, ma meno uniformemente.
+        \item LogLog resta più irregolare.
+        \item Probabilistic Counting migliora poco e resta lontano dalle famiglie a registri.
+      \end{itemize}
+  \end{columns}
+\end{frame}
+
+% Note relatore: Questa è la base di controllo per leggere tutto il resto.
+% Insisti sul fatto che senza questo controllo non potresti attribuire il degrado all'eterogeneità.
+\begin{frame}{Risultato 3: il merge omogeneo è il controllo del caso \texttt{valid}}
+  \begin{itemize}
+    \item Configurazione: HyperLogLog++, \(\rho \in \{1,10,100\}\), \(k \in \{10,14,18\}\), quattro funzioni di hash.
+    \item Condizione di omogeneità: stessa funzione di hash, stesso seed e stessi parametri sui due lati.
+    \item Totale osservato: 36 configurazioni e 900 coppie di merge.
+  \end{itemize}
+
+  \vspace{0.15cm}
+  \[
+    \Delta_{abs}=0, \qquad \Delta_{rel}=0
+  \]
+
+  \small
+  \begin{tabular}{cccc}
+    \toprule
+    \(\rho\) & Coppie totali & Coppie con delta \(\neq 0\) & Max \(\Delta_{rel}\) \\
+    \midrule
+    1 & 300 & 0 & 0 \\
+    10 & 300 & 0 & 0 \\
+    100 & 300 & 0 & 0 \\
+    \bottomrule
+  \end{tabular}
+\end{frame}
+
+% Note relatore: Collega sempre hash mismatch a rottura della semantica comune.
+% Il punto non è solo che l'errore cresce, ma che il merge perde interpretazione corretta.
+\begin{frame}{Risultato 4: hash mismatch = caso \texttt{invalid}}
+  \begin{columns}[T,totalwidth=\textwidth]
+    \column{0.62\textwidth}
+      \centering
+      \includegraphics[width=\linewidth]{merge_hpp_hash_mismatch_overview.png}
+    \column{0.38\textwidth}
+      \small
+      \begin{itemize}
+        \item Controllo locale omogeneo: errore medio di merge \(=0.006233\).
+        \item Scenari \texttt{invalid}: errore medio di merge tra \(0.342\) e \(0.353\).
+        \item Errore massimo osservato: \(1.009634\).
+        \item Il degrado compare sia con famiglie di hash diverse sia con seed diversi.
+      \end{itemize}
+
+      \begin{alertblock}{Conclusione}
+        \small Se cambia la semantica dell'hash, il merge forzato perde significato. Il caso va rifiutato.
+      \end{alertblock}
+  \end{columns}
+\end{frame}
+
+% Note relatore: La slide complementare alla precedente.
+% Qui il messaggio è che la differenza di precisione non è "valida", ma è recuperabile.
+\begin{frame}{Risultato 5: precision mismatch = caso \texttt{recoverable}}
+  \begin{columns}[T,totalwidth=\textwidth]
+    \column{0.60\textwidth}
+      \centering
+      \includegraphics[width=\linewidth]{merge_hpp_precision_mismatch_overview.png}
+    \column{0.40\textwidth}
+      \small
+      \begin{tabular}{p{2.6cm} p{2.1cm}}
+        \toprule
+        Strategia & \(\overline{\varepsilon}_{merge}\) \\
+        \midrule
+        \texttt{reject} & -- \\
+        \begin{tabular}[t]{@{}l@{}}\texttt{unsafe\_naive\_}\\\texttt{merge}\end{tabular} & \(0.363882\) \\
+        \begin{tabular}[t]{@{}l@{}}\texttt{reduce\_then\_}\\\texttt{merge}\end{tabular} & \(0.016651\) \\
+        \bottomrule
+      \end{tabular}
+
+      \vspace{0.2cm}
+      \begin{itemize}
+        \item Il riferimento seriale è \(0.016651\).
+        \item \texttt{reduce\_then\_merge} coincide col riferimento corretto e ha degrado medio \(1.00\).
+        \item Il merge naïf ha degrado medio \(32.37\).
+      \end{itemize}
+  \end{columns}
+\end{frame}
+
+% Note relatore: Riporta ora le evidenze a un livello di contributo del lavoro.
+% Qui devi chiudere il cerchio tra teoria, framework e risultati.
+\begin{frame}{Che cosa emerge complessivamente}
+  \begin{itemize}
+    \item Conferma sperimentalmente la linea evolutiva che porta a HyperLogLog++ come metodo più stabile nel dominio osservato.
+    \item Mostra che il merge corretto dipende non solo dal tipo di sketch, ma anche dalla semantica condivisa dell'hash.
+    \item Rende operativo il lessico \texttt{valid}/\texttt{recoverable}/\texttt{invalid} e lo collega a strategie di sistema ben distinte.
+    \item Fornisce un framework riutilizzabile che separa algoritmi, hash, dataset, metriche e protocolli sperimentali.
+  \end{itemize}
+
+  \begin{alertblock}{Take-away}
+    Negli sketch count-distinct distribuiti, hash e parametri fanno parte della semantica dello sketch: senza compatibilità semantica il merge non è un'operazione neutra.
+  \end{alertblock}
+\end{frame}
+
+% Note relatore: Chiudi in modo onesto, distinguendo limiti reali e direzioni di lavoro già indicate in questo lavoro.
+\begin{frame}{Limiti e sviluppi futuri}
+  \begin{columns}[T,totalwidth=\textwidth]
+    \column{0.48\textwidth}
+      \begin{block}{Limiti del lavoro}
+        \begin{itemize}
+          \item Dataset soprattutto sintetico e controllato
+          \item Studio del merge condotto soprattutto a coppie
+          \item Analisi eterogenea concentrata su hash mismatch e precision mismatch
+          \item Parte di merge sviluppata soprattutto su HLL++
+        \end{itemize}
+      \end{block}
+    \column{0.48\textwidth}
+      \begin{block}{Direzioni future}
+        \begin{itemize}
+          \item Dati reali e sorgenti di flusso operative
+          \item Topologie distribuite più ampie
+          \item Altri assi di eterogeneità semanticamente chiari
+          \item Algoritmi più recenti e altre famiglie di sketch
+        \end{itemize}
+      \end{block}
+  \end{columns}
+\end{frame}
+
+% Note relatore: Ultima slide essenziale e pulita.
+\begin{frame}{Domande}
+  \centering
+  \Large Grazie per l'attenzione.
+\end{frame}
+
+\end{document}
