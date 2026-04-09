@@ -16,6 +16,16 @@
 \renewcommand{\algorithmautorefname}{Algoritmo}
 \captionsetup{labelfont=bf, textfont=normalfont, font=small}
 \newcommand{\codepath}[1]{\nolinkurl{#1}}
+\makeatletter
+\@ifundefined{bstctlcite}{%
+    \def\bstctlcite{\@ifnextchar[{\@bstctlcite}{\@bstctlcite[@auxout]}}%
+    \def\@bstctlcite[#1]#2{\@bsphack
+      \@for\@citeb:=#2\do{%
+        \edef\@citeb{\expandafter\@firstofone\@citeb}%
+        \if@filesw\immediate\write\csname #1\endcsname{\string\citation{\@citeb}}\fi}%
+      \@esphack}%
+}{}
+\makeatother
 
 \renewcommand{\acknowledgments}{
     \phantomsection
@@ -51,6 +61,7 @@ di corso; oggi, invece, ne ho ventotto.
     \vspace*{\fill} \newpage
 }
 \begin{document}
+    \bstctlcite{IEEEexample:BSTcontrol}
     % the front matter
     \input{frontmatter/personalize}
     \pagenumbering{roman}
