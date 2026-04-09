@@ -227,7 +227,7 @@ risultati e ricostruzione degli esperimenti.
 
 \subsection{Implementazione dei singoli algoritmi}
 A seguire vengono descritte le implementazioni degli algoritmi precedentemente descritti.
-\paragraph{Baseline esatta}
+\paragraph{Algoritmo esatto}
 \texttt{NaiveCounting} mantiene un insieme ordinato di identificatori distinti
 tramite \texttt{uint32}. Il metodo \texttt{process} inserisce un
 elemento solo se non è già presente, il metodo \texttt{count} restituisce la
@@ -388,7 +388,7 @@ essere mantenuta costante oppure modificata in modo controllato.
 \subsection{Seed e riproducibilità}
 
 Il seed entra nel sistema in due punti distinti. Il primo luogo in cui viene definito è il seed del dataset,
-che viene memorizzato nell'header binario e propagato nel contesto runtime. Il
+che viene memorizzato nell'header binario e propagato nel contesto durante il tempo di esecuzione. Il
 secondo è il seed locale della funzione di hash, che nel caso del merge
 eterogeneo può essere impostato separatamente per lato sinistro e destro.
 
@@ -406,9 +406,9 @@ La factory \codepath{getHashFunctionBy(...)} applica le seguenti regole:
 \end{itemize}
 
 Nel flusso standard della riga di comando, il seed usato per la funzione di hash
-ha come fallback il seed del dataset. Nel merge eterogeneo, invece, i campi
+ha come valore di default il seed del dataset. Nel merge eterogeneo, invece, i campi
 \texttt{leftHashSeed} e \texttt{rightHashSeed} prevalgono quando sono
-valorizzati, mentre in assenza di override resta attivo il fallback al seed del
+valorizzati, mentre in assenza di override resta attivo il valore di default al seed del
 dataset.
 
 \section{Framework sperimentale}
@@ -779,7 +779,7 @@ In particolare, i test sul merge eterogeneo verificano quattro regimi:
 \subsection{Test del generatore e della catena di esecuzione}
 
 La componente \texttt{Python} è validata da test dedicati sui generatori. In
-aggiunta, gli script di orchestrazione costruiscono payload di comandi per la
+aggiunta, gli script di orchestrazione costruiscono i valori dei comandi per la
 riga di comando in modo deterministico, fissando il nome dei file risultanti e del loro percorso,
 funzioni di hash e griglie parametriche. Anche questa scelta contribuisce alla
 riproducibilità complessiva della catena di esecuzione.
