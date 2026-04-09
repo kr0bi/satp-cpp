@@ -11,7 +11,7 @@ si presta al merge di sketch. Si esaminano nell'ordine Probabilistic Counting,
 PCSA, LogLog, HyperLogLog e HyperLogLog++. Per ciascun algoritmo si descrivono
 stato, aggiornamento, stima, complessità e proprietà di merge. Infine si
 richiamano Bloom filter e Count-Min Sketch come esempi di sketch usati per
-obiettivi diversi dal solo conteggio dei distinti.
+obiettivi diversi dal solo conteggio degli elementi distinti.
 
 \section{Obiettivo del problema e vincoli teorici}
 Il problema del conteggio degli elementi distinti consiste nello stimare
@@ -51,7 +51,7 @@ Nel seguito gli algoritmi vengono confrontati secondo sette criteri:
 \end{itemize}
 
 \section{Sviluppo storico}
-Lo sviluppo storico degli algoritmi per il conteggio dei distinti segue una percorso
+Lo sviluppo storico degli algoritmi per il conteggio degli elementi distinti segue una percorso
 piuttosto lineare. Si parte da un vettore di bit, chiamato bitmap, che tiene conto della
 frequenza di eventi poco frequenti, per poi passare
 a una mediazione stocastica su più bitmap. A seguire una famiglia di registri
@@ -660,7 +660,7 @@ riassumere la traiettoria storica con due tabelle di confronto.
         \hline
     \end{tabular}
     }
-    \caption{Confronto qualitativo tra gli algoritmi principali per il conteggio dei distinti}
+    \caption{Confronto qualitativo tra gli algoritmi principali per il conteggio degli elementi distinti}
     \label{tab:confronto-count-distinct}
 \end{table}
 
