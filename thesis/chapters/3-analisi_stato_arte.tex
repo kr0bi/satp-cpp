@@ -51,7 +51,7 @@ Nel seguito gli algoritmi vengono confrontati secondo sette criteri:
 \end{itemize}
 
 \section{Sviluppo storico}
-Lo sviluppo storico degli algoritmi per il conteggio degli elementi distinti segue una percorso
+Lo sviluppo storico degli algoritmi per il conteggio degli elementi distinti segue un percorso
 piuttosto lineare. Si parte da un vettore di bit, chiamato bitmap, che tiene conto della
 frequenza di eventi poco frequenti, per poi passare
 a una mediazione stocastica su più bitmap. A seguire una famiglia di registri
@@ -135,9 +135,9 @@ La versione a bitmap singola è molto soggetta alla varianza. Il vantaggio è la
 ma l'errore resta comunque troppo elevato per un uso pratico effettivo. È proprio da
 questa debolezza che nasce il passo successivo, cioè \textit{PCSA}.
 
-Lo spazio utilizzato dall'algoritmo è $\Theta(L)\,\text{bit}$, mentre la complessita in tempo è $\Theta(1)$ per elemento. 
+Lo spazio utilizzato dall'algoritmo è $\Theta(L)\,\text{bit}$, mentre la complessità in tempo è $\Theta(1)$ per elemento. 
 Il tempo di query richiede
-$\Theta(L)$ nel caso diretto, oppure tempo costante se si mantengono informazioni ausiliari
+$\Theta(L)$ nel caso diretto, oppure tempo costante se si mantengono informazioni ausiliarie
 sulla posizione del primo zero.
 
 \subsection{Probabilistic Counting with Stochastic Averaging}

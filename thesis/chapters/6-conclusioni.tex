@@ -12,7 +12,7 @@ sketch prodotti su nodi diversi, mantenendo una semantica coerente.
 
 Il lavoro sviluppato ha affrontato questo problema su due livelli. Il primo è
 il confronto tra algoritmi per il calcolo della stima degli elementi distinti in
-una stream, con una stessa infrastruttura di esecuzione, una stessa
+un flusso di dati, con una stessa infrastruttura di esecuzione, una stessa
 interfaccia comune e un dataset sintetico con proprietà controllate. 
 Il secondo
 è lo studio del merge distribuito, prima nel caso omogeneo e poi in due casi
@@ -23,7 +23,7 @@ mettere in relazione il comportamento della stima con il problema, più delicato
 della compatibilità semantica tra sketch.
 
 I risultati sperimentali mostrano che, nel dominio osservato, HyperLogLog++
-mantiene il comportamento più regolare in una stream di dati, sia quando la
+mantiene il comportamento più regolare in un flusso di dati, sia quando la
 stima è letta rispetto alla cardinalità reale del prefisso, sia quando viene
 analizzata rispetto al rapporto tra elementi processati e distinti. L'analisi
 del parametro di precisione conferma la stessa tendenza: l'aumento di \(k\)

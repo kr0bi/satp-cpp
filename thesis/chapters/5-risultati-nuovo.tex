@@ -320,7 +320,7 @@ LogLog a HyperLogLog e poi a HyperLogLog++, cioè a una progressiva riduzione
 della varianza e del bias pratico
 \cite{Durand_Flajolet_2003,Flajolet_Fusy_Gandouet_Meunier_2007,Heule_Nunkesser_Hall_2013}.
 
-\subsection{Analisi sulla variazione dei parametro degli algoritmi}
+\subsection{Analisi sulla variazione dei parametri degli algoritmi}
 Per analizzare il comportamento degli algoritmi al variare della precisione, 
 \`e necessario isolare l'effetto del parametro.
 
@@ -467,9 +467,8 @@ caso \texttt{recoverable}.
   insieme all'idempotenza e alla coerenza con il riferimento seriale.
 
 \subsection{Caso omogeneo}
-Affinch\'e si possa fare degli esperimenti nel caso di merge omogeneo, \`e
-necessario effettuare il merge mantenendo identici la stessa funzione di hash, lo stesso seed
-e gli stessi parametri dell'algoritmo.
+Affinch\'e si possano fare degli esperimenti nel caso di merge omogeneo, \`e
+necessario effettuare il merge mantenendo identici funzione di hash, seed e parametri dell'algoritmo.
 
 La configurazione minima scelta prevede:
 \[
@@ -535,7 +534,7 @@ richiede quindi una lettura diversa dei risultati.
   ma con seed diversi. L'obiettivo è capire come si comporti l'unione di sketch
   quando la semantica dell'hash non è più condivisa tra i due lati.
 
-  Da questo esperimento ci si aspetta sicuramente una degradazione della stima. Poich\'e
+  Da questo esperimento ci si aspetta sicuramente una degradazione della stima; 
   lo stesso numero rappresentato da due funzioni di hash differenti verr\`a rappresentato
   differentemente. L'esperimento vuole vedere quanto effettivamente viene degradata la stima.
 
