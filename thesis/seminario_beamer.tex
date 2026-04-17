@@ -9,40 +9,37 @@
 \usepackage{tabularx}
 \usepackage{graphicx}
 \usepackage{ragged2e}
-\usepackage{tikz}
-\usetikzlibrary{arrows}
 
 \usetheme{Madrid}
 \usecolortheme{dove}
 \setbeamertemplate{navigation symbols}{}
 \setbeamertemplate{footline}[frame number]
 
-\definecolor{UniudBlue}{RGB}{17,52,86}
-\definecolor{UniudAccent}{RGB}{145,42,42}
+\definecolor{SchoolColor}{HTML}{A62124} % School color
 \setbeamercolor{normal text}{fg=black,bg=white}
-\setbeamercolor{structure}{fg=UniudBlue}
-\setbeamercolor{title}{fg=black}
-\setbeamercolor{titlelike}{fg=black,bg=white}
-\setbeamercolor{frametitle}{fg=black,bg=black!4}
-\setbeamercolor{palette primary}{fg=black,bg=black!6}
-\setbeamercolor{palette secondary}{fg=black,bg=black!6}
-\setbeamercolor{palette tertiary}{fg=black,bg=black!6}
-\setbeamercolor{palette quaternary}{fg=black,bg=black!6}
-\setbeamercolor{author in head/foot}{fg=black,bg=black!6}
-\setbeamercolor{title in head/foot}{fg=black,bg=black!6}
-\setbeamercolor{date in head/foot}{fg=black,bg=black!6}
-\setbeamercolor{block title}{fg=white,bg=UniudBlue}
-\setbeamercolor{block body}{fg=black,bg=UniudBlue!6}
-\setbeamercolor{block title alerted}{fg=white,bg=UniudAccent}
-\setbeamercolor{block body alerted}{fg=black,bg=UniudAccent!8}
-\setbeamercolor{alerted text}{fg=UniudAccent}
+\setbeamercolor{structure}{fg=SchoolColor}
+\setbeamercolor{title}{fg=white}
+\setbeamercolor{titlelike}{fg=white,bg=SchoolColor}
+\setbeamercolor{frametitle}{fg=black,bg=SchoolColor!15}
+\setbeamercolor{palette primary}{fg=white,bg=SchoolColor}
+\setbeamercolor{palette secondary}{fg=white,bg=SchoolColor!85}
+\setbeamercolor{palette tertiary}{fg=white,bg=SchoolColor!70}
+\setbeamercolor{palette quaternary}{fg=black,bg=SchoolColor!35}
+\setbeamercolor{author in head/foot}{fg=white,bg=SchoolColor!85}
+\setbeamercolor{title in head/foot}{fg=white,bg=SchoolColor!70}
+\setbeamercolor{date in head/foot}{fg=black,bg=SchoolColor!35}
+\setbeamercolor{block title}{fg=white,bg=SchoolColor}
+\setbeamercolor{block body}{fg=black,bg=SchoolColor!6}
+\setbeamercolor{block title alerted}{fg=white,bg=SchoolColor}
+\setbeamercolor{block body alerted}{fg=black,bg=SchoolColor!8}
+\setbeamercolor{alerted text}{fg=SchoolColor}
 
 \graphicspath{{figures/}{figures/results/}{resources/}}
 
 \newcommand{\Fzero}{F_0}
 \newcommand{\codepath}[1]{\texttt{#1}}
 
-\title[Cardinalit\`a distinta nei data stream distribuiti]{Stima della cardinalit\`a distinta nei data stream distribuiti\\\large Algoritmi di sketching, framework sperimentale e merge semanticamente corretto}
+\title[Stima della cardinalit\`a nei flussi di dati distribuiti]{Stima della cardinalit\`a nei flussi di dati distribuiti:\\merge e compatibilit\`a semantica degli algoritmi di sketch}
 \subtitle{Seminario magistrale}
 \author{Daniele Ferroli}
 \institute{Universit\`a degli Studi di Udine}
@@ -54,13 +51,13 @@
   \titlepage
 \end{frame}
 
-\begin{frame}{Roadmap del seminario}
+\begin{frame}{Contenuti}
   \begin{enumerate}
-    \item Problema, modello minimo e vincoli del count-distinct
-    \item Stato dell'arte: da Probabilistic Counting a HyperLogLog++
+    \item Problema del conteggio degli elementi distinti
+    \item Fondamenti teorici
+    \item Analisi dello stato dell'arte
     \item Implementazione: architettura, hash, dataset e validazione
-    \item Disegno sperimentale in modalit\`a streaming e merge
-    \item Risultati principali su accuratezza, robustezza e compatibilit\`a semantica
+    \item Risultati principali 
     \item Conclusioni, limiti e sviluppi futuri
   \end{enumerate}
 \end{frame}
@@ -70,11 +67,11 @@
     \item Obiettivo: stimare quanti identificatori distinti compaiono in un flusso continuo senza conservare tutto l'input.
     \item Applicazioni tipiche: monitoraggio di rete, telemetria, osservabilit\`a, analisi di log, ottimizzazione di interrogazioni.
     \item Nei sistemi distribuiti non basta stimare bene in locale: serve anche combinare sketch prodotti su nodi o partizioni diverse.
-    \item La tesi non propone un nuovo stimatore teorico, ma uno studio sistematico del comportamento reale degli sketch e del loro merge.
+    \item La tesi studia il comportamento reale degli sketch e del loro merge, senza proporre un nuovo stimatore teorico.
   \end{itemize}
 
   \begin{block}{Contributo principale}
-    Implementazione uniforme di pi\`u algoritmi count-distinct, interfaccia comune per le hash, framework riproducibile e distinzione esplicita tra casi \texttt{valid}, \texttt{recoverable} e \texttt{invalid}.
+    Implementazione uniforme, hash configurabili, framework riproducibile e classificazione dei casi di merge: \texttt{valid}, \texttt{recoverable}, \texttt{invalid}.
   \end{block}
 \end{frame}
 
@@ -83,8 +80,8 @@
     \column{0.56\textwidth}
       \begin{itemize}
         \item Il flusso \`e una sequenza ordinata \(S=\langle x_1,x_2,\dots,x_s\rangle\).
-        \item Il lavoro assume il modello \emph{insertion-only}: ogni aggiornamento aggiunge occorrenze, non le rimuove.
-        \item Gli algoritmi devono lavorare in uno o pochi passaggi, con memoria sublineare e aggiornamenti rapidi.
+        \item Modello \emph{insertion-only}: ogni aggiornamento aggiunge occorrenze, senza rimozioni.
+        \item Gli algoritmi lavorano in uno o pochi passaggi, con memoria sublineare.
         \item Nel framework esiste anche un riferimento esatto interno, \codepath{NaiveCounting}, usato per test e controlli.
       \end{itemize}
     \column{0.44\textwidth}
@@ -138,17 +135,17 @@
       \scriptsize
       \begin{itemize}
         \item Interfaccia comune con \texttt{process}, \texttt{count}, \texttt{merge} e \texttt{reset}.
-        \item La funzione di hash \`e iniettata nel costruttore e fa parte del contesto dello sketch.
-        \item HLL++ \`e l'implementazione pi\`u articolata: stato sparso/denso, tabelle di bias, riduzione esplicita alla precisione minima.
+        \item Hash iniettata nel costruttore: fa parte del contesto dello sketch.
+        \item HLL++ aggiunge stato sparso/denso, tabelle di bias e riduzione alla precisione minima.
       \end{itemize}
   \end{columns}
 \end{frame}
 
 \begin{frame}{Sketch, hash e mergeabilit\`a}
   \begin{itemize}
-    \item Uno \emph{sketch} mantiene una sintesi compatta del flusso e permette di stimare \(\Fzero\) senza conservare tutti gli elementi.
-    \item Negli sketch count-distinct l'hash non serve solo a randomizzare: determina come il flusso viene codificato nello stato.
-    \item Uno sketch \`e \emph{mergeabile} se combinare due stati equivale a elaborare serialmente l'unione dei due flussi, a parit\`a di semantica o con degradazione esplicita.
+    \item Uno sketch mantiene una sintesi compatta del flusso.
+    \item Negli sketch count-distinct l'hash determina come il flusso viene codificato nello stato.
+    \item Il merge corretto deve preservare il significato dello stato, non solo la sua forma.
   \end{itemize}
 
   \[
@@ -164,7 +161,7 @@
   \]
 
   \begin{alertblock}{Punto critico}
-    Per gli sketch HLL-like il merge a massimi \`e corretto solo se i due lati condividono parametri compatibili e la stessa semantica dell'hash.
+    Per gli sketch HLL-like il merge a massimi \`e corretto solo con parametri compatibili e stessa semantica dell'hash.
   \end{alertblock}
 \end{frame}
 
@@ -199,18 +196,36 @@
 \end{frame}
 
 \begin{frame}{Architettura generale del sistema}
-  \centering
-  \resizebox{0.88\textwidth}{!}{\input{figures/system_architecture}}
+  \begin{columns}[T,totalwidth=\textwidth]
+    \column{0.32\textwidth}
+      \begin{block}{Algoritmi}
+        \small
+        Sketch concreti e catalogo degli identificatori:
+        \texttt{hllpp}, \texttt{hll}, \texttt{ll}, \texttt{pc}.
+      \end{block}
+    \column{0.32\textwidth}
+      \begin{block}{Supporto}
+        \small
+        Dataset binario, lettura per partizione, funzioni di hash e metadati di esecuzione.
+      \end{block}
+    \column{0.32\textwidth}
+      \begin{block}{Valutazione}
+        \small
+        CLI, job di esperimento, framework di simulazione, metriche e scrittura dei risultati CSV.
+      \end{block}
+  \end{columns}
 
-  \vspace{0.2cm}
-  \scriptsize
-  Tre strati: nucleo algoritmico, moduli di supporto (dataset e hash), coordinamento sperimentale (CLI, evaluation framework, writer CSV).
+  \vspace{0.25cm}
+  \begin{alertblock}{Scelta progettuale}
+    \small Algoritmi, hash, dataset e metriche sono separati per rendere gli esperimenti riproducibili ed estendibili.
+  \end{alertblock}
 \end{frame}
 
 \begin{frame}{Hash, riproducibilit\`a e scelte progettuali}
   \begin{columns}[T,totalwidth=\textwidth]
     \column{0.50\textwidth}
       \begin{block}{Livello hash}
+        \small
         \begin{itemize}
           \item Interfaccia comune: \texttt{hash64}, \texttt{hash32}, \texttt{name}.
           \item Funzioni supportate: \texttt{splitmix64}, \texttt{xxhash64}, \texttt{murmurhash3}, \texttt{siphash24}.
@@ -219,10 +234,11 @@
       \end{block}
     \column{0.50\textwidth}
       \begin{block}{Riproducibilit\`a}
+        \small
         \begin{itemize}
-          \item Il seed del dataset \`e salvato nell'header binario ed \`e letto a runtime.
-          \item Nel merge eterogeneo i seed di hash sinistro e destro possono essere configurati separatamente.
-          \item La sessione distingue tra parametri utente e metadati derivati automaticamente dal dataset.
+          \item Il seed del dataset \`e nell'header binario.
+          \item Nel merge eterogeneo i due lati possono avere seed/hash separati.
+          \item I metadati del dataset sono derivati automaticamente.
         \end{itemize}
       \end{block}
   \end{columns}
@@ -230,24 +246,23 @@
 
 \begin{frame}{Dataset \texttt{prefix\_constant\_rho} e validazione}
   \begin{columns}[T,totalwidth=\textwidth]
-    \column{0.57\textwidth}
+    \column{0.55\textwidth}
       \scriptsize
       \begin{itemize}
         \item Dataset sintetico controllato con \(n=10^7\), \(p=50\), seed \(=21041998\).
-        \item Valori di \(d \in \{10^5,2\cdot 10^5,5\cdot 10^5,10^6,2\cdot 10^6,5\cdot 10^6,10^7\}\).
-        \item Rapporto globale
+        \item Rapporto controllato:
         \[
           \rho = \frac{n}{d} \in \{100,50,20,10,5,2,1\}.
         \]
-        \item Il generatore impone una nuova prima occorrenza per ogni blocco di lunghezza \(\rho\), quindi
+        \item Una nuova prima occorrenza per ogni blocco di lunghezza \(\rho\):
         \[
           \Fzero(j\cdot\rho)=j.
         \]
-        \item Il dataset salva un bitset di verit\`a, cos\`\i il framework ricostruisce \(\Fzero(t)\) esatta sui prefissi.
+        \item Il bitset di verit\`a permette di ricostruire \(\Fzero(t)\) sui prefissi.
       \end{itemize}
-    \column{0.43\textwidth}
+    \column{0.45\textwidth}
       \centering
-      \includegraphics[width=\linewidth]{ratio_processed_vs_distinct_streaming_boundary_linear.png}
+      \includegraphics[width=0.92\linewidth]{ratio_processed_vs_distinct_streaming_boundary_linear.png}
 
       \vspace{0.1cm}
       \scriptsize
@@ -260,7 +275,7 @@
 \end{frame}
 
 \begin{frame}{Disegno sperimentale}
-  \small
+  \scriptsize
   \begin{itemize}
     \item Ambiente di test: AMD Ryzen 7 9700X, 32 GB DDR5, Clang 22.1.1, CMake 4.3.0.
     \item Tre modalit\`a di valutazione:
@@ -272,9 +287,12 @@
     \item Due viste complementari in streaming:
     \begin{itemize}
       \item caso A: stima in funzione della cardinalit\`a reale del prefisso;
-      \item caso B: stima in funzione di \(\rho_t = t/\Fzero(t)\) a cardinalit\`a target fissata.
+      \item caso B: stima in funzione di \(\rho_t = t/\Fzero(t)\), con
+      \[
+        F_0^\ast \in \{1000,2000,5000,10000,20000,50000,100000\}.
+      \]
     \end{itemize}
-    \item Metriche principali: stima media, dispersione della stima, errore relativo medio ai punti finali.
+    \item Metriche: stima media, dispersione, errore relativo medio ai punti finali.
     \item Gli esperimenti di merge sono concentrati su HyperLogLog++.
   \end{itemize}
 \end{frame}
@@ -285,12 +303,12 @@
       \centering
       \includegraphics[width=\linewidth]{streaming_endpoint_mre_summary.png}
     \column{0.40\textwidth}
-      \small
+      \scriptsize
       \begin{itemize}
-        \item Nella vista su \(\Fzero(t)\), HLL e HLL++ risultano quasi sovrapposti, con errore medio finale di circa \(0.00618\).
-        \item Nella vista su \(\rho_t\), HLL++ \`e il migliore con circa \(3.95 \cdot 10^{-4}\), seguito da HLL con \(2.08 \cdot 10^{-3}\).
+        \item Su \(\Fzero(t)\), HLL e HLL++ sono quasi sovrapposti: errore medio circa \(0.00618\).
+        \item Su \(\rho_t\), HLL++ \`e il migliore: \(3.95 \cdot 10^{-4}\), contro \(2.08 \cdot 10^{-3}\) di HLL.
         \item LogLog \`e pi\`u sensibile e nella seconda vista raggiunge circa \(1.455\).
-        \item Probabilistic Counting resta molto instabile nel dominio osservato, con circa \(0.770\) nella prima vista e \(0.346\) nella seconda.
+        \item Probabilistic Counting resta instabile: circa \(0.770\) nella prima vista e \(0.346\) nella seconda.
       \end{itemize}
   \end{columns}
 \end{frame}
@@ -301,24 +319,19 @@
       \centering
       \includegraphics[width=\linewidth]{streaming_precision_sweep_endpoint_heatmaps.png}
     \column{0.40\textwidth}
-      \tiny
-      \begin{tabular}{p{0.9cm} p{0.8cm} p{2.0cm}}
-        \toprule
-        Algoritmo & Migliore & Osservazione \\
-        \midrule
-        HLL++ & \(k=18\) & migliore per tutti i valori di \(\rho\) osservati \\
-        HLL & \(k=16\) & in media \(k=16\), ma con \(\rho=1\) basta \(k=10\) \\
-        LogLog & \(k=14\) & andamento pi\`u irregolare; con \(\rho=10\) emerge \(k=16\) \\
-        PC & \(L=20\) & migliora poco; con \(\rho=100\) emerge \(L=16\) \\
-        \bottomrule
-      \end{tabular}
-
-      \vspace{0.2cm}
       \scriptsize
+      \begin{block}{Miglior parametro osservato}
+        \begin{itemize}
+          \item HLL++: \(k=18\) per tutti i valori di \(\rho\).
+          \item HLL: \(k=16\) in media; con \(\rho=1\), \(k=10\).
+          \item LogLog: \(k=14\) in media; con \(\rho=10\), \(k=16\).
+          \item PC: \(L=20\) in media; con \(\rho=100\), \(L=16\).
+        \end{itemize}
+      \end{block}
+
       \begin{itemize}
         \item HLL++ \`e il metodo con andamento pi\`u regolare e prevedibile.
-        \item HLL migliora, ma meno uniformemente.
-        \item LogLog e Probabilistic Counting mostrano dipendenza pi\`u marcata dal parametro.
+        \item Gli altri metodi dipendono di pi\`u dal parametro.
       \end{itemize}
   \end{columns}
 \end{frame}
@@ -355,7 +368,8 @@
     \column{0.40\textwidth}
       \scriptsize
       \begin{itemize}
-        \item Scenari osservati: seed mismatch su \texttt{xxhash64}/\texttt{murmurhash3} e family mismatch tra le quattro hash supportate.
+        \item Seed mismatch: stessa hash \texttt{xxhash64} o \texttt{murmurhash3}, ma seed diversi.
+        \item Family mismatch: \texttt{xxhash64} contro \texttt{splitmix64}, \texttt{murmurhash3} o \texttt{siphash24}; anche direzione inversa.
         \item Controllo omogeneo locale: errore medio \(=0.006233\).
         \item Casi \texttt{invalid}: errore medio tra \(0.342374\) e \(0.352802\).
         \item Errore massimo osservato: \(1.009634\).
@@ -373,9 +387,10 @@
       \centering
       \includegraphics[width=\linewidth]{merge_hpp_precision_mismatch_overview.png}
     \column{0.41\textwidth}
-      \small
+      \scriptsize
       \begin{itemize}
-        \item Hash fissata a \texttt{xxhash64}, stesso seed, coppie \((10,14)\), \((10,18)\), \((14,18)\) e versioni invertite.
+        \item Hash \texttt{xxhash64}, stesso seed.
+        \item Coppie: \((10,14)\), \((10,18)\), \((14,18)\) e versioni invertite.
         \item \texttt{reject}: nessuna stima di merge, riferimento seriale \(=0.016651\).
       \end{itemize}
 
@@ -390,9 +405,9 @@
       \end{tabular}
 
       \vspace{0.15cm}
-      \small
+      \scriptsize
       \begin{itemize}
-        \item \texttt{reduce\_then\_merge} coincide con il riferimento seriale e con il baseline omogeneo a precisione minima.
+        \item \texttt{reduce\_then\_merge} coincide con il riferimento corretto.
         \item Il merge forzato raggiunge massimo \(1.061378\) e degrado medio \(32.37\).
       \end{itemize}
   \end{columns}
