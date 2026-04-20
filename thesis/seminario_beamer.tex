@@ -9,6 +9,7 @@
 \usepackage{tabularx}
 \usepackage{graphicx}
 \usepackage{ragged2e}
+\usepackage{tikz}
 
 \usetheme{Madrid}
 \usecolortheme{dove}
@@ -71,7 +72,7 @@
   \end{itemize}
 
   \begin{alertblock}{Punto chiave}
-    Il tema del lavoro non \`e solo quanto bene uno sketch stimi \(F_0\), ma cosa accade quando il \textbf{merge} viene fatto in situazioni eterogenee o non ideali.
+    Il lavoro non riguarda solo quanto bene uno sketch stimi \(F_0\), ma come si comporta il \textbf{merge} in situazioni eterogenee o non ottimali.
   \end{alertblock}
 \end{frame}
 
@@ -111,7 +112,7 @@
   \end{columns}
 
   \begin{itemize}
-    \item L'hash trasforma gli elementi in segnali pseudo-casuali osservabili nello sketch.
+    \item L'hash trasforma gli elementi in sequenze pseudo-casuali e la stima ne osserva i pattern nei bit dello sketch.
     \item Il compromesso fondamentale \`e tra memoria, costo di aggiornamento e accuratezza della stima.
     \item In un contesto distribuito c'\`e un ulteriore requisito: il merge degli sketch locali.
   \end{itemize}
@@ -144,7 +145,7 @@
   \vspace{0.15cm}
 
   \begin{itemize}
-    \item Ogni nodo mantiene uno sketch locale del proprio sottoflusso o della propria partizione temporale.
+    \item Ogni nodo mantiene uno sketch locale della propria partizione del flusso o della propria partizione temporale.
     \item In un sistema possono cambiare algoritmo, funzione di hash, seed e precisione dello sketch.
     \item Il punto \`e capire quando il merge coincide ancora col caso seriale.
   \end{itemize}
@@ -156,7 +157,7 @@
 
 \begin{frame}{Tesi e contributi}
   \begin{block}{Tesi del lavoro}
-    Negli sketch count-distinct distribuiti, hash, seed e parametri non sono dettagli casuali: fanno parte della \textbf{semantica} dello sketch e quindi della correttezza del merge.
+    Negli sketch count-distinct distribuiti, hash, seed e parametri non sono dettagli di implementazione: fanno parte della \textbf{semantica} dello sketch e quindi della correttezza del merge.
   \end{block}
 
   \vspace{0.15cm}
@@ -165,15 +166,15 @@
     \item Implementazione uniforme di Probabilistic Counting, LogLog, HyperLogLog e HyperLogLog++.
     \item Framework sperimentale che separa algoritmi, hashing, dataset, metriche e risultati.
     \item Classificazione operativa dei casi di merge in \texttt{valid}, \texttt{recoverable} e \texttt{invalid}.
-    \item Valutazione empirica di quello che accade quando si ha funzioni di hash e/o parametri differenti, con HLL++ come riferimento pratico.
+    \item Valutazione empirica di casi eterogenei cercati, con HLL++ come riferimento principale.
   \end{itemize}
 
-  \begin{alertblock}{Delimitazione}
-    Non viene proposto un nuovo stimatore teorico: il contributo \`e uno studio sistematico del comportamento degli sketch e del merge in condizioni scelte.
+  \begin{alertblock}{Contenuto della tesi}
+    Non viene proposto un nuovo stimatore teorico: il contributo \`e uno studio sistematico del comportamento degli sketch e del merge su un dataset sintetico con propriet\`a controllate.
   \end{alertblock}
 \end{frame}
 
-\begin{frame}{Modello formale del problema}
+\begin{frame}{Notazione del problema}
   \[
     S=\langle x_1,x_2,\dots,x_s\rangle,
     \qquad x_i\in\mathcal{U}
@@ -238,7 +239,44 @@
   \end{tabularx}
 \end{frame}
 
-\begin{frame}{Struttura della famiglia LogLog/HLL}
+\begin{frame}{Struttura di Probabilistic Counting}
+  \small
+  Si usa una bitmap \(B[1],\dots,B[L]\in\{0,1\}\) e una funzione di hash uniforme
+  \(h:\mathcal{U}\rightarrow\{0,1\}^{L}\).
+  Per \(y=h(x)\), si definiscono
+  \[
+    \rho(y)=\min\{1+\nu_2(y),L\},
+    \qquad
+    R(B)=\min\bigl(\{r\geq 1 : B[r]=0\}\cup\{L+1\}\bigr)
+  \]
+
+  \begin{columns}[T,totalwidth=\textwidth]
+    \column{0.48\textwidth}
+      \begin{block}{Aggiornamento}
+        \[
+          r \leftarrow \rho(h(x)),
+          \qquad
+          B[r] \leftarrow 1
+        \]
+        \small
+        La bitmap registra l'evento raro osservato sull'hash tramite la posizione del bit attivato.
+      \end{block}
+    \column{0.48\textwidth}
+      \begin{block}{Stima}
+        \[
+          \widehat{\Fzero} \approx \frac{2^{R(B)}}{\phi}
+        \]
+        \small
+        \(R(B)\) \`e la posizione del primo zero e \(\phi\) \`e una costante di calibrazione empirica.
+      \end{block}
+  \end{columns}
+
+  \small
+  La struttura \`e estremamente compatta, ma una sola bitmap produce varianza elevata.
+  PCSA nasce proprio per ridurre questa instabilit\`a.
+\end{frame}
+
+\begin{frame}{Struttura comune e stima LogLog}
   \small
   Precisione \(k\): si usano \(m=2^k\) registri \(M[0],\dots,M[m-1]\).
   Con un hash di \(L\) bit:
@@ -260,20 +298,93 @@
         Ogni registro memorizza il massimo rango osservato sugli elementi assegnati a quel registro.
       \end{block}
     \column{0.48\textwidth}
-      \begin{block}{Stima HyperLogLog}
+      \begin{block}{Stima LogLog}
+        \[
+          A=\frac{1}{m}\sum_{r=0}^{m-1}M[r],
+          \qquad
+          \widehat{\Fzero}=\alpha_m \cdot m \cdot 2^A
+        \]
+        \small
+        LogLog usa la media dei ranghi e risale alla cardinalit\`a su scala esponenziale.
+      \end{block}
+  \end{columns}
+
+  \small
+  LogLog, HyperLogLog e HyperLogLog++ condividono stato e aggiornamento.
+  Le slide successive cambiano solo il modo in cui questo stato viene interrogato.
+\end{frame}
+
+\begin{frame}{HyperLogLog: media armonica e regimi}
+  \begin{block}{Idea}
+    HyperLogLog mantiene identici registri e aggiornamento di LogLog, ma sostituisce
+    la query con una media armonica sui registri.
+  \end{block}
+
+  \begin{columns}[T,totalwidth=\textwidth]
+    \column{0.48\textwidth}
+      \begin{block}{Stima grezza}
         \[
           Z=\sum_{r=0}^{m-1}2^{-M[r]},
           \qquad
           E=\alpha_m\frac{m^2}{Z}
         \]
         \small
-        La media armonica riduce il peso dei registri estremi.
+        La media armonica di \(2^{-M[r]}\) attenua il peso dei registri estremi.
+      \end{block}
+    \column{0.48\textwidth}
+      \begin{block}{Regimi principali}
+        \scriptsize
+        Se \(V_0 = |\{r : M[r]=0\}|\), allora
+        \[
+          \widehat{\Fzero}=
+          \begin{cases}
+            m\log(m/V_0), & \text{se } E\le \frac{5}{2}m \text{ e } V_0>0 \\
+            E, & \text{nel regime centrale}
+          \end{cases}
+        \]
       \end{block}
   \end{columns}
 
   \small
-  LogLog, HyperLogLog e HyperLogLog++ condividono questa struttura a registri.
-  HLL++ aggiunge hash a 64 bit, rappresentazione sparsa/densa e bias correction.
+  Per \(E\) vicino a \(2^L\), HLL applica inoltre una correzione di saturazione.
+\end{frame}
+
+\begin{frame}{HyperLogLog++: bias correction, threshold e formato}
+  \begin{block}{Idea}
+    HyperLogLog++ mantiene il nucleo di HLL, ma aggiunge correzione del bias,
+    rappresentazione sparsa/densa e una soglia empirica per la scelta finale.
+  \end{block}
+
+  \begin{columns}[T,totalwidth=\textwidth]
+    \column{0.48\textwidth}
+      \begin{block}{Bias correction}
+        \scriptsize
+        Indicando con \(E\) la stima grezza di HLL,
+        \[
+          E_{\mathrm{corr}}=
+          \begin{cases}
+            E-\beta(E,k), & \text{se } E \le 5m \\
+            E, & \text{altrimenti}
+          \end{cases}
+        \]
+        \small
+        \(\beta(E,k)\) \`e una correzione empirica tabulata per la precisione \(k\).
+      \end{block}
+    \column{0.48\textwidth}
+      \begin{block}{Differenze strutturali}
+        \small
+        \begin{itemize}
+          \item funzione di hash a 64 bit;
+          \item formato sparso per cardinalit\`a piccole e denso oltre soglia;
+          \item nella codifica sparsa pu\`o comparire una precisione \(k'\) con \(k \le k' \le 64\).
+        \end{itemize}
+      \end{block}
+  \end{columns}
+
+  \small
+  Se \(V_0>0\), si pone \(H=m\log(m/V_0)\).
+  HLL++ restituisce \(H\) se \(H \le \operatorname{Threshold}(k)\),
+  altrimenti \(E_{\mathrm{corr}}\).
 \end{frame}
 
 \begin{frame}{Merge e compatibilit\`a semantica}
@@ -313,316 +424,766 @@
 
   \begin{alertblock}{Compatibilit\`a richiesta}
     \small
-    L'operazione \(\oplus_{\mathcal A}\) \`e semanticamente corretta solo se restano invariati
-    \textbf{algoritmo di sketch}, \textbf{semantica hash/seed}
-    e \textbf{parametri strutturali dello stato}.
+    L'operazione \(\oplus_{\mathcal A}\) \`e corretta solo con
+    \textbf{algoritmo}, \textbf{hash/seed}
+    e \textbf{parametri strutturali} invariati.
   \end{alertblock}
 \end{frame}
 
 \begin{frame}{Classificazione dei casi di merge}
-  \begin{columns}[T,totalwidth=\textwidth]
-    \column{0.33\textwidth}
+    Il controllo di compatibilit\`a produce tre esiti: merge diretto, merge dopo
+    normalizzazione, oppure rifiuto del merge.
+
+
+  \begin{columns}[T,onlytextwidth]
+    \column{0.31\textwidth}
       \begin{block}{\texttt{valid}}
+        \small
         Merge diretto.
 
         Stesso algoritmo, stessa hash, stesso seed, stessi parametri.
       \end{block}
-    \column{0.33\textwidth}
+    \column{0.31\textwidth}
       \begin{block}{\texttt{recoverable}}
+        \small
         Merge corretto dopo normalizzazione.
 
         HLL++ con precisioni diverse e stessa semantica hash.
       \end{block}
-    \column{0.33\textwidth}
+    \column{0.31\textwidth}
       \begin{block}{\texttt{invalid}}
-        Merge privo di significato nel modello.
+        \small
+        Merge da rifiutare.
 
         Hash family o seed diversi.
       \end{block}
   \end{columns}
 
-  \vspace{0.15cm}
+  \begin{block}{Strategie operative}
+    \small
+    \texttt{valid} \(\rightarrow\) \texttt{direct},
+    \qquad
+    \texttt{recoverable} \(\rightarrow\) \texttt{reduce\_then\_merge},
+    \qquad
+    \texttt{invalid} \(\rightarrow\) \texttt{reject}.
 
-  \small
-  Strategie operative: \texttt{direct}, \texttt{reject}, \texttt{reduce\_then\_merge};
-  \texttt{unsafe\_naive\_merge} \`e solo un controllo negativo.
+    \texttt{unsafe\_naive\_merge} \`e usato solo come controllo negativo.
+  \end{block}
 \end{frame}
 
 \begin{frame}{Infrastruttura sperimentale}
-  \begin{columns}[T,totalwidth=\textwidth]
-    \column{0.32\textwidth}
+  \begin{block}{Idea}
+    Il framework separa algoritmi, hashing, dataset e valutazione,
+    cos\`i da isolare gli effetti del merge.
+  \end{block}
+
+  \begin{columns}[T,onlytextwidth]
+    \column{0.31\textwidth}
       \begin{block}{Algoritmi}
         \small
-        Interfaccia comune per \texttt{process}, \texttt{count}, \texttt{merge}, \texttt{reset}.
+        API comune per \texttt{process}, \texttt{count}, \texttt{merge}, \texttt{reset}.
 
-        Implementazioni: PC, LogLog, HLL, HLL++ e riferimento esatto.
+        Implementazioni: PC, LogLog, HLL, HLL++ e algoritmo naive.
       \end{block}
-    \column{0.32\textwidth}
+    \column{0.31\textwidth}
       \begin{block}{Hash e dataset}
         \small
         Funzioni di hash separate dal livello dello sketch.
 
-        Seed, parametri e metadati del dataset sono tracciati in modo esplicito.
+        Seed, parametri e metadati sono tracciati esplicitamente.
       \end{block}
-    \column{0.32\textwidth}
+    \column{0.31\textwidth}
       \begin{block}{Valutazione}
         \small
         Modalit\`a \texttt{streaming}, \texttt{merge} omogeneo e \texttt{merge} eterogeneo.
 
-        Metriche e risultati vengono serializzati in CSV riproducibili.
+        Metriche e risultati sono serializzati in CSV riproducibili.
       \end{block}
   \end{columns}
 
-  \vspace{0.25cm}
-
   \begin{alertblock}{Scelta progettuale}
-    \small Il framework non serve solo a eseguire gli algoritmi, ma a rendere osservabile la compatibilit\`a semantica del merge sotto condizioni controllate e riproducibili.
+    \small
+    Il framework rende osservabile la compatibilit\`a semantica del merge sotto
+    condizioni riproducibili.
   \end{alertblock}
 \end{frame}
 
-\begin{frame}{Dataset controllato e validazione}
-  \begin{columns}[T,totalwidth=\textwidth]
-    \column{0.55\textwidth}
-      \begin{itemize}
-        \item Dataset sintetico controllato con \(n=10^7\), 50 partizioni, seed \(=21041998\).
-        \item Rapporto controllato tra elementi processati e distinti:
-        \[
-          \rho = \frac{n}{d} \in \{100,50,20,10,5,2,1\}.
-        \]
-        \item Una nuova prima occorrenza per ogni blocco di lunghezza \(\rho\):
+\begin{frame}{Architettura del sistema}
+  \centering
+  \resizebox{0.95\textwidth}{!}{\input{figures/system_architecture_beamer}}
+\end{frame}
+
+\begin{frame}{Dataset sintetico: protocollo di generazione}
+  \begin{block}{Parametri}
+    \small
+    Per ogni dataset: \(n=10^7\) elementi per partizione, \(p=50\), seed globale
+    \(=21041998\),
+    \[
+      \rho=\frac{n}{d}\in\{100,50,20,10,5,2,1\},
+      \qquad
+      n \bmod d = 0.
+    \]
+  \end{block}
+
+  \begin{columns}[T,onlytextwidth]
+    \column{0.48\textwidth}
+      \begin{block}{Costruzione di una partizione}
+        \small
+        \begin{enumerate}
+          \item seed locale deterministico dal seed globale e dall'indice di partizione;
+          \item estrazione di \(d\) interi distinti;
+          \item una nuova prima occorrenza all'inizio di ogni blocco di lunghezza \(\rho\);
+          \item completamento del blocco campionando tra gli identificatori gi\`a visti.
+        \end{enumerate}
+      \end{block}
+    \column{0.48\textwidth}
+      \begin{block}{Propriet\`a indotta}
+        \small
+        Ogni blocco introduce esattamente un nuovo elemento distinto. Quindi, al bordo del
+        \(j\)-esimo blocco,
         \[
           \Fzero(j\cdot\rho)=j.
         \]
-        \item Il bitset di verit\`a permette di ricostruire \(\Fzero(t)\) sui prefissi.
-      \end{itemize}
-    \column{0.45\textwidth}
-      \centering
-      \includegraphics[width=0.92\linewidth]{ratio_processed_vs_distinct_streaming_boundary_linear.png}
-
-      \vspace{0.1cm}
-      \scriptsize
-      La validazione empirica conferma il comportamento atteso di \(\rho_t=t/\Fzero(t)\) ai bordi di blocco.
-  \end{columns}
-
-  \vspace{0.1cm}
-  \small
-  Test dedicati coprono algoritmi, propriet\`a del merge, framework, schema CSV e generatore del dataset.
-\end{frame}
-
-\begin{frame}{Protocollo sperimentale}
-  \begin{columns}[T,totalwidth=\textwidth]
-    \column{0.50\textwidth}
-      \begin{block}{Streaming}
-        \begin{itemize}
-          \item Due viste: stima in funzione di \(\Fzero(t)\) e stima in funzione di \(\rho_t=t/\Fzero(t)\).
-          \item Sweep dei parametri su \(\rho\in\{1,10,100\}\).
-          \item HLL++ con \(k\in\{8,10,12,14,16,18\}\).
-          \item HLL e LogLog con \(k\in\{4,6,8,10,12,14,16\}\).
-          \item Probabilistic Counting con \(L\in\{4,8,12,16,20,24,28,31\}\).
-        \end{itemize}
-      \end{block}
-    \column{0.50\textwidth}
-      \begin{block}{Merge HLL++}
-        \begin{itemize}
-          \item Caso omogeneo: riferimento del caso \texttt{valid}.
-          \item Caso eterogeneo con hash mismatch: seed mismatch e family mismatch.
-          \item Caso eterogeneo con precision mismatch: coppie \((10,14)\), \((10,18)\), \((14,18)\) e inverse.
-          \item Strategie: \texttt{direct}, \texttt{reject}, \texttt{reduce\_then\_merge}, \texttt{unsafe\_naive\_merge}.
-        \end{itemize}
+        Il protocollo separa in modo controllato la crescita di \(\Fzero(t)\)
+        dal numero medio di ripetizioni.
       \end{block}
   \end{columns}
-
-  \vspace{0.15cm}
-
-  \small
-  Metriche: stima media, dispersione, errore relativo medio ai punti finali e confronto tra merge e riferimento seriale.
 \end{frame}
 
-\begin{frame}{Risultato 1: comportamento degli algoritmi in streaming}
-  \begin{columns}[T,totalwidth=\textwidth]
-    \column{0.60\textwidth}
-      \centering
-      \includegraphics[width=\linewidth]{streaming_endpoint_mre_summary.png}
-    \column{0.40\textwidth}
-      \scriptsize
-      \begin{itemize}
-        \item Su \(\Fzero(t)\), HLL e HLL++ sono quasi sovrapposti: errore medio circa \(0.00618\).
-        \item Su \(\rho_t\), HLL++ \`e il migliore: \(3.95 \cdot 10^{-4}\), contro \(2.08 \cdot 10^{-3}\) di HLL.
-        \item LogLog \`e pi\`u sensibile alla vista sperimentale e Probabilistic Counting resta nettamente pi\`u instabile.
-        \item Nel dominio osservato, HLL++ \`e il metodo con il comportamento pi\`u regolare.
-      \end{itemize}
-  \end{columns}
-\end{frame}
-
-\begin{frame}{Risultato 2: l'aumento di precisione favorisce soprattutto HLL++}
-  \begin{columns}[T,totalwidth=\textwidth]
-    \column{0.60\textwidth}
-      \centering
-      \includegraphics[width=\linewidth]{streaming_precision_sweep_endpoint_heatmaps.png}
-    \column{0.40\textwidth}
-      \scriptsize
-      \begin{block}{Miglior parametro osservato}
+\begin{frame}{Dataset sintetico: formato e verit\`a di prefisso}
+  \begin{columns}[T,onlytextwidth]
+    \column{0.48\textwidth}
+      \begin{block}{Formato binario}
+        \small
+        Ogni file ha nome
+        \[
+          \texttt{dataset\_n\_\{n\}\_d\_\{d\}\_p\_\{p\}\_s\_\{seed\}.bin}
+        \]
+        e contiene:
         \begin{itemize}
-          \item HLL++: \(k=18\) per tutti i valori di \(\rho\).
-          \item HLL: \(k=16\) in media; con \(\rho=1\), \(k=10\).
-          \item LogLog: \(k=14\) in media; con \(\rho=10\), \(k=16\).
-          \item PC: \(L=20\) in media; con \(\rho=100\), \(L=16\).
+          \item header con \texttt{SATPDBN2}, versione, \(n,d,p\), seed;
+          \item tabella delle partizioni con offset e dimensioni compresse;
+          \item payload dei valori e truth bitset compressi separatamente con \texttt{zlib}.
         \end{itemize}
       \end{block}
+    \column{0.48\textwidth}
+      \begin{block}{Uso nel framework}
+        \small
+        \codepath{PartitionReader} carica una partizione alla volta, quindi il
+        costo in memoria \`e proporzionale alla partizione corrente e non
+        all'intero dataset.
+      \end{block}
 
-      \begin{itemize}
-        \item HLL++ \`e il metodo con risposta pi\`u regolare all'aumento di precisione.
-        \item Negli altri algoritmi il vantaggio del parametro dipende di pi\`u dal regime sperimentale.
-      \end{itemize}
-  \end{columns}
-\end{frame}
-
-\begin{frame}{Risultato 3: il merge omogeneo realizza il caso \texttt{valid}}
-  \begin{itemize}
-    \item Configurazione: HyperLogLog++, \(\rho \in \{1,10,100\}\), \(k \in \{10,14,18\}\), quattro funzioni di hash.
-    \item Condizione di omogeneit\`a: stessa funzione di hash, stesso seed e stessi parametri sui due lati.
-    \item Totale osservato: 36 configurazioni e 900 coppie di merge.
-  \end{itemize}
-
-  \vspace{0.15cm}
-
-  \[
-    \Delta_{abs}=0, \qquad \Delta_{rel}=0
-  \]
-
-  \small
-  \begin{tabular}{ccccc}
-    \toprule
-    \(\rho\) & \(d\) & Coppie totali & Coppie con delta \(\neq 0\) & Max \(\Delta_{rel}\) \\
-    \midrule
-    1 & \(10^7\) & 300 & 0 & 0 \\
-    10 & \(10^6\) & 300 & 0 & 0 \\
-    100 & \(10^5\) & 300 & 0 & 0 \\
-    \bottomrule
-  \end{tabular}
-
-  \vspace{0.15cm}
-
-  \small
-  Nel dominio osservato, il merge omogeneo coincide esattamente con il riferimento seriale e costituisce il controllo sperimentale del caso \texttt{valid}.
-\end{frame}
-
-\begin{frame}{Risultato 4: hash mismatch = caso \texttt{invalid}}
-  \begin{columns}[T,totalwidth=\textwidth]
-    \column{0.60\textwidth}
-      \centering
-      \includegraphics[width=\linewidth]{merge_hpp_hash_mismatch_overview.png}
-    \column{0.40\textwidth}
-      \scriptsize
-      \begin{itemize}
-        \item Seed mismatch: stessa hash \texttt{xxhash64} o \texttt{murmurhash3}, ma seed diversi.
-        \item Family mismatch: \texttt{xxhash64} contro \texttt{splitmix64}, \texttt{murmurhash3} o \texttt{siphash24}; anche direzione inversa.
-        \item Controllo omogeneo locale: errore medio \(=0.006233\).
-        \item Casi \texttt{invalid}: errore medio tra \(0.342374\) e \(0.352802\).
-        \item Errore massimo osservato: \(1.009634\).
-        \item Strategia corretta: \texttt{reject}; il merge forzato \`e solo controllo negativo.
-      \end{itemize}
-
-      \begin{alertblock}{Conclusione}
-        Se cambia la semantica dell'hash, il merge forzato perde significato. In questo contesto il caso va rifiutato.
+      \begin{alertblock}{Truth bitset}
+        \small
+        Il bit \(b_t=1\) se la posizione \(t\) \`e una prima occorrenza. Perci\`o
+        \[
+          \Fzero(t)=\sum_{i=1}^{t} b_i.
+        \]
       \end{alertblock}
   \end{columns}
 \end{frame}
 
-\begin{frame}{Risultato 5: precision mismatch = caso \texttt{recoverable}}
-  \begin{columns}[T,totalwidth=\textwidth]
+\begin{frame}{Dataset sintetico: validazione}
+  \begin{columns}[T,onlytextwidth]
+    \column{0.35\textwidth}
+      \begin{block}{Verifiche}
+        \footnotesize
+        \begin{itemize}
+          \item header e partizioni coerenti;
+          \item in ogni partizione, \(\sum_t b_t=d\);
+          \item una prima occorrenza per blocco;
+          \item determinismo rispetto ai worker.
+        \end{itemize}
+        \[
+          \rho_t=\frac{t}{\Fzero(t)}
+        \]
+        Ai bordi \(t=j\rho\), vale \(\rho_t=\rho\).
+      \end{block}
     \column{0.59\textwidth}
       \centering
-      \includegraphics[width=\linewidth]{merge_hpp_precision_mismatch_overview.png}
-    \column{0.41\textwidth}
-      \scriptsize
-      \begin{itemize}
-        \item Hash \texttt{xxhash64}, stesso seed.
-        \item Coppie: \((10,14)\), \((10,18)\), \((14,18)\) e versioni invertite.
-        \item \texttt{reject}: nessuna stima di merge, riferimento seriale \(=0.016651\).
-        \item La normalizzazione avviene alla precisione minima comune.
-      \end{itemize}
-
-      \scriptsize
-      \begin{tabular}{p{2.1cm} p{1.8cm}}
-        \toprule
-        Strategia & \(\overline{\varepsilon}_{merge}\) \\
-        \midrule
-        \begin{tabular}[t]{@{}l@{}}\texttt{unsafe\_naive\_}\\\texttt{merge}\end{tabular} & \(0.363882\) \\
-        \begin{tabular}[t]{@{}l@{}}\texttt{reduce\_then\_}\\\texttt{merge}\end{tabular} & \(0.016651\) \\
-        \bottomrule
-      \end{tabular}
-
-      \vspace{0.15cm}
-
-      \scriptsize
-      \begin{itemize}
-        \item \texttt{reduce\_then\_merge} coincide con il riferimento corretto.
-        \item Il merge forzato raggiunge massimo \(1.061378\) e degrado medio \(32.37\).
-      \end{itemize}
+      \includegraphics[width=0.82\linewidth]{ratio_processed_vs_distinct_streaming_boundary_linear.png}
   \end{columns}
 \end{frame}
 
-\begin{frame}{Sintesi dei risultati e contributi}
-  \begin{columns}[T,totalwidth=\textwidth]
-    \column{0.50\textwidth}
-      \begin{block}{Risultati empirici}
+\begin{frame}{Protocollo sperimentale: organizzazione}
+  \begin{block}{Idea}
+    Il protocollo separa tre domande: accuratezza in streaming, merge omogeneo e
+    casi nel merge eterogeneo.
+  \end{block}
+
+  \vspace{0.08cm}
+
+  \begin{columns}[T,onlytextwidth]
+    \column{0.31\textwidth}
+      \begin{block}{Modalit\`a}
+        \scriptsize
         \begin{itemize}
-          \item HLL++ \`e il metodo pi\`u stabile nel dominio osservato.
-          \item Il merge omogeneo coincide col riferimento seriale.
-          \item L'eterogeneit\`a dell'hash rompe la correttezza del merge.
-          \item Il mismatch di precisione \`e recuperabile solo tramite normalizzazione esplicita.
+          \item \texttt{streaming};
+          \item \texttt{merge};
+          \item \texttt{merge\_heterogeneous}.
         \end{itemize}
+        Tre flussi di valutazione del framework.
       \end{block}
-    \column{0.50\textwidth}
-      \begin{block}{Contributi del lavoro}
-        \begin{itemize}
-          \item Implementazione uniforme di pi\`u algoritmi count-distinct.
-          \item Infrastruttura sperimentale riproducibile per streaming e merge distribuito.
-          \item Evidenza sperimentale sul ruolo della compatibilit\`a semantica nel merge.
-          \item Lessico operativo \texttt{valid}/\texttt{recoverable}/\texttt{invalid}.
-        \end{itemize}
+    \column{0.31\textwidth}
+      \begin{block}{Unit\`a di esecuzione}
+        \scriptsize
+        Il dataset ha \(p=50\) partizioni. In streaming ogni partizione \`e un
+        esperimento; nel merge le coppie sono
+        \[
+          (0,1),(2,3),\dots,(48,49).
+        \]
+      \end{block}
+    \column{0.31\textwidth}
+      \begin{block}{File di risultati}
+        \scriptsize
+        Risultati salvati in
+        \begin{center}
+          \texttt{results/<namespace>/}\\
+          \texttt{<mode>/.../results\_*.csv}
+        \end{center}
+        con metadati su dataset, hash, parametri e strategia di merge.
       \end{block}
   \end{columns}
 
-  \begin{alertblock}{Take-away}
-    Negli sketch count-distinct distribuiti, hash e parametri fanno parte della semantica dello sketch: senza compatibilit\`a semantica il merge non \`e un'operazione neutra.
+  \vspace{0.03cm}
+
+  \begin{alertblock}{Metriche principali}
+    \scriptsize
+    Streaming: media, deviazione standard, bias, RMSE e MRE finale.
+    Merge: stima di merge, stima seriale, unione esatta e delta rispetto al riferimento.
   \end{alertblock}
 \end{frame}
 
-\begin{frame}{Limiti e minacce alla validit\`a}
-  \begin{columns}[T,totalwidth=\textwidth]
-    \column{0.48\textwidth}
-      \begin{block}{Limiti del lavoro}
+\begin{frame}[shrink=2]{Esperimenti in modalit\`a di flusso: configurazione}
+  \begin{block}{Configurazione}
+    \scriptsize
+    Dataset \texttt{prefix\_constant\_rho} con \(n=10^7\), \(p=50\), seed
+    \(=21041998\) e
+    \[
+      \rho \in \{1,10,100\}.
+    \]
+    Griglie: HLL++ con \(k\in\{8,10,12,14,16,18\}\); HLL e LogLog con
+    \(k\in\{4,6,8,10,12,14,16\}\); PC con \(L\in\{4,8,12,16,20,24,28,31\}\).
+  \end{block}
+
+  \begin{columns}[T,onlytextwidth]
+    \column{0.47\textwidth}
+      \begin{block}{Struttura dell'analisi}
+        \scriptsize
+        Non si osservano tutti i \(10^7\) elementi del flusso, ma 200 punti di
+        controllo fissati in anticipo.
+
+        Nel caso \(n=10^7\), il pianificatore:
         \begin{itemize}
-          \item Dataset soprattutto sintetico e controllato
-          \item Studio del merge concentrato soprattutto su casi pairwise
-          \item Analisi eterogenea limitata a hash mismatch e precision mismatch
-          \item Parte di merge sviluppata soprattutto su HLL++
+          \item distribuisce circa un terzo dei checkpoint in modo lineare nel primo \(1\%\) del flusso;
+          \item distribuisce i restanti checkpoint fino a \(n\) con passo crescente;
+          \item include sempre \(t=1\) e \(t=n\).
+        \end{itemize}
+      \end{block}
+    \column{0.47\textwidth}
+      \begin{block}{Lettura intuitiva}
+        \scriptsize
+        In pratica si fanno 200 ``istantanee'' del flusso: fitte all'inizio,
+        dove la stima cambia pi\`u rapidamente, e poi via via pi\`u rade.
+
+        A ciascun checkpoint si confrontano \(\Fzero(t)\) e
+        \(\widehat{\Fzero}(t)\); sulle 50 partizioni si aggregano poi media e
+        dispersione.
+      \end{block}
+  \end{columns}
+\end{frame}
+
+\begin{frame}[shrink=5]{Esperimenti in modalit\`a di flusso: lettura dei risultati}
+  \begin{block}{Idea}
+    Gli stessi esperimenti vengono letti rispetto alla cardinalit\`a reale del
+    prefisso e rispetto al rapporto medio di ripetizione.
+  \end{block}
+
+  \vspace{0.08cm}
+
+  \begin{columns}[T,onlytextwidth]
+    \column{0.47\textwidth}
+      \begin{block}{Caso A}
+        \scriptsize
+        Si osserva \(\widehat{\Fzero}(t)\) in funzione di \(\Fzero(t)\) a
+        \(\rho\) fissato.
+
+        Questa vista mostra come cambiano bias e dispersione al crescere dei
+        distinti reali nel prefisso.
+      \end{block}
+    \column{0.47\textwidth}
+      \begin{block}{Caso B}
+        \scriptsize
+        Si fissano sette valori target
+        \[
+          \Fzero^\ast \in \{10^3,2\cdot 10^3,5\cdot 10^3,10^4,2\cdot 10^4,5\cdot 10^4,10^5\}
+        \]
+        e si legge la stima in funzione di
+        \[
+          \rho_t=\frac{t}{\Fzero(t)}.
+        \]
+      \end{block}
+  \end{columns}
+
+  \begin{alertblock}{Sintesi comparativa}
+    \scriptsize
+    Confronto finale tramite errore relativo medio ai punti finali del flusso.
+  \end{alertblock}
+\end{frame}
+
+\begin{frame}{Esperimenti di merge HLL++: struttura}
+  \begin{block}{Procedura comune}
+    \small
+    Le partizioni sono accoppiate come \((0,1),(2,3),\dots,(48,49)\). Per ogni
+    coppia si costruiscono due sketch locali e uno sketch seriale sulla stessa
+    unione dei dati, poi si confronta il merge con il riferimento.
+  \end{block}
+
+  \vspace{0.15cm}
+
+  \begin{columns}[T,onlytextwidth]
+    \column{0.47\textwidth}
+      \begin{block}{Controllo omogeneo}
+        \footnotesize
+        \[
+          \rho \in \{1,10,100\}, \quad
+          k \in \{10,14,18\}
+        \]
+        Quattro funzioni di hash, stessa semantica sui due lati.
+
+        Strategia osservata: \texttt{direct}.
+
+        Totale: 36 configurazioni, 900 coppie.
+      \end{block}
+    \column{0.47\textwidth}
+      \begin{block}{Quantit\`a registrate}
+        \footnotesize
+        Per ogni coppia si salvano unione esatta, stima di merge, stima seriale
+        ed errori assoluti e relativi rispetto al riferimento.
+
+        Nel caso \texttt{valid}, il controllo atteso \`e
+        \[
+          \Delta_{abs}=0, \qquad \Delta_{rel}=0.
+        \]
+      \end{block}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{Esperimenti di merge HLL++: casi eterogenei}
+  \begin{columns}[T,onlytextwidth]
+    \column{0.47\textwidth}
+      \begin{block}{Caso \texttt{invalid}: hash mismatch}
+        \footnotesize
+        Precisione fissata a \(k=14\). Scenari osservati: controllo omogeneo
+        locale, seed mismatch e family mismatch, anche in versione \texttt{rev}.
+
+        Strategie: \texttt{reject}, \texttt{unsafe\_naive\_merge}.
+
+        Totale: 1800 righe, 72 file CSV.
+      \end{block}
+    \column{0.47\textwidth}
+      \begin{block}{Caso \texttt{recoverable}: precision mismatch}
+        \footnotesize
+        Hash fissata a \texttt{xxhash64} con seed comune.
+
+        Coppie:
+        \[
+          (10,14),(10,18),(14,18)
+        \]
+        e inverse.
+
+        Strategie: \texttt{reject}, \texttt{unsafe\_naive\_merge},
+        \texttt{reduce\_then\_merge}.
+
+        Totale: 1350 righe, 54 file CSV.
+      \end{block}
+  \end{columns}
+
+  \vspace{0.15cm}
+
+  \begin{alertblock}{Riferimenti di confronto}
+    \footnotesize
+    \texttt{reject} registra esplicitamente l'incompatibilit\`a;
+    \texttt{unsafe\_naive\_merge} \`e il controllo negativo; nel caso
+    \texttt{recoverable}, \texttt{reduce\_then\_merge} usa come riferimento
+    omogeneo la precisione minima \(\min(k_{left},k_{right})\).
+  \end{alertblock}
+\end{frame}
+
+\begin{frame}{Validazione della catena sperimentale}
+  \begin{columns}[T,onlytextwidth]
+    \column{0.48\textwidth}
+      \begin{block}{Test sugli algoritmi}
+        \footnotesize
+        \begin{itemize}
+          \item accuratezza di base e dominio dei parametri;
+          \item merge seriale, commutativit\`a e idempotenza per PC, LogLog, HLL e HLL++;
+          \item eccezioni sui mismatch parametrici non ammessi;
+          \item per HLL++: merge sparse+normal, riduzione corretta di precisione
+          e controesempio \texttt{naive}.
         \end{itemize}
       \end{block}
     \column{0.48\textwidth}
-      \begin{block}{Implicazione metodologica}
+      \begin{block}{Test del framework}
+        \footnotesize
         \begin{itemize}
-          \item I risultati chiariscono bene il problema semantico di base, ma non esauriscono la variet\`a dei flussi reali e delle topologie distribuite possibili.
-          \item Il framework \`e pensato per estendere l'analisi ad altri assi di eterogeneit\`a e ad altri sketch.
+          \item in streaming, uso corretto di \(F_0(t)\) del dataset;
+          \item planner di 200 checkpoint: copertura del flusso e rispetto della configurazione;
+          \item serializzazione coerente dei CSV di streaming, merge e merge eterogeneo;
+          \item casi \texttt{valid}, \texttt{invalid} e \texttt{recoverable}
+          con le relative strategie.
         \end{itemize}
+      \end{block}
+  \end{columns}
+
+  \vspace{0.15cm}
+
+  \begin{block}{Test del dataset e dell'orchestrazione}
+    \footnotesize
+    Il generatore verifica header binario, tabella delle partizioni, truth
+    bitset, relazione \(\sum_t b_t=d\), una sola prima occorrenza per blocco e
+    determinismo del file anche variando i worker. Gli script di orchestrazione
+    fissano in modo deterministico griglie parametriche, hash, naming dei
+    risultati e percorsi dei CSV.
+  \end{block}
+\end{frame}
+
+\begin{frame}{Risultati streaming: sintesi ai punti finali}
+  \begin{block}{Idea}
+    L'errore relativo medio ai punti finali osservati sintetizza la qualit\`a
+    della stima nelle due viste gi\`a introdotte: in funzione di \(\Fzero(t)\) e di
+    \(\rho_t=t/\Fzero(t)\).
+  \end{block}
+
+  \begin{columns}[T,onlytextwidth]
+    \column{0.58\textwidth}
+      \centering
+      \includegraphics[width=\linewidth]{streaming_endpoint_mre_summary.png}
+    \column{0.38\textwidth}
+      \begin{block}{Osservazioni}
+        \scriptsize
+        \begin{itemize}
+          \item sulla vista in \(\Fzero(t)\), HLL e HLL++ sono quasi sovrapposti:
+          errore medio circa \(0.00618\);
+          \item sulla vista in \(\rho_t\), HLL++ \`e il migliore:
+          \(3.95\cdot 10^{-4}\), contro \(2.08\cdot 10^{-3}\) di HLL;
+          \item LogLog \`e pi\`u sensibile alla vista sperimentale;
+          \item Probabilistic Counting resta nettamente separato dagli altri;
+          \item HLL++ \`e l'unico metodo che resta primo in entrambe le viste.
+        \end{itemize}
+      \end{block}
+  \end{columns}
+\end{frame}
+
+\begin{frame}[shrink=5]{Risultati streaming: analisi del parametro di precisione}
+  \begin{block}{Configurazione}
+    \scriptsize
+    Per isolare l'effetto del parametro interno si fissano dataset, seed e hash
+    (\texttt{splitmix64}, seed \(=21041998\)) e si varia solo la precisione
+    dell'algoritmo per \(\rho\in\{1,10,100\}\).
+  \end{block}
+
+  \begin{columns}[T,onlytextwidth]
+    \column{0.56\textwidth}
+      \centering
+      \includegraphics[width=\linewidth]{streaming_precision_sweep_endpoint_heatmaps.png}
+    \column{0.40\textwidth}
+      \begin{block}{Miglior parametro osservato}
+        \scriptsize
+        \begin{itemize}
+          \item HLL++: \(k=18\) per tutti i valori di \(\rho\);
+          \item HLL: \(k=16\) in media, ma con \(\rho=1\) basta \(k=10\);
+          \item LogLog: \(k=14\) in media, con preferenza per \(k=16\) a \(\rho=10\);
+          \item PC: \(L=20\) in media, con \(L=16\) quando \(\rho=100\);
+          \item solo HLL++ migliora in modo davvero sistematico.
+        \end{itemize}
+      \end{block}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{Merge omogeneo: controllo del caso \texttt{valid}}
+  \begin{block}{Perch\'e serve}
+    \scriptsize
+    Prima di studiare i mismatch bisogna verificare che, in condizioni
+    pienamente compatibili, merge e processamento seriale coincidano davvero.
+  \end{block}
+
+  \begin{columns}[T,onlytextwidth]
+    \column{0.43\textwidth}
+      \begin{block}{Configurazione}
+        \scriptsize
+        HyperLogLog++ con
+        \[
+          \rho \in \{1,10,100\}, \qquad
+          k \in \{10,14,18\}
+        \]
+        e quattro funzioni di hash. Totale osservato:
+        36 configurazioni e 900 coppie di merge.
+      \end{block}
+    \column{0.53\textwidth}
+      \begin{block}{Risultato osservato}
+        \scriptsize
+        \[
+          \Delta_{abs}=0, \qquad \Delta_{rel}=0
+        \]
+
+        \begin{center}
+          \begin{tabular}{@{}ccccc@{}}
+            \toprule
+            \(\rho\) & \(d\) & Coppie & Delta \(\neq 0\) & Max \(\Delta_{rel}\) \\
+            \midrule
+            1 & \(10^7\) & 300 & 0 & 0 \\
+            10 & \(10^6\) & 300 & 0 & 0 \\
+            100 & \(10^5\) & 300 & 0 & 0 \\
+            \bottomrule
+          \end{tabular}
+        \end{center}
+
+        In tutte le 900 coppie osservate, merge e riferimento seriale coincidono.
+      \end{block}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{Hash mismatch: caso \texttt{invalid}}
+  \begin{block}{Configurazione}
+    \scriptsize
+    Precisione fissata a \(k=14\). Si osservano seed mismatch e family mismatch,
+    con controllo omogeneo locale e scenari invertiti \texttt{rev}. Le strategie
+    usate sono \texttt{reject} e \texttt{unsafe\_naive\_merge}.
+  \end{block}
+
+  \begin{columns}[T,onlytextwidth]
+    \column{0.57\textwidth}
+      \centering
+      \includegraphics[width=\linewidth]{merge_hpp_hash_mismatch_overview.png}
+    \column{0.39\textwidth}
+      \begin{block}{Osservazioni}
+        \scriptsize
+        \begin{itemize}
+          \item controllo omogeneo locale: errore medio \(=0.006233\);
+          \item merge forzato nei casi \texttt{invalid}: errore medio tra
+          \(0.342374\) e \(0.352802\);
+          \item errore massimo osservato: \(1.009634\), nel regime \(\rho=1\);
+          \item invertire i lati non ripara il problema semantico;
+          \item operativamente il caso va rifiutato: \texttt{reject}.
+        \end{itemize}
+      \end{block}
+  \end{columns}
+\end{frame}
+
+\begin{frame}[shrink=5]{Precision mismatch: caso \texttt{recoverable}}
+  \begin{block}{Configurazione}
+    \scriptsize
+    Hash \texttt{xxhash64}, seed comune e coppie di precisione
+    \[
+      (10,14),(10,18),(14,18)
+    \]
+    con versioni inverse. Si confrontano \texttt{reject},
+    \texttt{unsafe\_naive\_merge} e \texttt{reduce\_then\_merge}.
+  \end{block}
+
+  \vspace{0.12cm}
+
+  \begin{columns}[T,onlytextwidth]
+    \column{0.55\textwidth}
+      \centering
+      \includegraphics[width=\linewidth]{merge_hpp_precision_mismatch_overview.png}
+    \column{0.41\textwidth}
+      \begin{block}{Strategie a confronto}
+        \scriptsize
+        \begin{center}
+          \begin{tabular}{@{}lr@{}}
+            \toprule
+            Strategia & \(\overline{\varepsilon}_{merge}\) \\
+            \midrule
+            \texttt{reject} & -- \\
+            \texttt{unsafe\_naive\_merge} & \(0.363882\) \\
+            \texttt{reduce\_then\_merge} & \(0.016651\) \\
+            \bottomrule
+          \end{tabular}
+        \end{center}
+
+        La riduzione alla precisione minima comune riporta il merge sul
+        riferimento seriale e sul corrispondente riferimento omogeneo. Il merge forzato raggiunge
+        invece massimo \(1.061378\) e degrado medio \(32.37\).
+      \end{block}
+  \end{columns}
+\end{frame}
+
+\begin{frame}[shrink=5]{Sintesi trasversale del merge HLL++}
+  \begin{block}{Idea}
+    Letti insieme, i tre casi osservati chiariscono il significato operativo
+    della classificazione \texttt{valid}/\texttt{recoverable}/\texttt{invalid}.
+  \end{block}
+
+  \centering
+  \includegraphics[height=0.48\textheight,keepaspectratio]{merge_hpp_cross_case_summary.png}
+
+  \begin{alertblock}{Conclusione}
+    \scriptsize
+    \[
+      \texttt{valid} \Rightarrow \texttt{direct}
+      \qquad
+      \texttt{invalid} \Rightarrow \texttt{reject}
+      \qquad
+      \texttt{recoverable} \Rightarrow \texttt{reduce\_then\_merge}
+    \]
+  \end{alertblock}
+\end{frame}
+
+\begin{frame}{Conclusioni: cosa mostrano i risultati}
+  \begin{columns}[T,onlytextwidth]
+    \column{0.47\textwidth}
+      \begin{block}{Stima locale}
+        \footnotesize
+        \begin{itemize}
+          \item Nel dominio osservato, HLL++ \`e il metodo pi\`u stabile.
+          \item HyperLogLog resta il metodo pi\`u vicino per comportamento, ma meno regolare.
+          \item LogLog e soprattutto PC dipendono di pi\`u dal regime sperimentale e dal parametro scelto.
+        \end{itemize}
+      \end{block}
+    \column{0.47\textwidth}
+      \begin{block}{Merge distribuito}
+        \footnotesize
+        \begin{itemize}
+          \item il caso omogeneo coincide con il riferimento seriale;
+          \item l'hash mismatch rompe la semantica comune del merge;
+          \item il precision mismatch non \`e diretto, ma resta recuperabile con normalizzazione.
+        \end{itemize}
+      \end{block}
+  \end{columns}
+
+  \vspace{0.12cm}
+
+  \begin{alertblock}{Tesi centrale}
+    \footnotesize
+    Negli sketch count-distinct distribuiti, algoritmo, hash, seed e parametri
+    fanno parte della semantica dello sketch: il merge \`e corretto solo entro
+    questa semantica comune.
+  \end{alertblock}
+\end{frame}
+
+\begin{frame}{Conclusioni: contributi del lavoro}
+  \begin{columns}[T,onlytextwidth]
+    \column{0.31\textwidth}
+      \begin{block}{Software}
+        \footnotesize
+        Implementazione uniforme di pi\`u algoritmi count-distinct, con
+        interfaccia comune per aggiornamento, stima, merge e reset.
+      \end{block}
+    \column{0.31\textwidth}
+      \begin{block}{Metodo}
+        \footnotesize
+        Framework riproducibile che separa dataset, hash, algoritmi, metriche e
+        serializzazione e supporta streaming, merge omogeneo e merge eterogeneo.
+      \end{block}
+    \column{0.31\textwidth}
+      \begin{block}{Risultato principale}
+        \footnotesize
+        Distinzione operativa tra casi \texttt{valid}, \texttt{recoverable} e
+        \texttt{invalid}, con evidenza sperimentale sulle condizioni del merge.
+      \end{block}
+  \end{columns}
+
+  \vspace{0.12cm}
+
+  \begin{block}{Contributo complessivo}
+    \footnotesize
+    Il lavoro non si limita a confrontare algoritmi: esplicita quando il merge
+    distribuito sia semanticamente corretto, quando vada rifiutato e quando
+    richieda una trasformazione preliminare definita.
+  \end{block}
+\end{frame}
+
+\begin{frame}{Limiti e validit\`a esterna}
+  \begin{block}{Idea}
+    I risultati chiariscono bene il problema semantico di base, ma non
+    esauriscono ancora la variet\`a dei flussi reali e delle topologie distribuite.
+  \end{block}
+
+  \vspace{0.12cm}
+
+  \begin{columns}[T,onlytextwidth]
+    \column{0.31\textwidth}
+      \begin{block}{Dataset}
+        \footnotesize
+        La valutazione usa soprattutto un dataset sintetico controllato, utile
+        per isolare i fenomeni ma non sufficiente da solo a rappresentare tutti i
+        carichi reali.
+      \end{block}
+    \column{0.31\textwidth}
+      \begin{block}{Topologia}
+        \footnotesize
+        Lo studio del merge si concentra su casi pairwise, che chiariscono la
+        semantica del problema ma non coprono catene o alberi di aggregazione pi\`u ampi.
+      \end{block}
+    \column{0.31\textwidth}
+      \begin{block}{Assi osservati}
+        \footnotesize
+        I casi eterogenei osservati sono due assi mirati
+        (\texttt{hash mismatch}, \texttt{precision mismatch}) e il merge \`e
+        sviluppato soprattutto su HLL++ come riferimento principale.
       \end{block}
   \end{columns}
 \end{frame}
 
 \begin{frame}{Sviluppi futuri}
-  \begin{itemize}
-    \item Portare il framework su dati reali o su sorgenti di flusso come Apache Kafka.
-    \item Studiare topologie di merge pi\`u ampie e il punto ottimale in cui ridurre alla precisione minima.
-    \item Estendere i casi eterogenei ad altri assi semanticamente chiari oltre a hash e precisione.
-    \item Integrare sketch count-distinct pi\`u recenti e misurare il costo cumulativo della normalizzazione e del merge.
-  \end{itemize}
+  \begin{columns}[T,onlytextwidth]
+    \column{0.31\textwidth}
+      \begin{block}{Dati reali}
+        \footnotesize
+        Portare il framework su dataset reali o su sorgenti di flusso come
+        Apache Kafka, per osservare gli algoritmi fuori dal solo contesto sintetico.
+      \end{block}
+    \column{0.31\textwidth}
+      \begin{block}{Topologie e costi}
+        \footnotesize
+        Studiare topologie di merge pi\`u ampie e il punto ottimale in cui
+        ridurre alla precisione minima, misurando anche costo di normalizzazione e merge.
+      \end{block}
+    \column{0.31\textwidth}
+      \begin{block}{Nuovi sketch}
+        \footnotesize
+        Estendere il framework ad algoritmi count-distinct pi\`u recenti
+        (per esempio UltraLogLog) e, pi\`u avanti, ad altre famiglie di sketch.
+      \end{block}
+  \end{columns}
+
+  \vspace{0.12cm}
+
+  \begin{block}{Stesso principio}
+    \footnotesize
+    Le estensioni future hanno senso soprattutto lungo assi di eterogeneit\`a la
+    cui interpretazione semantica sia chiara, come in questo lavoro.
+  \end{block}
+\end{frame}
+
+\begin{frame}{Conclusione finale}
+  \begin{alertblock}{Conclusione}
+    \footnotesize
+    Negli sketch count-distinct distribuiti, hash, seed e parametri non sono
+    dettagli di implementazione: fanno parte della semantica dello sketch.
+  \end{alertblock}
+
+  \vspace{0.2cm}
+
+  \begin{block}{Conseguenza operativa}
+    \[
+      \texttt{valid} \Rightarrow \texttt{direct}
+      \qquad
+      \texttt{recoverable} \Rightarrow \texttt{reduce\_then\_merge}
+      \qquad
+      \texttt{invalid} \Rightarrow \texttt{reject}
+    \]
+  \end{block}
 \end{frame}
 
 \begin{frame}{Domande}
-  \centering
-  \Large Grazie per l'attenzione.
+  \begin{alertblock}{Grazie per l'attenzione}
+    \centering
+    \large Domande?
+  \end{alertblock}
 \end{frame}
 
 \end{document}
