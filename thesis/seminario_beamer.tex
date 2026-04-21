@@ -53,14 +53,16 @@
 \end{frame}
 
 \begin{frame}{Contenuti}
-  \begin{enumerate}
-    \item Motivazione, domanda di ricerca e contributi
-    \item Background essenziale sugli sketch count-distinct
-    \item Disegno sperimentale e infrastruttura
-    \item Risultati sul comportamento in streaming
-    \item Risultati sul merge distribuito
-    \item Conclusioni, limiti e sviluppi futuri
-  \end{enumerate}
+  \tableofcontents
+\end{frame}
+
+\section{Motivazione e domanda di ricerca}
+
+\begin{frame}[plain]
+  \centering
+  \vfill
+  {\usebeamercolor[fg]{structure}\LARGE\bfseries Motivazione e domanda di ricerca}
+  \vfill
 \end{frame}
 
 \begin{frame}{Problema e motivazione}
@@ -68,11 +70,11 @@
     \item Il problema riguarda la stima degli \textbf{elementi distinti} che compaiono in un flusso di dati continuo.
     \item Il conteggio esatto diventa rapidamente costoso in memoria e tempo quando il numero di elementi distinti cresce e la risposta deve essere aggiornata con bassa latenza.
     \item Le applicazioni tipiche includono telemetria, monitoraggio di rete, osservabilit\`a, analisi di log e sistemi distribuiti.
-    \item Nei contesti distribuiti non basta una buona stima locale: serve anche poter \textbf{combinare correttamente} sketch prodotti su nodi diversi.
+    \item Nei contesti distribuiti non basta una buona stima locale: serve anche poter \textbf{combinare correttamente} i risultati prodotti su nodi diversi.
   \end{itemize}
 
   \begin{alertblock}{Punto chiave}
-    Il lavoro non riguarda solo quanto bene uno sketch stimi \(F_0\), ma come si comporta il \textbf{merge} in situazioni eterogenee o non ottimali.
+    Il lavoro non riguarda solo quanto bene gli algoritmi stimino gli elementi distinti, ma come si comporta il \textbf{merge} in situazioni eterogenee o non ottimali.
   \end{alertblock}
 \end{frame}
 
@@ -80,42 +82,54 @@
   \begin{columns}[T,totalwidth=\textwidth]
     \column{0.48\textwidth}
       \begin{block}{Conteggio esatto}
+        \footnotesize
         \[
           S_t=\langle x_1,\dots,x_t\rangle,
           \qquad
           V_t=\{x_j \mid 1\le j\le t\}
         \]
         \[
-          V_i \leftarrow V_{i-1}\cup\{x_i\},
-          \qquad
-          |V_t|
+          \begin{aligned}
+            V_i &\leftarrow V_{i-1}\cup\{x_i\},\quad 1\le i\le t,\\
+            |V_t|&=\Fzero(t)
+          \end{aligned}
         \]
         \small
         Memoria \(\Theta(|V_t|)=\Theta(\Fzero(t))\): cresce con il numero di distinti osservati.
       \end{block}
     \column{0.48\textwidth}
       \begin{block}{Sketch}
+        \footnotesize
         \[
           S_t=\langle x_1,\dots,x_t\rangle,
           \qquad
-          M_0=\text{sketch vuota}
+          M_0=\text{sketch vuoto}
         \]
         \[
-          M_i \leftarrow \mathrm{Update}(M_{i-1},x_i)
-        \]
-        \[
-          \widehat{\Fzero}(t)\leftarrow \mathrm{Query}(M_t)
+          \begin{aligned}
+            M_i &\leftarrow \mathrm{Update}(M_{i-1},x_i),\quad 1\le i\le t,\\
+            \widehat{\Fzero}(t)&\leftarrow \mathrm{Query}(M_t)
+          \end{aligned}
         \]
         \small
         Si mantiene uno stato compatto e si restituisce una stima di \(\Fzero(t)\).
       \end{block}
   \end{columns}
 
-  \begin{itemize}
-    \item L'hash trasforma gli elementi in sequenze pseudo-casuali e la stima ne osserva i pattern nei bit dello sketch.
-    \item Il compromesso fondamentale \`e tra memoria, costo di aggiornamento e accuratezza della stima.
-    \item In un contesto distribuito c'\`e un ulteriore requisito: il merge degli sketch locali.
-  \end{itemize}
+  \vspace{-0.02cm}
+
+  \begin{alertblock}{Complessit\`a dello sketch}
+    \footnotesize
+    Per una \((1\pm\varepsilon)\)-stima con probabilit\`a \(1-\delta\):
+    \[
+      \mathrm{space}(M_t)=
+      \tilde{O}\!\left(\varepsilon^{-2}\log\frac{1}{\delta}+\log n\right)
+      \ \text{bit},
+      \qquad n=|\mathcal{U}|.
+    \]
+    Update per elemento: \(O(1)\) operazioni sullo stato. Il compromesso resta tra memoria,
+    costo di aggiornamento e accuratezza; nel caso distribuito si aggiunge il merge degli sketch locali.
+  \end{alertblock}
 \end{frame}
 
 \begin{frame}{Caso distribuito e domanda di ricerca}
@@ -170,6 +184,15 @@
   
 \end{frame}
 
+\section{Sketch count-distinct}
+
+\begin{frame}[plain]
+  \centering
+  \vfill
+  {\usebeamercolor[fg]{structure}\LARGE\bfseries Sketch count-distinct}
+  \vfill
+\end{frame}
+
 \begin{frame}{Notazione del problema}
   \[
     S=\langle x_1,x_2,\dots,x_s\rangle,
@@ -193,46 +216,66 @@
 \end{frame}
 
 \begin{frame}{Algoritmo di streaming}
-  \[
-    S_i=\langle x_1,\dots,x_i\rangle,
-    \qquad
-    M_0=\text{stato vuoto}
-  \]
+  \begin{block}{Definizione}
+    \footnotesize
+    Un algoritmo per flussi di dati elabora \(S=\langle x_1,\dots,x_s\rangle\)
+    in un solo passaggio, mantiene uno stato interno \(M_i\) di dimensione
+    limitata e aggiorna tale stato dopo ogni elemento osservato.
+    In qualunque momento pu\`o restituire una risposta interrogando lo stato.
+  \end{block}
+
+  \vspace{-0.05cm}
 
   \[
-    M_i \leftarrow \mathrm{Update}(M_{i-1},x_i),
-    \qquad
-    \widehat{\Fzero}(S_i)\leftarrow \mathrm{Query}(M_i)
+    \begin{gathered}
+      S_i=\langle x_1,\dots,x_i\rangle,
+      \qquad
+      M_0=\text{stato vuoto}\\
+      M_i \leftarrow \mathrm{Update}(M_{i-1},x_i),
+      \qquad
+      \widehat{\Fzero}(S_i)\leftarrow \mathrm{Query}(M_i)
+    \end{gathered}
   \]
+
+  \begin{columns}[T,onlytextwidth]
+    \column{0.50\textwidth}
+      \begin{itemize}
+        \small
+        \item \(M_i\) deve restare piccolo rispetto al prefisso processato.
+        \item \(\mathrm{Update}\) deve essere veloce, perch\'e avviene per ogni elemento.
+        \item La qualit\`a si misura confrontando \(\widehat{\Fzero}(S_i)\) con \(\Fzero(S_i)\).
+      \end{itemize}
+    \column{0.46\textwidth}
+      \begin{block}{Stima}
+        \footnotesize
+        Una stima \((\varepsilon,\delta)\)-approssimata richiede
+        \[
+          \Pr\!\left(
+            |\widehat{\Fzero}(S_i)-\Fzero(S_i)|
+            \le \varepsilon\,\Fzero(S_i)
+          \right)\ge 1-\delta.
+        \]
+      \end{block}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{Algoritmi considerati nella tesi}
+  \begin{block}{Famiglie implementate e valutate}
+    \small
+    Nel lavoro sperimentale vengono considerati algoritmi probabilistici per la
+    stima di \(\Fzero\), tutti basati sull'uso di funzioni di hash e su uno stato
+    compatto aggiornato elemento per elemento.
+  \end{block}
 
   \vspace{0.1cm}
 
   \begin{itemize}
-    \item Lo stato \(M_i\) deve essere piccolo rispetto al prefisso processato.
-    \item L'aggiornamento deve essere veloce, perch\'e avviene per ogni elemento.
-    \item L'accuratezza \`e lo scostamento tra \(\widehat{\Fzero}(S_i)\) e \(\Fzero(S_i)\).
-    \item L'obiettivo \`e di scambiare la quantit\`a di memoria per una stima controllata.
+    \item \textbf{Probabilistic Counting}: mantiene una bitmap e stima la cardinalit\`a a partire dalla posizione dei bit osservati.
+    \item \textbf{PCSA}: estende Probabilistic Counting usando pi\`u bitmap virtuali per ridurre la variabilit\`a della stima.
+    \item \textbf{LogLog}: usa registri che memorizzano massimi di rango prodotti dall'hash.
+    \item \textbf{HyperLogLog}: mantiene la struttura a registri, ma cambia lo stimatore usando la media armonica.
+    \item \textbf{HyperLogLog++}: variante pratica di HyperLogLog con rappresentazione sparsa/densa, correzioni del bias e gestione dei regimi piccoli.
   \end{itemize}
-
-  \begin{block}{Stima}
-    Una stima \((\varepsilon,\delta)\)-approssimata richiede
-    \(\Pr(|\widehat{\Fzero}-\Fzero|\le \varepsilon\Fzero)\ge 1-\delta\).
-  \end{block}
-\end{frame}
-
-\begin{frame}{Linea evolutiva degli algoritmi di sketch}
-  \scriptsize
-  \begin{tabularx}{\textwidth}{>{\RaggedRight\arraybackslash}p{2.5cm} >{\RaggedRight\arraybackslash}p{2.7cm} >{\RaggedRight\arraybackslash}X}
-    \toprule
-    Metodo & Stato mantenuto & Miglioramento introdotto \\
-    \midrule
-    Probabilistic Counting & Una bitmap & - \\
-    PCSA & Pi\`u bitmap virtuali & Mediazione su sottostrutture \\
-    LogLog & Registri & Massimi di rango \\
-    HyperLogLog & Registri & Media armonica e correzioni \\
-    HyperLogLog++ & Registri con strutture sparse/dense & Bias correction e gestione pratica dei regimi piccoli \\
-    \bottomrule
-  \end{tabularx}
 \end{frame}
 
 \begin{frame}{Struttura di Probabilistic Counting}
@@ -384,6 +427,15 @@
   altrimenti \(E_{\mathrm{corr}}\).
 \end{frame}
 
+\section{Merge e compatibilit\`a semantica}
+
+\begin{frame}[plain]
+  \centering
+  \vfill
+  {\usebeamercolor[fg]{structure}\LARGE\bfseries Merge e compatibilit\`a semantica}
+  \vfill
+\end{frame}
+
 \begin{frame}{Merge e compatibilit\`a semantica}
   \begin{block}{Obiettivo del merge}
     Il merge corretto richiede
@@ -466,6 +518,15 @@
 
     \texttt{unsafe\_naive\_merge} \`e usato solo come controllo negativo.
   \end{block}
+\end{frame}
+
+\section{Infrastruttura sperimentale}
+
+\begin{frame}[plain]
+  \centering
+  \vfill
+  {\usebeamercolor[fg]{structure}\LARGE\bfseries Infrastruttura sperimentale}
+  \vfill
 \end{frame}
 
 \begin{frame}{Infrastruttura sperimentale}
@@ -587,6 +648,15 @@
         \]
       \end{alertblock}
   \end{columns}
+\end{frame}
+
+\section{Risultati sugli algoritmi}
+
+\begin{frame}[plain]
+  \centering
+  \vfill
+  {\usebeamercolor[fg]{structure}\LARGE\bfseries Risultati sugli algoritmi}
+  \vfill
 \end{frame}
 
 \begin{frame}{Dataset sintetico: validazione empirica}
@@ -956,6 +1026,15 @@
   \end{columns}
 \end{frame}
 
+\section{Risultati sul merge distribuito}
+
+\begin{frame}[plain]
+  \centering
+  \vfill
+  {\usebeamercolor[fg]{structure}\LARGE\bfseries Risultati sul merge distribuito}
+  \vfill
+\end{frame}
+
 \begin{frame}{Esperimenti di merge HLL++: struttura}
   \begin{block}{Procedura comune}
     \small
@@ -1123,6 +1202,15 @@
         invece massimo \(1.061378\) e degrado medio \(32.37\).
       \end{block}
   \end{columns}
+\end{frame}
+
+\section{Conclusioni}
+
+\begin{frame}[plain]
+  \centering
+  \vfill
+  {\usebeamercolor[fg]{structure}\LARGE\bfseries Conclusioni}
+  \vfill
 \end{frame}
 
 \begin{frame}{Conclusioni: cosa mostrano i risultati}
