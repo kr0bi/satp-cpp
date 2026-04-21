@@ -239,7 +239,8 @@
   \small
   Si usa una bitmap \(B[1],\dots,B[L]\in\{0,1\}\) e una funzione di hash uniforme
   \(h:\mathcal{U}\rightarrow\{0,1\}^{L}\).
-  Per \(y=h(x)\), si definiscono
+  Per \(y=h(x)\), \(\nu_2(y)\) indica il numero di zeri finali nella
+  rappresentazione binaria di \(y\), ponendo \(\nu_2(0^L)=L\). Si definiscono
   \[
     \rho(y)=\min\{1+\nu_2(y),L\},
     \qquad
@@ -468,10 +469,8 @@
 \end{frame}
 
 \begin{frame}{Infrastruttura sperimentale}
-  \begin{block}{Idea}
-    Il framework separa algoritmi, hashing, dataset e valutazione,
-    cos\`i da isolare gli effetti del merge.
-  \end{block}
+  Il framework separa algoritmi, hashing, dataset e valutazione,
+  cos\`i da isolare gli effetti del merge.
 
   \begin{columns}[T,onlytextwidth]
     \column{0.31\textwidth}
@@ -512,7 +511,7 @@
 \begin{frame}{Dataset sintetico: protocollo di generazione}
   \begin{block}{Parametri}
     \small
-    Per ogni dataset: \(n=10^7\) elementi per partizione, \(p=50\), seed globale
+    Per ogni dataset: \(n=10^7\) elementi per partizione, \(p=50\) partizioni, $d$ elementi distinti, seed globale
     \(=21041998\),
     \[
       \rho=\frac{n}{d}\in\{100,50,20,10,5,2,1\},
@@ -546,33 +545,43 @@
   \end{columns}
 \end{frame}
 
-\begin{frame}{Dataset sintetico: formato e verit\`a di prefisso}
+\begin{frame}{Dataset sintetico: esempio di partizione}
+  \begin{block}{Esempio piccolo}
+    \small
+    Supponiamo \(n=12\), \(d=4\) e quindi \(\rho=n/d=3\).
+    La partizione \`e divisa in quattro blocchi di lunghezza \(3\):
+    all'inizio di ogni blocco compare una nuova prima occorrenza.
+  \end{block}
+
+  \vspace{0.05cm}
+
+  \centering
+  \scriptsize
+  \begin{tabular}{@{}c|cccccccccccc@{}}
+    \toprule
+    \(t\) & 1 & 2 & 3 & 4 & 5 & 6 & 7 & 8 & 9 & 10 & 11 & 12 \\
+    \midrule
+    blocco & \multicolumn{3}{c}{1} & \multicolumn{3}{c}{2}
+           & \multicolumn{3}{c}{3} & \multicolumn{3}{c}{4} \\
+    \(x_t\) & a & a & a & b & a & b & c & a & c & d & b & c \\
+    \(b_t\) & 1 & 0 & 0 & 1 & 0 & 0 & 1 & 0 & 0 & 1 & 0 & 0 \\
+    \(\Fzero(t)\) & 1 & 1 & 1 & 2 & 2 & 2 & 3 & 3 & 3 & 4 & 4 & 4 \\
+    \bottomrule
+  \end{tabular}
+
+  \vspace{0.18cm}
+
   \begin{columns}[T,onlytextwidth]
     \column{0.48\textwidth}
-      \begin{block}{Formato binario}
-        \small
-        Ogni file ha nome
-        \[
-          \texttt{dataset\_n\_\{n\}\_d\_\{d\}\_p\_\{p\}\_s\_\{seed\}.bin}
-        \]
-        e contiene:
-        \begin{itemize}
-          \item header con \texttt{SATPDBN2}, versione, \(n,d,p\), seed;
-          \item tabella delle partizioni con offset e dimensioni compresse;
-          \item payload dei valori e truth bitset compressi separatamente con \texttt{zlib}.
-        \end{itemize}
+      \begin{block}{Cosa viene memorizzato}
+        \footnotesize
+        Il dataset contiene la sequenza dei valori \(x_t\) e un bitset di verit\`a:
+        \(b_t=1\) esattamente nelle posizioni in cui compare un nuovo distinto.
       \end{block}
     \column{0.48\textwidth}
-      \begin{block}{Uso nel framework}
-        \small
-        \codepath{PartitionReader} carica una partizione alla volta, quindi il
-        costo in memoria \`e proporzionale alla partizione corrente e non
-        all'intero dataset.
-      \end{block}
-
-      \begin{alertblock}{Truth bitset}
-        \small
-        Il bit \(b_t=1\) se la posizione \(t\) \`e una prima occorrenza. Perci\`o
+      \begin{alertblock}{Verit\`a di prefisso}
+        \footnotesize
+        La cardinalit\`a reale del prefisso si ricostruisce sommando il bitset:
         \[
           \Fzero(t)=\sum_{i=1}^{t} b_i.
         \]
@@ -690,6 +699,66 @@
   \end{columns}
 \end{frame}
 
+% Slide di backup: decommentare solo se serve spiegare il pianificatore dei checkpoint.
+% \begin{frame}[shrink=8]{Backup: generazione dei checkpoint}
+%   \begin{block}{Obiettivo}
+%     \scriptsize
+%     Per una partizione di lunghezza \(n\) non si misurano tutti i prefissi.
+%     Si costruisce invece un insieme ordinato di al massimo \(C=200\) checkpoint:
+%     \[
+%       1=t_1<t_2<\dots<t_C=n.
+%     \]
+%   \end{block}
+%
+%   \begin{columns}[T,onlytextwidth]
+%     \column{0.48\textwidth}
+%       \begin{block}{Parte iniziale}
+%         \scriptsize
+%         Sia
+%         \[
+%           c=\min(n,C),
+%           \qquad
+%           w=\max(2,\lfloor c/3\rfloor),
+%         \]
+%         e
+%         \[
+%           a=\min\{n,\max(w,\lceil 0.01\,n\rceil)\}.
+%         \]
+%         Nel tratto iniziale \([1,a]\) si generano \(w\) punti quasi lineari:
+%         \[
+%           \ell_i=1+\left\lfloor\frac{(a-1)i}{w-1}\right\rfloor,
+%           \qquad i=0,\dots,w-1.
+%         \]
+%       \end{block}
+%     \column{0.48\textwidth}
+%       \begin{block}{Parte restante}
+%         \scriptsize
+%         Dal punto \(a\) fino a \(n\) si generano punti geometrici:
+%         \[
+%           g_i=
+%           \left\lceil
+%             a\left(\frac{n}{a}\right)^{i/(c-1)}
+%           \right\rceil,
+%           \qquad i=0,\dots,c-1.
+%         \]
+%         L'insieme candidato \(\{\ell_i\}\cup\{g_i\}\cup\{1,n\}\) viene ordinato
+%         e privato dei duplicati.
+%       \end{block}
+%   \end{columns}
+%
+%   \begin{alertblock}{Riduzione al budget}
+%     \scriptsize
+%     Se i candidati sono pi\`u di \(c\), si comprimono mantenendo primo e ultimo
+%     punto e campionando in modo uniforme gli indici ordinati. Se sono meno di
+%     \(c\), si densifica iterativamente l'intervallo pi\`u grande inserendo il
+%     suo punto medio.
+%
+%     Per \(n=10^7\) e \(C=200\): \(w=66\) e \(a=10^5\), quindi molti punti
+%     cadono nel primo \(1\%\) del flusso e gli altri coprono il resto con passo
+%     crescente.
+%   \end{alertblock}
+% \end{frame}
+
 \begin{frame}[shrink=5]{Esperimenti in modalit\`a di flusso: lettura dei risultati}
   \begin{block}{Idea}
     Gli stessi esperimenti vengono letti rispetto alla cardinalit\`a reale del
@@ -722,18 +791,17 @@
       \end{block}
   \end{columns}
 
-  \begin{alertblock}{Sintesi comparativa}
-    \scriptsize
-    Confronto finale tramite errore relativo medio ai punti finali del flusso.
-  \end{alertblock}
+  \vspace{0.15cm}
+
+  Viene poi fatto un confronto finale con l'errore relativo medio rispetto i punti finali del flusso.
 \end{frame}
 
 \begin{frame}{Esperimenti di merge HLL++: struttura}
   \begin{block}{Procedura comune}
     \small
-    Le partizioni sono accoppiate come \((0,1),(2,3),\dots,(48,49)\). Per ogni
-    coppia si costruiscono due sketch locali e uno sketch seriale sulla stessa
-    unione dei dati, poi si confronta il merge con il riferimento.
+    Si costruiscono due sketch locali su partizioni distinte e uno sketch
+    seriale sulla stessa unione dei dati; il merge viene poi confrontato con il
+    riferimento seriale.
   \end{block}
 
   \vspace{0.15cm}
@@ -746,17 +814,15 @@
           \rho \in \{1,10,100\}, \quad
           k \in \{10,14,18\}
         \]
-        Quattro funzioni di hash, stessa semantica sui due lati.
+        Hash compatibile e stessa semantica sui due lati.
 
         Strategia osservata: \texttt{direct}.
-
-        Totale: 36 configurazioni, 900 coppie.
       \end{block}
     \column{0.47\textwidth}
       \begin{block}{Quantit\`a registrate}
         \footnotesize
-        Per ogni coppia si salvano unione esatta, stima di merge, stima seriale
-        ed errori assoluti e relativi rispetto al riferimento.
+        Per ogni confronto si salvano unione esatta, stima di merge, stima
+        seriale ed errori assoluti e relativi rispetto al riferimento.
 
         Nel caso \texttt{valid}, il controllo atteso \`e
         \[
@@ -771,28 +837,22 @@
     \column{0.47\textwidth}
       \begin{block}{Caso \texttt{invalid}: hash mismatch}
         \footnotesize
-        Precisione fissata a \(k=14\). Scenari osservati: controllo omogeneo
-        locale, seed mismatch e family mismatch, anche in versione \texttt{rev}.
+        Precisione fissata a \(k=14\). Il controllo omogeneo locale viene
+        confrontato con seed mismatch e family mismatch, anche invertendo i lati
+        del merge.
 
         Strategie: \texttt{reject}, \texttt{unsafe\_naive\_merge}.
-
-        Totale: 1800 righe, 72 file CSV.
       \end{block}
     \column{0.47\textwidth}
       \begin{block}{Caso \texttt{recoverable}: precision mismatch}
         \footnotesize
         Hash fissata a \texttt{xxhash64} con seed comune.
 
-        Coppie:
-        \[
-          (10,14),(10,18),(14,18)
-        \]
-        e inverse.
+        Si usano precisioni diverse, considerate in entrambi gli ordini di
+        merge, mantenendo invariata la semantica dell'hash.
 
         Strategie: \texttt{reject}, \texttt{unsafe\_naive\_merge},
         \texttt{reduce\_then\_merge}.
-
-        Totale: 1350 righe, 54 file CSV.
       \end{block}
   \end{columns}
 
@@ -914,8 +974,7 @@
           \rho \in \{1,10,100\}, \qquad
           k \in \{10,14,18\}
         \]
-        e quattro funzioni di hash. Totale osservato:
-        36 configurazioni e 900 coppie di merge.
+        e hash compatibile sui due lati del merge.
       \end{block}
     \column{0.53\textwidth}
       \begin{block}{Risultato osservato}
@@ -924,19 +983,13 @@
           \Delta_{abs}=0, \qquad \Delta_{rel}=0
         \]
 
-        \begin{center}
-          \begin{tabular}{@{}ccccc@{}}
-            \toprule
-            \(\rho\) & \(d\) & Coppie & Delta \(\neq 0\) & Max \(\Delta_{rel}\) \\
-            \midrule
-            1 & \(10^7\) & 300 & 0 & 0 \\
-            10 & \(10^6\) & 300 & 0 & 0 \\
-            100 & \(10^5\) & 300 & 0 & 0 \\
-            \bottomrule
-          \end{tabular}
-        \end{center}
-
-        In tutte le 900 coppie osservate, merge e riferimento seriale coincidono.
+        \begin{itemize}
+          \item per tutti i regimi \(\rho\), il merge diretto riproduce il
+          processamento seriale;
+          \item non emerge alcuna differenza tra stima di merge e stima seriale;
+          \item il caso \texttt{valid} diventa il riferimento per interpretare i
+          mismatch successivi.
+        \end{itemize}
       \end{block}
   \end{columns}
 \end{frame}
@@ -971,11 +1024,8 @@
 \begin{frame}[shrink=5]{Precision mismatch: caso \texttt{recoverable}}
   \begin{block}{Configurazione}
     \scriptsize
-    Hash \texttt{xxhash64}, seed comune e coppie di precisione
-    \[
-      (10,14),(10,18),(14,18)
-    \]
-    con versioni inverse. Si confrontano \texttt{reject},
+    Hash \texttt{xxhash64}, seed comune e precisioni diverse tra i due sketch,
+    considerate in entrambi gli ordini di merge. Si confrontano \texttt{reject},
     \texttt{unsafe\_naive\_merge} e \texttt{reduce\_then\_merge}.
   \end{block}
 
@@ -1175,11 +1225,9 @@
   \end{block}
 \end{frame}
 
-\begin{frame}{Domande}
-  \begin{alertblock}{Grazie per l'attenzione}
-    \centering
-    \large Domande?
-  \end{alertblock}
+\begin{frame}{Conclusioni}
+  Grazie per l'attenzione. \\
+  Domande?
 \end{frame}
 
 \end{document}
