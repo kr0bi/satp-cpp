@@ -16,6 +16,7 @@
 \usecolortheme{dove}
 \setbeamertemplate{navigation symbols}{}
 \setbeamertemplate{footline}[frame number]
+\setbeamertemplate{bibliography item}[text]
 
 \definecolor{SchoolColor}{HTML}{A62124}
 \setbeamercolor{normal text}{fg=black,bg=white}
@@ -68,7 +69,7 @@
 
 \begin{frame}{Problema e motivazione}
   \begin{itemize}
-    \item Il problema riguarda la stima degli \textbf{elementi distinti} che compaiono in un flusso di dati continuo.
+    \item Il problema riguarda la stima degli \textbf{elementi distinti} che compaiono in un flusso di dati continuo \cite{Muthukrishnan_2005,BarYossef_Jayram_Kumar_Sivakumar_Trevisan_2002}.
     \item Il conteggio esatto diventa rapidamente costoso in memoria e tempo quando il numero di elementi distinti cresce e la risposta deve essere aggiornata con bassa latenza.
     \item Le applicazioni tipiche includono telemetria, monitoraggio di rete, osservabilit\`a, analisi di log e sistemi distribuiti.
     \item Nei contesti distribuiti non basta una buona stima locale: serve anche poter \textbf{combinare correttamente} i risultati prodotti su nodi diversi.
@@ -113,7 +114,7 @@
           \end{aligned}
         \]
         \small
-        Si mantiene uno stato compatto e si restituisce una stima di \(\Fzero(t)\).
+        Si mantiene uno stato compatto e si restituisce una stima di \(\Fzero(t)\) \cite{Cormode_2017}.
       \end{block}
   \end{columns}
 
@@ -121,7 +122,7 @@
 
   \begin{alertblock}{Complessit\`a dello sketch}
     \footnotesize
-    Per una \((1\pm\varepsilon)\)-stima con probabilit\`a \(1-\delta\):
+    Per una \((1\pm\varepsilon)\)-stima con probabilit\`a \(1-\delta\) \cite{Kane_Nelson_Woodruff_2010}:
     \[
       \mathrm{space}(M_t)=
       O\!\left(\varepsilon^{-2}\log\log n+\log n\right),
@@ -142,7 +143,7 @@
   \vspace{0.15cm}
 
   \small
-  Per un algoritmo fissato \(\mathcal{A}\), \(\oplus_{\mathcal{A}}\) denota il merge su sketch compatibili;
+  Per un algoritmo fissato \(\mathcal{A}\), \(\oplus_{\mathcal{A}}\) denota il merge su sketch compatibili \cite{Agarwal_Cormode_Huang_Phillips_Wei_Yi_2012};
   \(K_{\mathrm{serial}}\) \`e lo sketch ottenuto processando \(S_1 \mathbin{\Vert} S_2\),
   con \(\mathbin{\Vert}\) concatenazione dei flussi.
 
@@ -214,7 +215,7 @@
   \begin{itemize}
     \item \(S\) \`e un flusso ordinato di elementi osservati.
     \item \(f(a)\) conta quante volte compare la chiave \(a\).
-    \item \(\Fzero\) \`e il numero di elementi distinti nel flusso.
+    \item \(\Fzero\) \`e il numero di elementi distinti nel flusso, cio\`e il momento di frequenza di ordine zero \cite{Alon_Matias_Szegedy_2002}.
     \item Nel lavoro si considera il modello \emph{insertion-only}.
   \end{itemize}
 \end{frame}
@@ -274,10 +275,10 @@
   \vspace{0.1cm}
 
   \begin{itemize}
-    \item \textbf{Probabilistic Counting}: mantiene una bitmap e stima la cardinalit\`a a partire dalla posizione dei bit osservati.
-    \item \textbf{LogLog}: usa registri che memorizzano massimi di rango prodotti dall'hash.
-    \item \textbf{HyperLogLog}: mantiene la struttura a registri, ma cambia lo stimatore usando la media armonica.
-    \item \textbf{HyperLogLog++}: variante pratica di HyperLogLog con rappresentazione sparsa/densa, correzioni del bias e gestione dei regimi piccoli.
+    \item \textbf{Probabilistic Counting}: mantiene una bitmap e stima la cardinalit\`a a partire dalla posizione dei bit osservati \cite{Flajolet_Martin_1985}.
+    \item \textbf{LogLog}: usa registri che memorizzano massimi di rango prodotti dall'hash \cite{Durand_Flajolet_2003}.
+    \item \textbf{HyperLogLog}: mantiene la struttura a registri, ma cambia lo stimatore usando la media armonica \cite{Flajolet_Fusy_Gandouet_Meunier_2007}.
+    \item \textbf{HyperLogLog++}: variante pratica di HyperLogLog con rappresentazione sparsa/densa, correzioni del bias e gestione dei regimi piccoli \cite{Heule_Nunkesser_Hall_2013}.
   \end{itemize}
 \end{frame}
 
@@ -509,7 +510,7 @@
           M[j] = \max\{M_1[j], M_2[j]\}
         \]
         \small
-        Merge componente per componente.
+        Merge componente per componente \cite{Ertl_2017_HLLAlgorithms}.
       \end{block}
 
         \vspace{0.20cm}
@@ -1310,7 +1311,8 @@
       \begin{block}{Nuovi sketch}
         \footnotesize
         Estendere il framework ad algoritmi count-distinct pi\`u recenti
-        (per esempio UltraLogLog) e, pi\`u avanti, ad altre famiglie di sketch.
+        (per esempio UltraLogLog \cite{Ertl_2024_UltraLogLog}) e, pi\`u avanti,
+        ad altre famiglie di sketch.
       \end{block}
   \end{columns}
 
@@ -1321,6 +1323,12 @@
     Le estensioni future hanno senso soprattutto lungo assi di eterogeneit\`a la
     cui interpretazione semantica sia chiara, come in questo lavoro.
   \end{block}
+\end{frame}
+
+\begin{frame}[allowframebreaks]{Bibliografia}
+  \scriptsize
+  \bibliographystyle{IEEEtran}
+  \bibliography{references}
 \end{frame}
 
 \begin{frame}{Conclusioni}
