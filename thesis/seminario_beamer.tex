@@ -123,8 +123,7 @@
     Per una \((1\pm\varepsilon)\)-stima con probabilit\`a \(1-\delta\):
     \[
       \mathrm{space}(M_t)=
-      \tilde{O}\!\left(\varepsilon^{-2}\log\frac{1}{\delta}+\log n\right)
-      \ \text{bit},
+      O\!\left(\varepsilon^{-2}\log\log n+\log n\right),
       \qquad n=|\mathcal{U}|.
     \]
     Update per elemento: \(O(1)\) operazioni sullo stato. Il compromesso resta tra memoria,
@@ -170,11 +169,17 @@
 \end{frame}
 
 \begin{frame}{Tesi e contributi}
-  Negli sketch count-distinct distribuiti, hash, seed e parametri non sono dettagli di implementazione: fanno parte della \textbf{semantica} dello sketch e quindi della correttezza del merge.
+
+\begin{block}{Risultato principale}
+    \footnotesize
+    Negli sketch count-distinct distribuiti, hash, seed e parametri non sono dettagli di implementazione: fanno parte della \textbf{semantica} dello sketch e quindi della correttezza del merge.
+  \end{block}
+
   \vspace{0.15cm}
 
+  \textbf{Contributi}: 
   \begin{itemize}
-    \item Implementazione uniforme di Probabilistic Counting, LogLog, HyperLogLog e HyperLogLog++.
+    \item Implementazione degli algoritmi Probabilistic Counting, LogLog, HyperLogLog e HyperLogLog++.
     \item Framework sperimentale che separa algoritmi, hashing, dataset, metriche e risultati.
     \item Classificazione operativa dei casi di merge in \texttt{valid}, \texttt{recoverable} e \texttt{invalid}.
     \item Valutazione empirica di casi eterogenei cercati, con HLL++ come riferimento principale.
@@ -271,54 +276,53 @@
 
   \begin{itemize}
     \item \textbf{Probabilistic Counting}: mantiene una bitmap e stima la cardinalit\`a a partire dalla posizione dei bit osservati.
-    \item \textbf{PCSA}: estende Probabilistic Counting usando pi\`u bitmap virtuali per ridurre la variabilit\`a della stima.
     \item \textbf{LogLog}: usa registri che memorizzano massimi di rango prodotti dall'hash.
     \item \textbf{HyperLogLog}: mantiene la struttura a registri, ma cambia lo stimatore usando la media armonica.
     \item \textbf{HyperLogLog++}: variante pratica di HyperLogLog con rappresentazione sparsa/densa, correzioni del bias e gestione dei regimi piccoli.
   \end{itemize}
 \end{frame}
 
-\begin{frame}{Struttura di Probabilistic Counting}
-  \small
-  Si usa una bitmap \(B[1],\dots,B[L]\in\{0,1\}\) e una funzione di hash uniforme
-  \(h:\mathcal{U}\rightarrow\{0,1\}^{L}\).
-  Per \(y=h(x)\), \(\nu_2(y)\) indica il numero di zeri consecutivi a partire dal bit meno significativo nella
-  rappresentazione binaria di \(y\), ponendo \(\nu_2(0^L)=L\). Si definiscono
-  \[
-    \rho(y)=\min\{1+\nu_2(y),L\},
-    \qquad
-    R(B)=\min\bigl(\{r\geq 1 : B[r]=0\}\cup\{L+1\}\bigr)
-  \]
+% \begin{frame}{Struttura di Probabilistic Counting}
+%   \small
+%   Si usa una bitmap \(B[1],\dots,B[L]\in\{0,1\}\) e una funzione di hash uniforme
+%   \(h:\mathcal{U}\rightarrow\{0,1\}^{L}\).
+%   Per \(y=h(x)\), \(\nu_2(y)\) indica il numero di zeri consecutivi a partire dal bit meno significativo nella
+%   rappresentazione binaria di \(y\), ponendo \(\nu_2(0^L)=L\). Si definiscono
+%   \[
+%     \rho(y)=\min\{1+\nu_2(y),L\},
+%     \qquad
+%     R(B)=\min\bigl(\{r\geq 1 : B[r]=0\}\cup\{L+1\}\bigr)
+%   \]
 
-  \begin{columns}[T,totalwidth=\textwidth]
-    \column{0.48\textwidth}
-      \begin{block}{Aggiornamento}
-        \[
-          r \leftarrow \rho(h(x)),
-          \qquad
-          B[r] \leftarrow 1
-        \]
-        \small
-        La bitmap registra l'evento raro osservato sull'hash tramite la posizione del bit attivato.
-      \end{block}
-    \column{0.48\textwidth}
-      \begin{block}{Stima}
-        \[
-          \widehat{\Fzero} \approx \frac{2^{R(B)}}{\phi}
-        \]
-        \small
-        \(R(B)\) \`e la posizione del primo zero e \(\phi\) \`e una costante di calibrazione empirica.
-      \end{block}
-  \end{columns}
+%   \begin{columns}[T,totalwidth=\textwidth]
+%     \column{0.48\textwidth}
+%       \begin{block}{Aggiornamento}
+%         \[
+%           r \leftarrow \rho(h(x)),
+%           \qquad
+%           B[r] \leftarrow 1
+%         \]
+%         \small
+%         La bitmap registra l'evento raro osservato sull'hash tramite la posizione del bit attivato.
+%       \end{block}
+%     \column{0.48\textwidth}
+%       \begin{block}{Stima}
+%         \[
+%           \widehat{\Fzero} \approx \frac{2^{R(B)}}{\phi}
+%         \]
+%         \small
+%         \(R(B)\) \`e la posizione del primo zero e \(\phi\) \`e una costante di calibrazione empirica.
+%       \end{block}
+%   \end{columns}
 
-  \small
-  La struttura \`e estremamente compatta, ma una sola bitmap produce varianza elevata.
-  PCSA nasce proprio per ridurre questa instabilit\`a.
-\end{frame}
+%   \small
+%   La struttura \`e estremamente compatta, ma una sola bitmap produce varianza elevata.
+%   PCSA nasce proprio per ridurre questa instabilit\`a.
+% \end{frame}
 
-\begin{frame}{Struttura comune e stima LogLog}
+\begin{frame}{Struttura degli algoritmi LogLog}
   \small
-  Precisione \(k\): si usano \(m=2^k\) registri \(M[0],\dots,M[m-1]\).
+  Precisione \(k\): si usano \(m=2^k\) registri \(M[0],\dots,M[m-1]\). \\
   Con un hash di \(L\) bit:
   \[
     h(x)=\underbrace{j}_{k\ \text{bit}} \mathbin{\Vert} \underbrace{w}_{L-k\ \text{bit}},
@@ -350,82 +354,87 @@
   \end{columns}
 
   \small
-  LogLog, HyperLogLog e HyperLogLog++ condividono stato e aggiornamento.
-  Le slide successive cambiano solo il modo in cui questo stato viene interrogato.
+  La famiglia condivide la struttura a registri. Viene modificata la funzione di stima e vengono applicate
+  correzioni sulla stima in maniera empirica.
 \end{frame}
 
-\begin{frame}{HyperLogLog: media armonica e regimi}
-  \begin{block}{Idea}
-    HyperLogLog mantiene identici registri e aggiornamento di LogLog, ma sostituisce
-    la query con una media armonica sui registri.
-  \end{block}
+% TODO: aggiungere slide con lo pseudocodice
 
-  \begin{columns}[T,totalwidth=\textwidth]
-    \column{0.48\textwidth}
-      \begin{block}{Stima grezza}
-        \[
-          Z=\sum_{r=0}^{m-1}2^{-M[r]},
-          \qquad
-          E=\alpha_m\frac{m^2}{Z}
-        \]
-        \small
-        La media armonica di \(2^{-M[r]}\) attenua il peso dei registri estremi.
-      \end{block}
-    \column{0.48\textwidth}
-      \begin{block}{Regimi principali}
-        \scriptsize
-        Se \(V_0 = |\{r : M[r]=0\}|\), allora
-        \[
-          \widehat{\Fzero}=
-          \begin{cases}
-            m\log(m/V_0), & \text{se } E\le \frac{5}{2}m \text{ e } V_0>0 \\
-            E, & \text{nel regime centrale}
-          \end{cases}
-        \]
-      \end{block}
-  \end{columns}
+% TODO: aggiungere una slide di esempio per LogLog
 
-  \small
-  Per \(E\) vicino a \(2^L\), HLL applica inoltre una correzione di saturazione.
-\end{frame}
 
-\begin{frame}{HyperLogLog++: bias correction, threshold e formato}
-  \begin{block}{Idea}
-    HyperLogLog++ mantiene il nucleo di HLL, ma aggiunge correzione del bias,
-    rappresentazione sparsa/densa e una soglia empirica per la scelta finale.
-  \end{block}
+% \begin{frame}{HyperLogLog: media armonica e regimi}
+%   \begin{block}{Idea}
+%     HyperLogLog mantiene identici registri e aggiornamento di LogLog, ma sostituisce
+%     la query con una media armonica sui registri.
+%   \end{block}
 
-  \begin{columns}[T,totalwidth=\textwidth]
-    \column{0.48\textwidth}
-      \begin{block}{Bias correction}
-        \scriptsize
-        Indicando con \(E\) la stima grezza di HLL,
-        \[
-          E_{\mathrm{corr}}=
-          \begin{cases}
-            E-\beta(E,k), & \text{se } E \le 5m \\
-            E, & \text{altrimenti}
-          \end{cases}
-        \]
-        \small
-        \(\beta(E,k)\) \`e una correzione empirica tabulata per la precisione \(k\).
-      \end{block}
-    \column{0.48\textwidth}
-      \begin{block}{Differenze strutturali}
-        \small
-        \begin{itemize}
-          \item funzione di hash a 64 bit;
-          \item formato sparso per cardinalit\`a piccole e denso oltre soglia;
-          \item nella codifica sparsa pu\`o comparire una precisione \(k'\) con \(k \le k' \le 64\).
-        \end{itemize}
-      \end{block}
-  \end{columns}
+%   \begin{columns}[T,totalwidth=\textwidth]
+%     \column{0.48\textwidth}
+%       \begin{block}{Stima grezza}
+%         \[
+%           Z=\sum_{r=0}^{m-1}2^{-M[r]},
+%           \qquad
+%           E=\alpha_m\frac{m^2}{Z}
+%         \]
+%         \small
+%         La media armonica di \(2^{-M[r]}\) attenua il peso dei registri estremi.
+%       \end{block}
+%     \column{0.48\textwidth}
+%       \begin{block}{Regimi principali}
+%         \scriptsize
+%         Se \(V_0 = |\{r : M[r]=0\}|\), allora
+%         \[
+%           \widehat{\Fzero}=
+%           \begin{cases}
+%             m\log(m/V_0), & \text{se } E\le \frac{5}{2}m \text{ e } V_0>0 \\
+%             E, & \text{nel regime centrale}
+%           \end{cases}
+%         \]
+%       \end{block}
+%   \end{columns}
 
-  \small
-  Se \(V_0>0\), si pone \(H=m\log(m/V_0)\).
-  HLL++ restituisce \(H\) se \(H \le \operatorname{Threshold}(k)\),
-  altrimenti \(E_{\mathrm{corr}}\).
-\end{frame}
+%   \small
+%   Per \(E\) vicino a \(2^L\), HLL applica inoltre una correzione di saturazione.
+% \end{frame}
+
+% \begin{frame}{HyperLogLog++: bias correction, threshold e formato}
+%   \begin{block}{Idea}
+%     HyperLogLog++ mantiene il nucleo di HLL, ma aggiunge correzione del bias,
+%     rappresentazione sparsa/densa e una soglia empirica per la scelta finale.
+%   \end{block}
+
+%   \begin{columns}[T,totalwidth=\textwidth]
+%     \column{0.48\textwidth}
+%       \begin{block}{Bias correction}
+%         \scriptsize
+%         Indicando con \(E\) la stima grezza di HLL,
+%         \[
+%           E_{\mathrm{corr}}=
+%           \begin{cases}
+%             E-\beta(E,k), & \text{se } E \le 5m \\
+%             E, & \text{altrimenti}
+%           \end{cases}
+%         \]
+%         \small
+%         \(\beta(E,k)\) \`e una correzione empirica tabulata per la precisione \(k\).
+%       \end{block}
+%     \column{0.48\textwidth}
+%       \begin{block}{Differenze strutturali}
+%         \small
+%         \begin{itemize}
+%           \item funzione di hash a 64 bit;
+%           \item formato sparso per cardinalit\`a piccole e denso oltre soglia;
+%           \item nella codifica sparsa pu\`o comparire una precisione \(k'\) con \(k \le k' \le 64\).
+%         \end{itemize}
+%       \end{block}
+%   \end{columns}
+
+%   \small
+%   Se \(V_0>0\), si pone \(H=m\log(m/V_0)\).
+%   HLL++ restituisce \(H\) se \(H \le \operatorname{Threshold}(k)\),
+%   altrimenti \(E_{\mathrm{corr}}\).
+% \end{frame}
 
 \section{Merge e compatibilit\`a semantica}
 
