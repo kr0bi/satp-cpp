@@ -322,16 +322,17 @@
 \begin{frame}{Struttura della famiglia di algoritmi LogLog}
   \small
   \textbf{Precisione \(k\)}: si usano \(m=2^k\) registri \(M[0],\dots,M[m-1]\). \\
-  Con un hash di \(L\) bit:
+  Con un hash di \(L\)* bit:
   \[
     h(x)=\underbrace{j}_{k\ \text{bit}} \mathbin{\Vert} \underbrace{w}_{L-k\ \text{bit}},
     \qquad
     r=\mathrm{bin}(j),
     \qquad
-    \rho(w)=1+\text{zeri iniziali* in }w
+    \rho(w)=1+\text{zeri iniziali** in }w
   \]
 
-  * = leggendo i bit da sinistra a destra
+  * = 32 bit in genere \\
+  ** = leggendo i bit da sinistra a destra
 
   \begin{columns}[T,totalwidth=\textwidth]
     \column{0.48\textwidth}
