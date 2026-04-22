@@ -10,6 +10,7 @@
 \usepackage{graphicx}
 \usepackage{ragged2e}
 \usepackage{tikz}
+\usepackage{algorithmic}
 
 \usetheme{Madrid}
 \usecolortheme{dove}
@@ -136,21 +137,19 @@
     S_1 \longrightarrow K_1
     \qquad
     S_2 \longrightarrow K_2
-    \qquad
-    S_3 \longrightarrow K_3
   \]
 
   \vspace{0.15cm}
 
   \small
   Per un algoritmo fissato \(\mathcal{A}\), \(\oplus_{\mathcal{A}}\) denota il merge su sketch compatibili;
-  \(K_{\mathrm{serial}}\) \`e lo sketch ottenuto processando \(S_1 \mathbin{\Vert} S_2 \mathbin{\Vert} S_3\),
+  \(K_{\mathrm{serial}}\) \`e lo sketch ottenuto processando \(S_1 \mathbin{\Vert} S_2\),
   con \(\mathbin{\Vert}\) concatenazione dei flussi.
 
   \normalsize
 
   \[
-    \mathrm{Query}(K_1 \oplus_{\mathcal{A}} K_2 \oplus_{\mathcal{A}} K_3)
+    \mathrm{Query}(K_1 \oplus_{\mathcal{A}} K_2)
     =
     \mathrm{Query}(K_{\mathrm{serial}})
   \]
@@ -320,17 +319,19 @@
 %   PCSA nasce proprio per ridurre questa instabilit\`a.
 % \end{frame}
 
-\begin{frame}{Struttura degli algoritmi LogLog}
+\begin{frame}{Struttura della famiglia di algoritmi LogLog}
   \small
-  Precisione \(k\): si usano \(m=2^k\) registri \(M[0],\dots,M[m-1]\). \\
+  \textbf{Precisione \(k\)}: si usano \(m=2^k\) registri \(M[0],\dots,M[m-1]\). \\
   Con un hash di \(L\) bit:
   \[
     h(x)=\underbrace{j}_{k\ \text{bit}} \mathbin{\Vert} \underbrace{w}_{L-k\ \text{bit}},
     \qquad
     r=\mathrm{bin}(j),
     \qquad
-    \rho(w)=1+\text{zeri iniziali in }w
+    \rho(w)=1+\text{zeri iniziali* in }w
   \]
+
+  * = leggendo i bit da sinistra a destra
 
   \begin{columns}[T,totalwidth=\textwidth]
     \column{0.48\textwidth}
@@ -353,14 +354,55 @@
       \end{block}
   \end{columns}
 
+  \vspace{0.20cm}
+
   \small
-  La famiglia condivide la struttura a registri. Viene modificata la funzione di stima e vengono applicate
+  La famiglia condivide la struttura a registri. Nei miglioramenti successivi viene modificata la funzione di stima e vengono applicate
   correzioni sulla stima in maniera empirica.
 \end{frame}
 
-% TODO: aggiungere slide con lo pseudocodice
+\begin{frame}{LogLog: pseudocodice}
+  
+    \begin{algorithmic}
+      \STATE Choose the precision \(k\) and set \(m=2^k\)
+      \STATE Initialize the registers \(M[0],\dots,M[m-1]\leftarrow 0\)
+      \FOR{each element \(x\) in the stream}
+        \STATE \(y \leftarrow h(x)\)
+        \STATE \(j \leftarrow \operatorname{Prefix}_{k}(y)\)
+        \STATE \(w \leftarrow \operatorname{Suffix}_{L-k}(y)\)
+        \STATE \(M[j] \leftarrow \max\{M[j],\rho(w)\}\)
+      \ENDFOR
+      \STATE \(A \leftarrow \frac{1}{m}\sum_{j=0}^{m-1} M[j]\)
+      \STATE \textbf{return} \(\widehat{\Fzero} \leftarrow \alpha_m \cdot m \cdot 2^A\)
+    \end{algorithmic}
+  
+\end{frame}
 
-% TODO: aggiungere una slide di esempio per LogLog
+\begin{frame}[shrink=14]{LogLog: esempio operativo}
+  
+    Consideriamo \(k=2\), quindi \(m=4\) registri, e hash su \(L=8\) bit. I primi
+    due bit selezionano il registro \(j\); i restanti sei bit formano il suffisso
+    \(w\), da cui si calcola \(\rho(w)\).
+  
+
+  \vspace{0.20cm}
+
+  \centering
+  \resizebox{\textwidth}{!}{%
+    \begin{tabular}{@{}cccccccc@{}}
+      \toprule
+      Passo & \(x\) & \(y=h(x)\) & \(j\) & \(w\) & \(\rho(w)\) & Stato registri & \(\widehat{\Fzero}\) \\
+      \midrule
+      1 & \(a\) & \(10010100_2\) & \(2\) & \(010100_2\) & \(2\) & \((0,0,2,0)\) & \(\approx 2.25\) \\
+      2 & \(b\) & \(10111000_2\) & \(2\) & \(111000_2\) & \(1\) & \((0,0,2,0)\) & \(\approx 2.25\) \\
+      3 & \(c\) & \(01001100_2\) & \(1\) & \(001100_2\) & \(3\) & \((0,3,2,0)\) & \(\approx 3.78\) \\
+      4 & \(d\) & \(11001000_2\) & \(3\) & \(001000_2\) & \(3\) & \((0,3,2,3)\) & \(\approx 6.352\) \\
+      5 & \(e\) & \(10000100_2\) & \(2\) & \(000100_2\) & \(4\) & \((0,3,4,3)\) & \(\approx 8.98\) \\
+      \bottomrule
+    \end{tabular}
+  }
+
+\end{frame}
 
 
 % \begin{frame}{HyperLogLog: media armonica e regimi}
@@ -446,27 +488,17 @@
 \end{frame}
 
 \begin{frame}{Merge e compatibilit\`a semantica}
-  \begin{block}{Obiettivo del merge}
+  
     Il merge corretto richiede
     \[
       \mathrm{Query}(K_1 \oplus_{\mathcal A} K_2)
       =
       \mathrm{Query}(K_{\mathrm{serial}})
     \]
-  \end{block}
+  
+      \vspace{0.20cm}
 
-  \begin{columns}[T,onlytextwidth]
-    \column{0.48\textwidth}
-      \begin{block}{Famiglia bitmap}
-        \small
-        Probabilistic Counting e PCSA.
-        \[
-          B = B_1 \lor B_2
-        \]
-        \small
-        Merge bit a bit dello stato.
-      \end{block}
-    \column{0.48\textwidth}
+  
       \begin{block}{Famiglia a registri}
         \small
         LogLog, HLL e HLL++.
@@ -478,14 +510,13 @@
         \small
         Merge componente per componente.
       \end{block}
-  \end{columns}
 
-  \begin{alertblock}{Compatibilit\`a richiesta}
-    \small
+        \vspace{0.20cm}
+
     L'operazione \(\oplus_{\mathcal A}\) \`e corretta solo con
     \textbf{algoritmo}, \textbf{hash/seed}
     e \textbf{parametri strutturali} invariati.
-  \end{alertblock}
+
 \end{frame}
 
 \begin{frame}{Classificazione dei casi di merge}
@@ -513,11 +544,11 @@
         \small
         Merge da rifiutare.
 
-        Hash family o seed diversi.
+        Funzioni di hash o seed diversi.
       \end{block}
   \end{columns}
 
-  \begin{block}{Strategie operative}
+  \begin{block}{Strategie utilizzate}
     \small
     \texttt{valid} \(\rightarrow\) \texttt{direct},
     \qquad
@@ -659,8 +690,6 @@
   \end{columns}
 \end{frame}
 
-\section{Risultati sugli algoritmi}
-
 \begin{frame}[plain]
   \centering
   \vfill
@@ -668,28 +697,11 @@
   \vfill
 \end{frame}
 
-\begin{frame}{Dataset sintetico: validazione empirica}
-  \begin{columns}[T,onlytextwidth]
-    \column{0.48\textwidth}
-      \centering
-      \includegraphics[width=0.98\linewidth]{ratio_processed_vs_distinct_streaming_linear.png}
-
-      \vspace{0.05cm}
-      \scriptsize Rapporto \(\rho_t=t/\Fzero(t)\) ai checkpoint.
-    \column{0.48\textwidth}
-      \centering
-      \includegraphics[width=0.98\linewidth]{ratio_processed_vs_distinct_streaming_boundary_linear.png}
-
-      \vspace{0.05cm}
-      \scriptsize Rapporto \(\rho_t\) ai bordi di blocco.
-  \end{columns}
-\end{frame}
+\section{Risultati sugli algoritmi}
 
 \begin{frame}{Protocollo sperimentale: organizzazione}
-  \begin{block}{Idea}
-    Il protocollo segue la progressione del capitolo: validazione del contesto,
-    esperimenti sugli algoritmi e merge distribuito.
-  \end{block}
+    Il protocollo segue la validazione del contesto,
+    gli esperimenti sugli algoritmi e il merge distribuito.
 
   \vspace{0.08cm}
 
@@ -724,43 +736,7 @@
   \end{alertblock}
 \end{frame}
 
-\begin{frame}{Validazione della catena sperimentale}
-  \begin{columns}[T,onlytextwidth]
-    \column{0.48\textwidth}
-      \begin{block}{Test sugli algoritmi}
-        \footnotesize
-        \begin{itemize}
-          \item accuratezza di base e dominio dei parametri;
-          \item merge seriale, commutativit\`a e idempotenza per PC, LogLog, HLL e HLL++;
-          \item eccezioni sui parametrici diversi non ammessi;
-          \item per HLL++: merge sparse+normal, riduzione corretta di precisione
-          e controesempio \texttt{naive}.
-        \end{itemize}
-      \end{block}
-    \column{0.48\textwidth}
-      \begin{block}{Test del framework}
-        \footnotesize
-        \begin{itemize}
-          \item uso corretto di \(F_0(t)\) nella modalit\`a di flusso;
-          \item planner dei checkpoint e copertura del flusso;
-          \item serializzazione coerente dei risultati sperimentali;
-          \item classificazione dei casi \texttt{valid}, \texttt{invalid} e
-          \texttt{recoverable}.
-        \end{itemize}
-      \end{block}
-  \end{columns}
-
-  \vspace{0.15cm}
-
-  \begin{block}{Test del dataset e dell'orchestrazione}
-    \footnotesize
-    Il generatore verifica header binario, tabella delle partizioni, truth
-    bitset, relazione \(\sum_t b_t=d\), una sola prima occorrenza per blocco e
-    determinismo del file anche variando i worker.
-  \end{block}
-\end{frame}
-
-\begin{frame}[shrink=2]{Esperimenti in modalit\`a di flusso: configurazione}
+\begin{frame}[shrink=2]{Struttura comune per gli esperimenti in modalit\`a streaming}
   \begin{block}{Configurazione}
     \scriptsize
     Dataset \texttt{prefix\_constant\_rho} con \(n=10^7\), \(p=50\), seed
@@ -965,12 +941,11 @@
   \end{columns}
 \end{frame}
 
-\begin{frame}{Risultati streaming: sintesi ai punti finali}
-  \begin{block}{Idea}
-    L'errore relativo medio ai punti finali osservati sintetizza la qualit\`a
+\begin{frame}{Risultati streaming}
+
+    L'errore relativo medio alla fine del flusso osservati sintetizza la qualit\`a
     della stima nelle due viste gi\`a introdotte: in funzione di \(\Fzero(t)\) e di
     \(\rho_t=t/\Fzero(t)\).
-  \end{block}
 
   \begin{columns}[T,onlytextwidth]
     \column{0.58\textwidth}
@@ -1280,7 +1255,7 @@
 
   \begin{block}{Contributo complessivo}
     \footnotesize
-    Il lavoro non si limita a confrontare algoritmi: esplicita quando il merge
+    Il lavoro non si limita a confrontare gli algoritmi di sketch ma esplicita quando il merge
     distribuito sia semanticamente corretto, quando vada rifiutato e quando
     richieda una trasformazione preliminare definita.
   \end{block}
@@ -1344,25 +1319,6 @@
     \footnotesize
     Le estensioni future hanno senso soprattutto lungo assi di eterogeneit\`a la
     cui interpretazione semantica sia chiara, come in questo lavoro.
-  \end{block}
-\end{frame}
-
-\begin{frame}{Conclusioni}
-  
-    Negli sketch count-distinct distribuiti, hash, seed e parametri non sono
-    dettagli di implementazione: fanno parte della semantica dello sketch.
-  
-
-  \vspace{0.2cm}
-
-  \begin{block}{Conseguenza operativa}
-    \[
-      \texttt{valid} \Rightarrow \texttt{direct}
-      \qquad
-      \texttt{recoverable} \Rightarrow \texttt{reduce\_then\_merge}
-      \qquad
-      \texttt{invalid} \Rightarrow \texttt{reject}
-    \]
   \end{block}
 \end{frame}
 
