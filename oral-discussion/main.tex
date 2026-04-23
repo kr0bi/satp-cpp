@@ -1,5 +1,5 @@
 % !TeX program = lualatex
-\documentclass{beamer}
+\documentclass[aspectratio=169, 10pt]{beamer}
 \usetheme{gotham}
 \title{Stima della cardinalità \\nei flussi di dati distribuiti:}
 \subtitle{merge e compatibilità semantica \\degli algoritmi di sketching}
@@ -20,7 +20,7 @@
 
   \begin{frame}{Sketch} 
     \centering
-    \includegraphics[width=0.9\linewidth]{figures/sketch.pdf}    
+    \includegraphics[width=0.7\linewidth]{figures/sketch.pdf}    
   \end{frame}
 
   \begin{frame}{Applicazioni}
@@ -44,11 +44,17 @@
   \end{frame}
   
   \begin{frame}{Merge}
-    \begin{itemize}
-      \item diagramma
-      \item assunzioni
-      \item motivazioni
-    \end{itemize}
+    \begin{columns}[c,onlytextwidth]
+      \column{0.58\textwidth}
+      \centering
+      \includegraphics[width=\linewidth]{figures/distributed_serial.pdf}
+
+      \column{0.38\textwidth}
+      \begin{itemize}
+        \item \textbf{assunzioni}: stessi parametri algoritmici, hash, seed
+        \item \textbf{motivazioni}: sistemi distribuiti eterogenei
+      \end{itemize}
+    \end{columns}
   \end{frame}
 
   \begin{frame}{Contributi}
@@ -60,7 +66,7 @@
         \item focus in particolare sul merge
         \begin{itemize}
           \item classificazione operativa
-          \item degradazione dovuto a normalizzazione
+          \item degradazione dovuta a normalizzazione
           \item ...
         \end{itemize}
       \end{itemize}
@@ -68,16 +74,34 @@
   \end{frame}
 
   \begin{frame}{Sketch come struttura dati dinamica}
-    disegno del flusso 
-    \begin{itemize}
-      \item update
-      \item query
-      \item vincoli
-    \end{itemize}
+    \centering
+    \includegraphics[width=0.8\linewidth]{figures/stream.pdf}
+    \begin{columns}[c,onlytextwidth]
+      \column{0.58\textwidth}  
+        \begin{itemize}
+          \item \textbf{update}: operazione $O(1)$
+          \item \textbf{query}: come funziona 
+          \item \textbf{vincoli}: \begin{itemize}
+            \item unbiased ($F_0 \approx \hat{F_0}$)
+            \item update time $O(1)$
+            \item small memory $\dots$
+          \end{itemize}
+        \end{itemize}
+      \column{0.38\textwidth}
+        \begin{columns}[c,onlytextwidth]
+          \column{0.5\textwidth}
+          \underline{lower bound}\\
+          $\Omega(\epsilon^{-2} + log N)$
+          \column{0.5\textwidth}
+          \underline{upper bound}
+          $O(m \cdot log N)$
+        \end{columns}
+        \[\Theta(\epsilon^{-2} + log N)\] 
+    \end{columns}
   \end{frame}
 
   \begin{frame}{Sketch LogLog}
-    
+    Diagramma da fare
   \end{frame}
 
   \begin{frame}{Versioni moderne}
@@ -90,14 +114,16 @@
   \end{frame}
 
   \begin{frame}{Classificazione operativa dell'operazione di merge}
-    Ci sono 3 casi valid, invalid, normalize then reduce
+    Ci sono 3 casi valid, invalid, recoverable
   \end{frame}
 
   \begin{frame}{Framework}
-    Schema architetturale del framework
+    \centering
+    \resizebox{0.98\textwidth}{!}{\input{figures/system_architecture.tex}}
   \end{frame}
 
   \begin{frame}{Dataset}
+    Da inserire la tabella dell'esempio
     \begin{itemize}
       \item come è fatto
       \item perché binario e compresso
