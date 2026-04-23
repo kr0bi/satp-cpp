@@ -15,20 +15,115 @@
 
 \begin{document}
   \maketitle
-  \section{First Section}
-  \begin{frame}{Sketch}
-    Sketch con diagramma "PAC"
+
+
+
+  \begin{frame}{Sketch} 
+    \centering
+    \includegraphics[width=0.9\linewidth]{figures/sketch.pdf}    
   \end{frame}
+
   \begin{frame}{Applicazioni}
     \begin{itemize}
-      \item sicurezza rete / monitoraggio / telemetria 
-      \item conteggio di like, visite, page ranking
+      \item sicurezza di rete / monitoraggio / telemetria 
+      \item conteggio di like, visitatori unici, page ranking
       \item DBMS
       \item $\dots$
     \end{itemize}
   \end{frame}
 
+  \begin{frame}{Contributi}
+    \begin{itemize}
+      \item implementazione degli algoritmi PC, LL, HLL, HLL++
+      \item framework sperimentale modulare, estendibile
+      \item analisi empirica sistematica
+      \begin{itemize}
+        \item focus in particolare sul merge
+      \end{itemize}
+    \end{itemize}
+  \end{frame}
+  
+  \begin{frame}{Merge}
+    \begin{itemize}
+      \item diagramma
+      \item assunzioni
+      \item motivazioni
+    \end{itemize}
+  \end{frame}
 
+  \begin{frame}{Contributi}
+    \begin{itemize}
+      \item implementazione degli algoritmi PC, LL, HLL, HLL++
+      \item framework sperimentale modulare, estendibile
+      \item analisi empirica sistematica
+      \begin{itemize}
+        \item focus in particolare sul merge
+        \begin{itemize}
+          \item classificazione operativa
+          \item degradazione dovuto a normalizzazione
+          \item ...
+        \end{itemize}
+      \end{itemize}
+    \end{itemize}
+  \end{frame}
+
+  \begin{frame}{Sketch come struttura dati dinamica}
+    disegno del flusso 
+    \begin{itemize}
+      \item update
+      \item query
+      \item vincoli
+    \end{itemize}
+  \end{frame}
+
+  \begin{frame}{Sketch LogLog}
+    
+  \end{frame}
+
+  \begin{frame}{Versioni moderne}
+    \begin{itemize}
+      \item HyperLogLog
+      \item HyperLogLog++
+      \item UltraLogLog 
+      \item $\dots$
+    \end{itemize}
+  \end{frame}
+
+  \begin{frame}{Classificazione operativa dell'operazione di merge}
+    Ci sono 3 casi valid, invalid, normalize then reduce
+  \end{frame}
+
+  \begin{frame}{Framework}
+    Schema architetturale del framework
+  \end{frame}
+
+  \begin{frame}{Dataset}
+    \begin{itemize}
+      \item come è fatto
+      \item perché binario e compresso
+      \item quanto occupa
+      \item $\dots$
+    \end{itemize}
+  \end{frame}
+
+  \begin{frame}{Grafici}
+    alcuni con cardinalità fissata e rho
+    
+    max 3 grafici
+  \end{frame}
+
+  \begin{frame}{Conclusioni}
+   ciò di cui ho parlato 
+  \end{frame}
+
+  \begin{frame}{Limiti e sviluppi futuri}
+    \begin{itemize}
+      \item dataset sintetico vs empirico
+      \item merge non pairwise con topologie diverse
+      \item varianti di sketch su altri problemi
+      \item
+    \end{itemize}
+  \end{frame}
 
   \begin{frame}[standout]{Grazie per l'attenzione}
     Domande ?
