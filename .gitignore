@@ -107,22 +107,41 @@ dataset_*.bin
 !/tests/compressed_dataset_*.bin
 !/tests/data/*.bin
 
-# ----------------- LaTeX (thesis) ----------------------
-/thesis/**/*.aux
-/thesis/**/*.bbl
-/thesis/**/*.bcf
-/thesis/**/*.blg
-/thesis/**/*.fdb_latexmk
-/thesis/**/*.fls
-/thesis/**/*.lof
-/thesis/**/*.log
-/thesis/**/*.lot
-/thesis/**/*.out
-/thesis/**/*.run.xml
-/thesis/**/*.synctex.gz
-/thesis/**/*.synctex(busy)
-/thesis/**/*.toc
-/thesis/**/*.xmpi
+# ----------------- LaTeX / Beamer auxiliary files ------
+*.acn
+*.acr
+*.alg
+*.aux
+*.bbl
+*.bcf
+*.blg
+*.brf
+*.dvi
+*.fdb_latexmk
+*.fls
+*.glg
+*.glo
+*.gls
+*.idx
+*.ilg
+*.ind
+*.ist
+*.loa
+*.lof
+*.lol
+*.lot
+*.nav
+*.pdfsync
+*.ps
+*.run.xml
+*.snm
+*.synctex.gz
+*.synctex(busy)
+*.toc
+*.vrb
+*.xdv
+*.xmpi
+_minted-*/
 
 # ----------------- Results ----------------------
 results.csv
