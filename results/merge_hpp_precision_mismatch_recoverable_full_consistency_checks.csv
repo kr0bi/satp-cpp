@@ -1,0 +1,3 @@
+check,value
+reduce_then_merge == serial for all rows,True
+reduce_then_merge == baseline for all rows,True
