@@ -255,13 +255,12 @@ def plot_type_a_grid(raw: pd.DataFrame, out_path: Path, loglog: bool) -> None:
             if col_idx == 0:
                 ax.legend(loc="best", fontsize=6.5, frameon=True)
 
-    title = "Sweep di precisione in streaming - confronto tipo A"
-    if loglog:
-        title += " (log-log)"
-    else:
-        title += " (lineare)"
-    fig.suptitle(title, fontsize=14)
+    fig.suptitle(
+        r"Confronto tra diverse precisioni per lo stesso algoritmo con $\rho$ fissato",
+        fontsize=14,
+    )
     fig.savefig(out_path, dpi=180, bbox_inches="tight")
+    fig.savefig(out_path.with_suffix(".pdf"), bbox_inches="tight")
     plt.close(fig)
 
 
@@ -341,6 +340,7 @@ def export_all(repo_root: Path) -> tuple[pd.DataFrame, pd.DataFrame]:
 
     plot_endpoint_heatmaps(endpoint, figures_out / "streaming_precision_sweep_endpoint_heatmaps.png")
     plot_type_a_grid(raw, figures_out / "streaming_precision_sweep_typeA_grid_linear.png", loglog=False)
+    plot_type_a_grid(raw, figures_out / "streaming_precision_sweep_typeA_grid_loglog.png", loglog=True)
     plot_type_b_grid(raw, figures_out / "streaming_precision_sweep_typeB_grid_linear.png", loglog=False)
 
     return endpoint, best
