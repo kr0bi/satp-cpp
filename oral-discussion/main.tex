@@ -103,11 +103,11 @@
   \begin{frame}{Sketch LogLog}
     \centering
     \begin{columns}[c,onlytextwidth]
-      \column{0.7\textwidth}  
+      \column{0.65\textwidth}  
       \includegraphics[width=\linewidth]{figures/loglog.pdf}
-      \column{0.3\textwidth}
+      \column{0.35\textwidth}
         \begin{description}
-          \item \textbf{update}
+          \item \textbf{update}: \[M[r] \leftarrow max(M[r], \rho(w))\]
           \item \textbf{query}: \[\hat{F}_0 = \alpha_m \cdot m \cdot 2^A\]
         \end{description}
       \end{columns}
@@ -284,6 +284,9 @@
     \end{itemize}
   \end{frame}
 
+  \setbeamercolor{footline}{fg=white}
+  \setbeamercolor{footlineRule}{fg=white}
+  \setbeamercolor{page number in head/foot}{fg=white}
   \begin{frame}[standout]{Grazie per l'attenzione}
     Domande ?
   \end{frame}
