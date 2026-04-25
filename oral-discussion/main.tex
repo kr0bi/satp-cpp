@@ -68,7 +68,7 @@
         \item focus in particolare sul merge
         \begin{itemize}
           \item classificazione operativa
-          \item degradazione dovuta a normalizzazione
+          \item \alert{degradazione} dovuta a normalizzazione
           \item ...
         \end{itemize}
       \end{itemize}
@@ -116,12 +116,22 @@
   \end{frame}
 
   \begin{frame}{Versioni moderne}
-    \begin{itemize}
-      \item HyperLogLog
-      \item HyperLogLog++
-      \item UltraLogLog 
-      \item $\dots$
-    \end{itemize}
+    \begin{columns}[T,onlytextwidth]
+      \column{0.28\textwidth}
+        \begin{itemize}
+          \item HyperLogLog
+          \item HyperLogLog++
+          \item UltraLogLog 
+          \item $\dots$
+        \end{itemize}
+
+      \column{0.68\textwidth}
+        \begin{description}
+          \item \textbf{media armonica}, correzione del bias
+          \item sparse vs dense, \textbf{correzioni empiriche}
+          \item \textbf{stima pi\`u efficiente}, registri pi\`u informativi 
+        \end{description}
+    \end{columns}
   \end{frame}
 
   \begin{frame}{Compatibilit\`a semantica del merge}
@@ -199,7 +209,7 @@
     \begin{itemize}
       \item Cardinalit\`a stimata rispetto alla cardinalit\`a reale
       \item Confronto tra diverse precisioni per lo stesso algoritmo
-      \item Caso `recoverable' durante un operazione di merge
+      \item Caso \textit{recoverable} durante un operazione di merge
     \end{itemize}
   \end{frame}
 
@@ -249,6 +259,9 @@
     \(\rho \in \{1,10,100\}\)
   \end{frame}
   
+\begin{frame}{Caso \texttt{recoverable} durante un operazione di merge}
+  
+\end{frame}
 
   \begin{frame}{Conclusioni}
    ciò di cui ho parlato 
