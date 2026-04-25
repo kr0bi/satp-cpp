@@ -18,8 +18,6 @@
 \begin{document}
   \maketitle
 
-
-
   \begin{frame}{Sketch} 
     \centering
     \includegraphics[width=0.7\linewidth]{figures/sketch.pdf}    
@@ -259,20 +257,30 @@
     \(\rho \in \{1,10,100\}\)
   \end{frame}
   
-\begin{frame}{Caso \texttt{recoverable} durante un operazione di merge}
-  
-\end{frame}
+  \begin{frame}{Caso \texttt{recoverable} durante un operazione di merge}
+    
+  \end{frame}
 
   \begin{frame}{Conclusioni}
-   ciò di cui ho parlato 
+    \begin{description}
+      \item[Framework] modulare ed estendibile
+      \item[Accuratezza] HLL++ risulta l'algoritmo migliore
+      \item[Merge distribuito] caso omogeneo $=$ seriale
+      \item[Compatibilit\`a] necessario l'uso degli stessi parametri per il merge
+      \item[Recoverable] necessario normalizzare $\implies$ degrado stima
+    \end{description}
   \end{frame}
 
   \begin{frame}{Limiti e sviluppi futuri}
     \begin{itemize}
       \item dataset sintetico vs empirico
-      \item merge non pairwise con topologie diverse
-      \item varianti di sketch su altri problemi
-      \item
+      \item merge \underline{non pairwise} con topologie diverse
+      \item varianti di sketch su altri problemi:
+            \begin{itemize}
+              \item \underline{membership}
+              \item \underline{moments-frequency}
+            \end{itemize}
+      \item $\dots$
     \end{itemize}
   \end{frame}
 
