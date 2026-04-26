@@ -79,8 +79,8 @@
     \begin{columns}[c,onlytextwidth]
       \column{0.58\textwidth}  
         \begin{itemize}
-          \item \textbf{update}: operazione $O(1)$
-          \item \textbf{query}: come funziona 
+          \item \textbf{update}: aggiorna la struttura dati elemento per elemento
+          \item \textbf{query}: restituisce la stima
           \item \textbf{vincoli}: \begin{itemize}
             \item unbiased ($F_0 \approx \hat{F_0}$)
             \item update time $O(1)$
@@ -91,12 +91,12 @@
         \begin{columns}[c,onlytextwidth]
           \column{0.5\textwidth}
           \underline{lower bound}\\
-          $\Omega(\epsilon^{-2} + log N)$
+          $\Omega(\epsilon^{-2} + \log N)$
           \column{0.5\textwidth}
           \underline{upper bound}
-          $O(m \cdot log N)$
+          $O(m \cdot \log N)$
         \end{columns}
-        \[\Theta(\epsilon^{-2} + log N)\] 
+        \[\Theta(\epsilon^{-2} + \log N)\] 
     \end{columns}
   \end{frame}
 

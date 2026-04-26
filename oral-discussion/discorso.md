@@ -66,4 +66,63 @@ Questa e' l'architettura del sistema software, in verde si possono notare gli el
 Al centro dell'architettura c'e' il dataset che viene dato in pasto al framework che va ad effettuare le sue stime e va a scrivere in un CSV i risultati dell'esecuzione.
 
 # Slide 11 (Dataset)
-Il dataset utilizzato e' di tipo sintetico, cioe' e' un dataset creato appositamente per questo framework. Il motivo per cui e' sintetico e' semplice, 
+Il dataset utilizzato e' di tipo sintetico, cioe' e' un dataset creato appositamente per questo framework. Il motivo per cui e' sintetico e' semplice, ci serve un riferimento di base per capire se quello che stiamo facendo e' giusto o meno. Con dei dati reali non potremmo avere una stima di riferimento perche' appunto si ritorna al problema iniziale, cioe' che il conteggio esame diventa troppo oneroso al crescere dei dati.
+
+Ogni file del dataset contiene 50 partizioni, dove ogni partizione contiene n elementi totali e d elementi distinti.
+Una partizione e' strutturata esattamente come l'esempio in tabella.
+Cioe' abbiamo dei blocchi che sono lunghi rho, che e' il numero di elementi totali su quelli distinti.
+Ad ogni blocco introduciamo un nuovo elemento preso da una lista di elementi e poi per i restanti elementi del blocco scegliamo quelli che sono gia' venuti fuori.
+In questa maniera all'inizio di ogni blocco abbiamo esattamente un elemento nuovo, questo ci permette di calcolare rapidamente il numero di elementi distinti sapendo solo quanti elementi abbiamo visto.
+
+Inoltre, per ogni elemento del dataset abbiamo affiancato anche un bit di verita' che ci indica se l'elemento e' nuovo. La somma di questi bit ci permette anch'essa di calcolare il numero di elementi distinti visti fino ad un certo instante.
+
+Infine questo dataset e' in un formato binario ed e' stato pure compresso, per esempio con n a 1 milione di elementi si occupano circa 1.7 GB. Aumentare anche solo di un ordine di grandezza n implica aumentare di 10x la dimensione del file.
+
+# Slide 12 (Grafici)
+Adesso andremo a vedere 3 grafici significativi sui risultati. 
+Il primo va a misurare la cardinalita' stimata rispetto alla cardinalita' reale fissando il numero di elementi distinti per numero di elementi totali. 
+
+Il secondo va a verificare quanto la stima degrada nel caso in cui si riducano il numero di registri per lo stesso algoritmo
+
+E il terzo va a misurare quanto degrada la stima quando si effettua un operazione di merge tra due sistemi eterogenei.
+
+# Slide 13 (Cardinalita' stimata rispetto alla cardinalita' reale)
+In questi due grafici, uno in scala lineare e uno in scala logaritmica, possiamo notare che tra i 4 algoritmi analizzati, quello rosso (probabilistic counting) e' il peggiore perche' devia dal risultato ottimale.
+Tra i 3 algoritmi rimasti, sembrerebbe che performino in maniera uguale, ma all'inizio della stima quando la cardinalita' degli elementi e' bassa, loglog sovrastima, e questo si puo' notare guardando il grafico in scala logaritmica. I due restanti algoritmi HLL e HLL++ performano in maniera molto simile.
+
+# Slide 14 (Confronto tra diverse precisioni per lo stesso algoritmo)
+In questo grafico possiamo notare che HLL++ performa in maniera ottimale e devia pochissimo dal risultato atteso. Infatti e' l'algoritmo di punta di Google per questi problemi. HLL++ ha queste ottime performance perche' Google ha rilasciato delle correzioni empiriche per ogni numero di registro per sistemare il bias dell'algoritmo.
+
+HLL invece tende a performare peggio quando gli si riduce il numero di registri che e' corretto. E soprattutto non ha le stesse correzioni di HLL++.
+
+LogLog come PC non performano in maniera ottimale, per di piu' di puo' notare che PC ha un problema di saturazione dei registri perche' le stime tendono ad appiattirsi.
+
+Questo si vede benissimo nei grafici in scala Log che LogLog sovrastima all'inizio e PC invece tende a saturarsi in fretta. Soprattutto se gli si diminuisce la memoria.
+
+# Slide 15 (Merge di sistemi eterogenei)
+In questo grafico il contesto e' il seguente: 
+1) l'algoritmo utilizzato e' HLL++
+2) Il numero di registri varia da 8 a 18 con aumenti di 2.
+3) A sx possiamo vedere cosa accade quando si uniscono due sketch a registri differenti normalizzando, l'errore dell'algoritmo diventa l'errore dello sketch con precisione inferiore; a dx invece unendoli senza fare alcuna normalizzazione l'errore relativo medio all'aumentare degli elementi distinti peggiora enormemente.
+
+# Slide 16 (Conclusioni)
+Ricapitolando, in questa tesi si e' sviluppato un intero framework per l'aggiunta di algoritmi che risolvono il problema del calcolo della cardinalita', completamente modulare, che si puo' aggiungere qualunque dataset, modificarne le metriche ci interessano e come deve comportarsi in caso di merge.
+
+Abbiamo visto che HLL++ e' l'algoritmo che risulta piu' attendibile.
+
+Nel caso del merge distribuito abbiamo verificato che il caso omogeneo equivale all'unione seriale di due dataset.
+
+Abbiamo definito una terminologia per la compatibilita' semantica di due sketch e quando/come e' possibile unirle.
+
+Infine abbiamo verificato che il caso recoverable richiede una normalizzazione esplicita prima di poter effettuare l'operazione di unione e che c'e' un degrado dovuto alla precisione inferiore tra le due sketch.
+
+# Slide 17 (Limiti e sviluppi futuri)
+Una delle prime cose che si puo' fare con questo framework e' l'utilizzo di dataset reali che possano prendere dei dati da un flusso continuo come ad esempio da Apache Kafka.
+
+Si potrebbe fare della ricerca su quando convenga fare l'operazione di merge in topologie
+per minimizzare le perdite di sketch.
+
+Oppure si potrebbero implementare delle sketch che risolvono altri problemi come il problema di appartenenza di un elemento ad un insieme, o il calcolo dei moments-frequency, che vanno a stimare quanto ogni elemento di un insieme e' frequente.
+
+# Slide 18 (Conclusioni)
+Bene, ho finito, grazie per l'attenzione e se avete delle domande...
