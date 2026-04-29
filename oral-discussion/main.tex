@@ -76,36 +76,48 @@
     \end{itemize}
   \end{frame}
 
-  % TODO: #6) Ottimo lo schema. Cercherei di far apparire i lower bound e gli upper bound solamente dopo che hai parlato di small memory (usa gli overlay di beamer per questo, ma occhio alle traslazioni involontarie della slide). Occhio anche al discorso su update time "costante": sembra in contradizione con i bound sullo spazio -> qualcuno ti potrebbe chiedere come mai si riesce a fare un update della memoria in tempo costante e dovrai avere ben chiaro cosa dire (credo che se si dovesse esplicitare la dimensione dei registri il bound O(1) non sarebbe piu' valido). Non mi è chiaro il bound Theta e cosa ci eravamo detti a riguardo: sembra in contradizione con l'upper bound che esplicita m. Inoltre dovresti indicare sotto le definizioni di m e N. Se non sei sicuro dei bound Theta non scriverlo!
   \begin{frame}{Sketch come struttura dati dinamica}
     \centering
     \includegraphics[width=0.8\linewidth]{figures/stream.pdf}
+
     \begin{columns}[c,onlytextwidth]
-      \column{0.58\textwidth}  
+      \column{0.58\textwidth}
         \begin{itemize}
           \item \textbf{update}: aggiorna la struttura dati elemento per elemento
           \item \textbf{query}: restituisce la stima
-          \item \textbf{vincoli}: \begin{itemize}
-            \item unbiased ($F_0 \approx \hat{F_0}$)
-            \item update time $O(1)$
-            \item small memory $\dots$
-          \end{itemize}
+          \item \textbf{vincoli}:
+            \begin{itemize}
+              \item unbiased ($F_0 \approx \hat{F_0}$)
+              \item update time $O(1)$
+              \item small memory $\dots$
+            \end{itemize}
         \end{itemize}
-        \pause
-        \column{0.38\textwidth}
+
+      \pause
+
+      \column{0.38\textwidth}
         \begin{columns}[c,onlytextwidth]
           \column{0.5\textwidth}
-          \underline{lower bound}\\
-          $\Omega(\epsilon^{-2} + \log N)$
+            \underline{lower bound}\\
+            $\Omega(\log N)$
+
           \column{0.5\textwidth}
-          \underline{upper bound}
-          $O(m \cdot \log N)$
+            \underline{upper bound\footnotemark}\\
+            $O(m \cdot \log N)$
         \end{columns}
-        \[\Theta(\epsilon^{-2} + \log N)\] 
+
+        \vspace{0.8em}
         where: \\
         $\mathbf{m} = $ \# of distinct elements \\
         $\mathbf{N} = $ \# of elements in the universe
+
+        \pause
+        \[
+          \Theta(\epsilon^{-2} + \log N)
+        \]
     \end{columns}
+    
+    \footnotetext{trivial sketching algorithm}
   \end{frame}
 
   \begin{frame}{Sketch LogLog}
