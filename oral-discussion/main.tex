@@ -30,14 +30,14 @@
     \begin{itemize}
       \item sicurezza di rete / monitoraggio / telemetria 
       \item conteggio di like, visitatori unici, page ranking
-      \item DBMS
+      \item ottimizzazione di query nei DBMS
       \item $\dots$
     \end{itemize}
   \end{frame}
 
   \begin{frame}{Contributi}
     \begin{itemize}
-      \item implementazione degli algoritmi PC, LL, HLL, HLL++
+      \item implementazione degli algoritmi Probabilistic Counting, LogLog, HyperLogLog, HyperLogLog++
       \item framework sperimentale modulare, estendibile
       \item analisi empirica sistematica
       \begin{itemize}
@@ -54,7 +54,7 @@
 
       \column{0.38\textwidth}
       \begin{itemize}
-        \item \textbf{assunzioni}: stessi parametri algoritmici, hash, seed
+        \item \textbf{assunzioni}: sui parametri algoritmici, hash, seed
         \item \textbf{motivazioni}: sistemi distribuiti eterogenei
       \end{itemize}
     \end{columns}
@@ -62,7 +62,7 @@
 
   \begin{frame}{Contributi}
     \begin{itemize}
-      \item implementazione degli algoritmi PC, LL, HLL, HLL++
+      \item implementazione degli algoritmi Probabilistic Counting, LogLog, HyperLogLog, HyperLogLog++
       \item framework sperimentale modulare, estendibile
       \item analisi empirica sistematica
       \begin{itemize}
@@ -76,6 +76,7 @@
     \end{itemize}
   \end{frame}
 
+  % TODO: #6) Ottimo lo schema. Cercherei di far apparire i lower bound e gli upper bound solamente dopo che hai parlato di small memory (usa gli overlay di beamer per questo, ma occhio alle traslazioni involontarie della slide). Occhio anche al discorso su update time "costante": sembra in contradizione con i bound sullo spazio -> qualcuno ti potrebbe chiedere come mai si riesce a fare un update della memoria in tempo costante e dovrai avere ben chiaro cosa dire (credo che se si dovesse esplicitare la dimensione dei registri il bound O(1) non sarebbe piu' valido). Non mi è chiaro il bound Theta e cosa ci eravamo detti a riguardo: sembra in contradizione con l'upper bound che esplicita m. Inoltre dovresti indicare sotto le definizioni di m e N. Se non sei sicuro dei bound Theta non scriverlo!
   \begin{frame}{Sketch come struttura dati dinamica}
     \centering
     \includegraphics[width=0.8\linewidth]{figures/stream.pdf}
@@ -90,7 +91,8 @@
             \item small memory $\dots$
           \end{itemize}
         \end{itemize}
-      \column{0.38\textwidth}
+        \pause
+        \column{0.38\textwidth}
         \begin{columns}[c,onlytextwidth]
           \column{0.5\textwidth}
           \underline{lower bound}\\
@@ -100,15 +102,18 @@
           $O(m \cdot \log N)$
         \end{columns}
         \[\Theta(\epsilon^{-2} + \log N)\] 
+        where: \\
+        $\mathbf{m} = $ \# of distinct elements \\
+        $\mathbf{N} = $ \# of elements in the universe
     \end{columns}
   \end{frame}
 
   \begin{frame}{Sketch LogLog}
     \centering
     \begin{columns}[c,onlytextwidth]
-      \column{0.65\textwidth}  
+      \column{0.61\textwidth}  
       \includegraphics[width=\linewidth]{figures/loglog.pdf}
-      \column{0.35\textwidth}
+      \column{0.39\textwidth}
         \begin{description}
           \item \textbf{update}: \[M[r] \leftarrow max(M[r], \rho(w))\]
           \item \textbf{query}: \[\hat{F}_0 = \alpha_m \cdot m \cdot 2^A\]
@@ -175,9 +180,9 @@
 
   \begin{frame}{Dataset}
     \begin{itemize}
-      \item un file di un dataset \`e diviso in $p$ partizioni
-      \item ogni partizione contiene $n$ elementi totali e $d$ elementi distinti
-      \item la partizione \`e strutturata a prefisso con dei blocchi $\rho = \frac{n}{d}$
+      \item \textbf{dataset}: diviso in $\mathbf{p}$ partizioni
+      \item \textbf{partizione}: $\mathbf{n}$ elementi totali, $\mathbf{d}$ elementi distinti, \\
+      organizzazione in blocchi di dimensione $\boldsymbol{\rho} = \frac{n}{d}$
     \end{itemize}
     
     \begin{table}
@@ -201,7 +206,7 @@
     \end{table}
 
     \begin{alertblock}{esempio}
-      un dataset \textbf{binario} e \textbf{compresso} da 50 partizioni, con $n = 10^7$ e $\forall d$ occupa $\approx 1.7 GB$ !!\\
+      un dataset \textbf{binario} e \textbf{compresso} da 50 partizioni, con $n = 10^7$ occupa $\approx 1.7 GB$ !!\\
       \textbf{aumentare} di un ordine di grandezza $n$ $\implies \mathbf{10x}$ sulla dimensione
     \end{alertblock}
   \end{frame}
